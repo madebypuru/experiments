@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Wet Paint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:ital,wght@0,400;0,500;1,500&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#fbf8f1;color:#4d4238;font-family:"Shantell Sans",ui-rounded,system-ui,sans-serif}
+  #c{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+  .label{position:fixed;left:20px;top:16px;font-size:15px;opacity:.8;pointer-events:none}
+  .bar{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;
+    gap:9px;align-items:center;padding:8px 12px;background:rgba(251,248,241,.92);border-radius:999px;box-shadow:0 0 0 1px rgba(90,70,40,.1);max-width:calc(100vw - 32px);box-sizing:border-box}
+  .sw{width:26px;height:26px;border-radius:50%;border:0;padding:0;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(60,40,20,.12)}
+  .sw.on{outline:2px solid #4d4238;outline-offset:2px}
+  .bar button.t{font:inherit;font-size:14px;background:none;border:0;color:inherit;cursor:pointer;padding:4px 6px}
+  .err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="label">Drag to paint. Colours run into each other while they're wet.</div>
+<div class="bar" id="bar"></div>
+<div class="err" id="err"></div>
+<script>
+// A small Curtis-style watercolour simulation (Curtis et al. 1997, simplified, on the GPU).
+// Each paper cell holds water, pigment floating in the water, and pigment settled into the paper.
+// Water flows between wet cells and creeps slowly into dry paper; pigment rides the flow.
+// The rim of a wash dries first, so water keeps flowing outward and carries pigment to the edge.
+const cv=document.getElementById('c');
+const gl=cv.getContext('webgl2',{antialias:false,alpha:false});
+function fail(m){const e=document.getElementById('err');e.style.display='grid';e.textContent=m;throw new Error(m);}
+if(!gl)fail('This needs WebGL2, which this browser does not have.');
+if(!gl.getExtension('EXT_color_buffer_float'))fail('This browser cannot render to float textures, which the paint simulation needs.');
+
+const Q=new URLSearchParams(location.search);
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+// ---------- GL plumbing ----------
+const VS=`#version 300 es
+in vec2 a;void main(){gl_Position=vec4(a,0,1);}`;
+const HEAD=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform ivec2 sz;
+ivec2 C(ivec2 p){return clamp(p,ivec2(0),sz-1);}
+`;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))fail(gl.getShaderInfoLog(s));return s;}
+function program(fs){
+  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,VS));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,HEAD+fs));
+  gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))fail(gl.getProgramInfoLog(p));
+  const locs={};return {p,loc:k=>k in locs?locs[k]:(locs[k]=gl.getUniformLocation(p,k))};
+}
+const vao=gl.createVertexArray();gl.bindVertexArray(vao);
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+function tex(w,h,fl=true,data=null){
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  if(fl)gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,data);
+  else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,data);
+  for(const k of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,k,gl.NEAREST);
+  for(const k of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,k,gl.CLAMP_TO_EDGE);
+  return t;
+}
+const fbos=new Map();
+function fbo(outs){
+  const key=outs.map(t=>t.id).join(',');
+  if(!fbos.has(key)){const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+    outs.forEach((t,i)=>gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,t,0));
+    gl.drawBuffers(outs.map((_,i)=>gl.COLOR_ATTACHMENT0+i));fbos.set(key,f);}
+  return fbos.get(key);
+}
+let tid=0;
+function pair(w,h){const a=tex(w,h),b=tex(w,h);a.id=++tid;b.id=++tid;return {a,b,swap(){[this.a,this.b]=[this.b,this.a];}};}
+function draw(P,u,outs,vw,vh){
+  gl.bindFramebuffer(gl.FRAMEBUFFER,outs?fbo(outs):null);gl.viewport(0,0,vw,vh);gl.useProgram(P.p);
+  let unit=0;
+  for(const k in u){const l=P.loc(k);if(l==null)continue;const v=u[k];
+    if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit++);}
+    else if(typeof v==='number')gl.uniform1f(l,v);
+    else if(v.i)v.i.length===1?gl.uniform1i(l,v.i[0]):gl.uniform2i(l,v.i[0],v.i[1]);
+    else if(v.length===2)gl.uniform2f(l,...v);else if(v.length===3)gl.uniform3f(l,...v);}
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+
+// ---------- the simulation ----------
+const FLOW=program(`
+uniform sampler2D W,G,P;uniform float kw,kd,kg,kh,evap,evapEdge,front;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float w=texelFetch(W,p,0).x;vec3 g=texelFetch(G,p,0).rgb;vec4 pp=texelFetch(P,p,0);
+  float th=front*(.3+1.7*pp.b);           // how much water it takes to wet this bit of paper
+  vec3 c=g/max(w,.002);
+  bool me=w>1e-4;float dw=0.,wn=0.;vec3 dg=vec3(0);
+  ivec2 O[4]=ivec2[4](ivec2(1,0),ivec2(-1,0),ivec2(0,1),ivec2(0,-1));
+  for(int i=0;i<4;i++){
+    ivec2 q=C(p+O[i]);
+    float wq=texelFetch(W,q,0).x;vec4 pq=texelFetch(P,q,0);
+    bool nq=wq>1e-4;wn+=float(nq);
+    float thq=front*(.3+1.7*pq.b);
+    bool both=me&&nq;
+    bool ok=both||(!me&&nq&&wq>th)||(me&&!nq&&w>thq);
+    if(!ok)continue;
+    vec3 gq=texelFetch(G,q,0).rgb,cq=gq/max(wq,.002);
+    float f=kw*min(pp.g,pq.g)*((wq+kh*pq.r)-(w+kh*pp.r));
+    if(!both)f*=kd;                        // creeping into dry paper is slow
+    f=clamp(f,-w*.24,wq*.24);
+    dw+=f;dg+=f*(f>0.?cq:c);               // pigment rides the water
+    dg+=kg*min(w,wq)*(cq-c);               // and drifts on its own inside wet paint
+  }
+  w+=dw;g=max(g+dg,0.);
+  if(w>0.)w=max(0.,w-evap-evapEdge*(1.-wn*.25));
+  oW=vec4(w,0,0,1);oG=vec4(g,1);
+}`);
+const SETTLE=program(`
+uniform sampler2D W,G,D,P;uniform float dep,gran,lift;
+layout(location=0) out vec4 oG;layout(location=1) out vec4 oD;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float w=texelFetch(W,p,0).x;vec3 g=texelFetch(G,p,0).rgb,d=texelFetch(D,p,0).rgb;float h=texelFetch(P,p,0).r;
+  float valley=(1.-h)*(1.-h);
+  float r=w<.003?1.:dep+gran*valley;      // settles into the paper's dips; all of it once dry
+  vec3 x=g*r;g-=x;d+=x;
+  if(w>=.003){vec3 l=d*lift*(.4+h);d-=l;g+=l;}  // rewetting lifts a little back up
+  oG=vec4(g,1);oD=vec4(d,1);
+}`);
+const SPLAT=program(`
+uniform sampler2D W,G,M,P;uniform int useM;uniform vec3 circ,pig;uniform float water,conc;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float m=useM==1?texelFetch(M,p,0).r:1.-smoothstep(circ.z*.45,circ.z,distance(gl_FragCoord.xy,circ.xy));
+  float b=texelFetch(P,p,0).b;
+  m*=.9+.2*b;                             // the brush leaves paint unevenly
+  oW=vec4(texelFetch(W,p,0).x+m*water,0,0,1);
+  oG=vec4(texelFetch(G,p,0).rgb+m*conc*pig,1);
+}`);
+const SHOW=program(`
+uniform sampler2D W,G,D,P;uniform vec2 scr;uniform float density;
+out vec4 o;
+vec4 bl(sampler2D T,vec2 s){ivec2 i=ivec2(floor(s));vec2 f=fract(s);
+  return mix(mix(texelFetch(T,C(i),0),texelFetch(T,C(i+ivec2(1,0)),0),f.x),mix(texelFetch(T,C(i+ivec2(0,1)),0),texelFetch(T,C(i+ivec2(1,1)),0),f.x),f.y);}
+void main(){
+  vec2 s=gl_FragCoord.xy/scr*vec2(sz)-.5;
+  vec3 a=(bl(D,s).rgb+bl(G,s).rgb*.85)*density;
+  float w=bl(W,s).x,h=bl(P,s).r;
+  float rel=bl(P,s+vec2(-1,1)).r-bl(P,s+vec2(1,-1)).r;
+  vec3 paper=vec3(.984,.969,.936)*(.978+.03*(h-.5)+.05*rel);
+  vec3 col=paper*exp(-a);
+  col*=1.-.06*smoothstep(0.,.08,w);       // wet paint looks a shade darker
+  o=vec4(col,1);
+}`);
+
+const P={kw:.2,kd:.06,kg:.03,kh:.03,evap:+(Q.get('evap')||.0005),evapEdge:.0012,front:.14,dep:.0004,gran:.0015,lift:.0003};
+const STEPS_PER_SEC=300;
+
+let W,H,SW,SH,S,Wt,Gt,Dt,paper,maskTex,MC,mg;
+function hash(x,y,s){let h=Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(s,982451653)|0;
+  h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;}
+function vn(x,y,s){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi,s),b=hash(xi+1,yi,s),c=hash(xi,yi+1,s),d=hash(xi+1,yi+1,s);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+function makePaper(){
+  const d=new Uint8Array(SW*SH*4),seed=Math.floor(Math.random()*1e6);
+  for(let y=0;y<SH;y++)for(let x=0;x<SW;x++){
+    const i=(y*SW+x)*4;
+    const h=.45*vn(x/3.2,y/3.2,seed)+.35*vn(x/8,y/8,seed+1)+.2*vn(x/22,y/22,seed+2);   // cold-press tooth
+    const perm=.35+.65*(.7*vn(x/28,y/28,seed+3)+.3*vn(x/9,y/9,seed+4));                // how fast water moves
+    const res=clamp((.55*vn(x/12,y/12,seed+5)+.45*vn(x/40,y/40,seed+6)-.5)*1.7+.5,0,1);   // how the edge wanders
+    d[i]=h*255;d[i+1]=perm*255;d[i+2]=res*255;d[i+3]=255;}
+  return tex(SW,SH,false,d);
+}
+function setup(){
+  W=innerWidth;H=innerHeight;const dpr=Math.min(2,devicePixelRatio||1);
+  cv.width=W*dpr;cv.height=H*dpr;
+  S=Math.min(1,Math.sqrt((+(Q.get('px'))||1000000)/(W*H)));SW=Math.round(W*S);SH=Math.round(H*S);
+  fbos.clear();
+  Wt=pair(SW,SH);Gt=pair(SW,SH);Dt=pair(SW,SH);paper=makePaper();
+  maskTex=tex(SW,SH,false);MC=document.createElement('canvas');MC.width=SW;MC.height=SH;mg=MC.getContext('2d');
+  clearAll();
+}
+function clearAll(){
+  gl.clearColor(0,0,0,0);
+  for(const p of [Wt,Gt,Dt])for(const t of [p.a,p.b]){gl.bindFramebuffer(gl.FRAMEBUFFER,fbo([t]));gl.clear(gl.COLOR_BUFFER_BIT);}
+}
+const sz=()=>({i:[SW,SH]});
+function step(){
+  draw(FLOW,{sz:sz(),W:Wt.a,G:Gt.a,P:paper,...P},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();
+  draw(SETTLE,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,...P},[Gt.b,Dt.b],SW,SH);Gt.swap();Dt.swap();
+}
+function splat(u){draw(SPLAT,{sz:sz(),W:Wt.a,G:Gt.a,M:maskTex,P:paper,useM:{i:[0]},circ:[0,0,1],...u},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();}
+function show(){draw(SHOW,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,scr:[cv.width,cv.height],density:+(Q.get('d')||.6)},null,cv.width,cv.height);}
+
+// ---------- pigments (absorbance: paper × e^-amount) ----------
+const A=c=>c.map(v=>-Math.log(v));
+const PIG={
+  blue:A([.42,.68,.89]),yellow:A([.97,.86,.5]),slate:A([.56,.67,.74]),ochre:A([.92,.82,.55]),
+  lime:A([.8,.89,.45]),green:A([.42,.68,.34]),sap:A([.52,.75,.38]),dark:A([.22,.42,.3]),
+  orange:A([.96,.6,.3]),cream:A([.99,.91,.76]),violet:A([.6,.46,.78]),water:[0,0,0],
+};
+
+// ---------- shapes for the scripted washes ----------
+function deform(pts,amt,n){for(let k=0;k<n;k++){const o=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];
+  const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ang=Math.random()*Math.PI*2,r=Math.random()*Math.random()*d*amt;
+  o.push(a,[(a[0]+b[0])/2+Math.cos(ang)*r,(a[1]+b[1])/2+Math.sin(ang)*r]);}pts=o;}return pts;}
+function subdivide(pts,max){const o=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/max));
+  for(let k=0;k<n;k++)o.push([lerp(a[0],b[0],k/n),lerp(a[1],b[1],k/n)]);}return o;}
+function smooth(P,n){for(let k=0;k<n;k++){const o=[];for(let i=0;i<P.length;i++){const p=P[i],q=P[(i+1)%P.length];
+  o.push([lerp(p[0],q[0],.25),lerp(p[1],q[1],.25)],[lerp(p[0],q[0],.75),lerp(p[1],q[1],.75)]);}P=o;}return P;}
+function loose(pts,lobe){let p=deform(subdivide(pts,lobe),.4,1);p=smooth(p,3);return deform(subdivide(p,5),.3,1);}
+function fillP(g,P){g.beginPath();g.moveTo(P[0][0],P[0][1]);for(const p of P)g.lineTo(p[0],p[1]);g.closePath();g.fill();}
+function ridge(x0,x1,base,amp,f,seed){const P=[];for(let x=x0;x<=x1+1;x+=8)P.push([x,base-amp*(.65*vn(x*f,0,seed)+.35*vn(x*f*3,5,seed))]);return P;}
+function useMask(draw){
+  mg.setTransform(1,0,0,1,0,0);mg.globalCompositeOperation='source-over';mg.globalAlpha=1;
+  mg.fillStyle='#000';mg.fillRect(0,0,SW,SH);mg.fillStyle='#fff';draw(mg);
+  gl.bindTexture(gl.TEXTURE_2D,maskTex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE,MC);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+}
+function wash(draw,pig,water,conc){useMask(draw);splat({useM:{i:[1]},pig:PIG[pig],water,conc});}
+function within(shape,draw){return g=>{shape(g);g.globalCompositeOperation='destination-in';draw(g);g.globalCompositeOperation='source-over';};}
+function vgrad(g,ya,aa,yb,ab){const gr=g.createLinearGradient(0,ya,0,yb);gr.addColorStop(0,`rgba(255,255,255,${aa})`);gr.addColorStop(1,`rgba(255,255,255,${ab})`);g.fillStyle=gr;g.fillRect(0,0,SW,SH);}
+
+// The meadow, painted the way you would: wet sky first, colours dropped in, let it dry,
+// then hills wet-on-dry, the meadow with greens run into it, and the small marks last.
+function meadowScript(){
+  const X0=SW*.06,X1=SW*.94,Y0=SH*.1,Y1=SH*.86,HZ=SH*.45,u=Math.min(SW,SH),sd=Math.floor(Math.random()*1e5);
+  const sky=loose([[X0,Y0],[X1,Y0],[X1,HZ+u*.03],[X0,HZ+u*.03]],u*.14);
+  const clouds=[];
+  for(let i=0;i<3;i++){const cx=lerp(X0,X1,(i+.3+rnd(-.1,.2))/3.2),cy=lerp(Y0,HZ,rnd(.18,.45)),w=u*rnd(.13,.2);
+    for(let k=0;k<5;k++)clouds.push([cx+(k/4-.5)*w*1.4,cy-Math.sin(k/4*Math.PI)*w*.3+rnd(-3,3),w*rnd(.28,.38),w*rnd(.2,.26)]);}
+  const skyMask=g=>{fillP(g,sky);g.globalCompositeOperation='destination-out';
+    for(const [x,y,rx,ry] of clouds){g.beginPath();g.ellipse(x,y,rx,ry,0,0,7);g.fill();}g.globalCompositeOperation='source-over';};
+  const fa=lerp(X0,X1,rnd(.05,.25)),fb=lerp(X0,X1,rnd(.75,.95));
+  const farR=ridge(fa,fb,HZ+u*.01,u*.13,.006,sd).map(([x,y])=>{const e=Math.sin(Math.PI*(x-fa)/(fb-fa));return [x,lerp(HZ+u*.01,y,Math.pow(Math.max(0,e),.6))];});
+  const far=loose([...farR,[fb,HZ+u*.012],[fa,HZ+u*.012]],u*.08);
+  const nearR=ridge(X0-u*.01,X1,HZ+u*.015,u*.07,.01,sd+9);
+  const near=loose([...nearR,[X1,HZ+u*.045],[X0-u*.01,HZ+u*.045]],u*.1);
+  const field=loose([[X0-u*.01,HZ+u*.035],[X1+u*.01,HZ+u*.03],[X1,Y1],[X0,Y1+u*.01]],u*.16);
+  const fieldMask=g=>fillP(g,field);
+  return [
+    [0.1,()=>wash(skyMask,'water',.34,0)],
+    [0.5,()=>wash(within(skyMask,g=>vgrad(g,Y0,1,lerp(Y0,HZ,.62),0)),'blue',.06,.8)],
+    [0.8,()=>wash(within(skyMask,g=>vgrad(g,HZ,1,lerp(Y0,HZ,.7),0)),'cream',.04,.35)],
+    [7,()=>wash(g=>fillP(g,far),'slate',.2,.55)],
+    [9.5,()=>wash(g=>fillP(g,near),'ochre',.24,.5)],
+    [10,()=>wash(within(g=>fillP(g,near),g=>vgrad(g,HZ+u*.045,1,HZ-u*.02,0)),'green',.05,.3)],
+    [12,()=>wash(fieldMask,'lime',.3,.6)],
+    [12.5,()=>wash(within(fieldMask,g=>vgrad(g,Y1,1,lerp(HZ,Y1,.15),0)),'green',.025,.55)],
+    [12.8,()=>wash(within(fieldMask,g=>{for(let i=0;i<6;i++){g.beginPath();g.ellipse(rnd(X0,X1),rnd(HZ+u*.1,Y1),u*rnd(.06,.14),u*rnd(.02,.04),0,0,7);g.fill();}}),'yellow',.04,.6)],
+    [18.5,()=>wash(g=>{ // horizontal dabs, wet on dry
+      for(let y=HZ+u*.06;y<Y1-u*.02;){const t=(y-HZ)/(Y1-HZ),h=u*(.008+.03*t);
+        for(let x=X0+rnd(0,u*.05);x<X1-u*.04;){const w=u*rnd(.05,.2)*(.5+t);
+          if(Math.random()<.45&&x+w<X1-u*.01){const cx=x+w/2,cy=y+rnd(-2,2),E=[];for(let a=0;a<10;a++){const t2=a/10*Math.PI*2;E.push([cx+Math.cos(t2)*w/2*rnd(.85,1.1),cy+Math.sin(t2)*h/2*rnd(.7,1.3)]);}fillP(g,smooth(E,3));}x+=w+u*rnd(.02,.08)*(.5+t);}
+        y+=h*rnd(1.6,2.6);}},'sap',.12,.55)],
+    [20,()=>wash(g=>{ // trees on the ridge
+      for(let k=0;k<3;k++){const gx=rnd(X0+u*.1,X1-u*.1);
+        for(let i=0;i<2+Math.floor(Math.random()*3);i++){const x=gx+rnd(-u*.05,u*.05),ri=Math.floor((x-nearR[0][0])/8);
+          const y=(nearR[clamp(ri,0,nearR.length-1)]||[0,HZ])[1]+u*.01,s=u*rnd(.012,.022),tall=Math.random()<.5?rnd(1.8,2.6):1.1;
+          g.beginPath();g.ellipse(x,y-s*tall,s,s*tall,0,0,7);g.fill();}}},'dark',.14,.9)],
+  ];
+}
+
+// ---------- running it ----------
+let script=[],simT=0,pending=[];
+function restart(){clearAll();simT=0;script=meadowScript();}
+function advance(nSteps){
+  for(let i=0;i<nSteps;i++){
+    while(script.length&&script[0][0]<=simT)script.shift()[1]();
+    step();simT+=1/STEPS_PER_SEC;
+  }
+}
+// brush
+const SWATCHES=[['blue','#6aaee3'],['yellow','#f4d36a'],['lime','#c6dc72'],['green','#6ea65a'],['dark','#3a6b4c'],['orange','#ef9a4c'],['violet','#9a76c8'],['water','#e9eef2']];
+let brush='green',down=false,last=null;
+const bar=document.getElementById('bar');
+SWATCHES.forEach(([k,c])=>{const b=document.createElement('button');b.className='sw'+(k===brush?' on':'');b.style.background=k==='water'?'radial-gradient(circle at 35% 35%,#fff,#dfe7ee)':c;
+  b.title=k==='water'?'Clear water':k;b.setAttribute('aria-label',b.title);
+  b.onclick=()=>{brush=k;bar.querySelectorAll('.sw').forEach(x=>x.classList.remove('on'));b.classList.add('on');};bar.appendChild(b);});
+for(const [label,fn] of [['Repaint',restart],['Clear',()=>{clearAll();script=[];}]]){const b=document.createElement('button');b.className='t';b.textContent=label;b.onclick=fn;bar.appendChild(b);}
+function dab(x,y){const r=14*S;pending.push({circ:[x*S,(H-y)*S,r],pig:PIG[brush],water:brush==='water'?.3:.22,conc:brush==='water'?0:.55});}
+cv.addEventListener('pointerdown',e=>{down=true;last=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);dab(...last);});
+cv.addEventListener('pointermove',e=>{if(!down)return;const p=[e.clientX,e.clientY],d=Math.hypot(p[0]-last[0],p[1]-last[1]),n=Math.floor(d/5);
+  for(let i=1;i<=n;i++)dab(lerp(last[0],p[0],i/n),lerp(last[1],p[1],i/n));if(n)last=p;});
+addEventListener('pointerup',()=>down=false);
+
+setup();restart();
+const skip=+(Q.get('t')||0);if(skip)advance(Math.round(skip*STEPS_PER_SEC));
+let prev=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-prev)/1000);prev=now;
+  for(const u of pending.splice(0))splat(u);
+  advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));
+  show();requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+let rT;addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{setup();restart();},200);});
+</script>
+</body>
+</html>
