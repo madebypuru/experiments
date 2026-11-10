@@ -874,7 +874,7 @@ function startRecording(name,opts={}){
 }
 function recordFrame(dt){
   if(!rec)return;const {g,crop,ow,oh0,oh,band}=rec,dpr=cv.width/W,sx=crop.x*dpr,sy=crop.y*dpr,sw=crop.w*dpr,sh=crop.h*dpr;
-  g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#fbf8f1';g.fillRect(0,0,ow,oh);
+  g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#f5f2e9';g.fillRect(0,0,ow,oh); // the page's own paper colour, so the video and the screen match
   g.drawImage(cv,sx,sy,sw,sh,0,0,ow,oh0);
   if(GC())gcCompose(g,sx,sy,sw,sh,ow,oh0);
   g.globalCompositeOperation='multiply';g.drawImage(lifeCv,sx,sy,sw,sh,0,0,ow,oh0);g.drawImage(inkCv,sx,sy,sw,sh,0,0,ow,oh0);
@@ -1440,17 +1440,19 @@ function recordLook(sec){
   if(state!=='done')return;
   const ready=()=>lastVideo&&lastVideo.loop&&lastVideo.look===lookSig();
   if(ready()){saveVideo();return;}
-  if(!rec)startLoop(sec);if(!rec){statusEl.textContent='This browser can\'t record video.';return;}
+  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){statusEl.textContent='This browser can\'t record video.';return;}
+  if(!rec)startLoop(sec);
   const tp=$('topPrimary'),was=tp.textContent;tp.disabled=true;
   const tick=setInterval(()=>{
     if(rec&&rec.loop){const L=rec.loop,left=Math.ceil(L.started?L.T-(L.t-L.t0):L.T+1-L.t);tp.textContent=`Recording ${Math.max(1,left)}s`;return;}
-    tp.textContent='Saving';if(!ready()){if(!rec&&state==='done')startLoop(sec);return;}clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
+    tp.textContent=rec||loopStarting?'Recording':'Saving';if(!ready()){if(!rec&&state==='done')startLoop(sec);return;}clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
 }
 // The preview is the video: once a look settles, its loop is recorded in the background and then plays over the
 // painting, framed exactly as the download is, so what you see is what you save. Any change drops it until the
 // new loop is ready.
 const LOOP_SEC=8;let loopVid=null,loopFor='',settled=0,lastSig='';
-function startLoop(sec){startRecording([LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop',{loop:sec||LOOP_SEC});}
+let loopStarting=false;
+function startLoop(sec){if(state==='done'&&!rec)startRecording([LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop',{loop:sec||LOOP_SEC});}
 function hideLoop(){if(loopVid){loopVid.pause();loopVid.remove();URL.revokeObjectURL(loopVid.src);loopVid=null;loopFor='';}}
 setInterval(()=>{
   const sig=state==='done'&&IM?lookSig():'';
@@ -1461,7 +1463,12 @@ setInterval(()=>{
   if(loopFor===sig)return;
   hideLoop();const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),v=document.createElement('video');
   v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.setAttribute('aria-hidden','true');v.id='loopVid';
-  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none',clipPath:`inset(${pad}px)`}); // the video's paper margin is cut off on screen, so it sits on the page's own paper
+  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none'});
+  // on screen the video shows only where the painting is (its soft painted shape): around it, the page's own paper
+  {const m=document.createElement('canvas');m.width=IM.gw;m.height=IM.gh;const mg=m.getContext('2d'),id=mg.createImageData(IM.gw,IM.gh);
+    for(let i=0;i<IM.n;i++)id.data[i*4+3]=Math.round(255*smooth(.3,.75,IM.Fu[i]));mg.putImageData(id,0,0);
+    const url=`url(${m.toDataURL()})`,sz=`${r.w}px ${r.h}px`,pos=`${pad}px ${pad}px`;
+    for(const pre of ['','-webkit-']){v.style.setProperty(pre+'mask-image',url);v.style.setProperty(pre+'mask-size',sz);v.style.setProperty(pre+'mask-position',pos);v.style.setProperty(pre+'mask-repeat','no-repeat');}}
   $('stage').appendChild(v);v.play().catch(()=>{});loopVid=v;loopFor=sig;
 },300);
 
