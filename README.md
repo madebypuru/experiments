@@ -25,4 +25,8 @@ Upload any photo and it gets painted as a watercolour, live, by the same simulat
 
 It takes about 20 seconds to watch; **Finish now** fast-forwards it. **Download** saves a PNG. Photos never leave the browser.
 
+## paint-skill/
+
+A skill any AI model can follow to write scenes for Paint: SVG drawings with labelled parts, moving sprites and an animation timeline. Copy `paint-skill/PROMPT.txt` into any chatbot, describe a place, and open the SVG it returns in Paint. No API. See `paint-skill/README.md`.
+
 `_drafts/` has earlier versions: the standalone paint test, and the first Canvas 2D attempt. `_source/` has the original sound recordings.

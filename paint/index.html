@@ -17,66 +17,239 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:ital,wght@0,400;0,500;1,500&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#4d4238;--paper:#fbf8f1}
+  :root{--ink:#4d4238;--muted:#6f6357;--paper:#fbf8f1}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Shantell Sans",ui-rounded,system-ui,sans-serif}
-  #c,#ink{position:fixed;inset:0;width:100%;height:100%}
+  #c,#gc,#ink,#snow,#life,#figs{position:fixed;inset:0;width:100%;height:100%}
+  #c{background:#f5f2e9}
+  /* the page under the painting matches the simulated paper's average tone (paper × .978), so no seam shows when the stage is scaled */
+  body:not(.empty){background:#f5f2e9}
+  #stage{position:fixed;left:0;top:0;transform-origin:0 0}
+  .empty #c{visibility:hidden}
+  #gc{pointer-events:none}
+  #gcGrain{position:fixed;pointer-events:none;mix-blend-mode:multiply;opacity:0}
+  .style-gc.painting #gcGrain,.style-gc.done #gcGrain{opacity:1}
+  #gcFx,#gcGlow{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+  #gcFx{mix-blend-mode:multiply}#gcGlow{mix-blend-mode:screen}
+  #inkBtn{display:none!important}
+  .group.stack{flex-direction:column;gap:10px}
+  .row{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;align-items:center}
+  .looks{display:flex;gap:10px;justify-content:center}
+  .look{font:inherit;font-size:13px;color:var(--ink);background:none;border:0;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;width:76px}
+  .look img{width:76px;height:76px;border-radius:12px;object-fit:cover;box-shadow:0 0 0 1px rgba(90,70,40,.2);display:block}
+  .look[aria-pressed="true"] img{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
+  .look[aria-pressed="true"] span{font-weight:500}
+  .look span{color:var(--ink);line-height:1.15;text-align:center}
+  @media (max-width:420px){.look,.look img{width:66px}.look img{height:66px}.looks{gap:7px}}
+  .lbl{font-size:14px;color:var(--muted);margin-right:2px}
+  .chips{display:inline-flex;flex-wrap:wrap;gap:6px;justify-content:center}
+  .chips button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:7px 13px;cursor:pointer;box-shadow:0 0 0 1px rgba(90,70,40,.25)}
+  .chips button[aria-pressed="true"]{background:var(--ink);color:var(--paper);box-shadow:none}
+  .chips button[hidden]{display:none}
+  #figs{pointer-events:none}
+  #life{mix-blend-mode:multiply;pointer-events:none}
+  #snow{pointer-events:none}
   #ink{mix-blend-mode:multiply;pointer-events:none}
   #hit{position:fixed;inset:0;touch-action:none}
-  .painting #hit,.preview #hit{cursor:crosshair}
-  .title{position:fixed;left:20px;top:16px;font-size:17px;font-weight:500;pointer-events:none}
-  .title i{font-weight:400;opacity:.6;margin-left:6px}
+  .setup #hit{cursor:crosshair}
+  .title{position:fixed;left:20px;top:16px;font-size:17px;font-weight:500;display:none;align-items:baseline;gap:6px;z-index:2}
+
+  .title i{font-weight:400;color:var(--muted)}
+  .link{font:inherit;font-size:14px;color:var(--ink);background:none;border:0;padding:0 0 0 14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;opacity:.75;display:none}
   #ref{position:fixed;opacity:0;pointer-events:none;transition:opacity .6s;object-fit:fill;border-radius:2px}
-  .preview #ref{opacity:.5}
+  .setup #ref{opacity:1}
+  .painting #ref,.painting #veil,.painting #ring{opacity:0;transition:none}
+  #brush{position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;pointer-events:none;opacity:0;transition:opacity .25s;
+    background:radial-gradient(circle,rgba(58,46,39,.55) 0 35%,rgba(58,46,39,.18) 36% 60%,rgba(58,46,39,0) 62%);box-shadow:0 0 0 1px rgba(58,46,39,.35)}
+  #brush.on{opacity:1}
+  #brush.pen{width:8px;height:8px;margin:-4px 0 0 -4px;background:#3a2e27;box-shadow:none}
+  .progress{width:min(260px,70vw);height:3px;background:rgba(90,70,40,.15);border-radius:2px;overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:var(--ink)}
   #ring{position:fixed;width:0;height:0;pointer-events:none;opacity:0;transition:opacity .3s}
-  .preview #ring{opacity:1}
+  .setup #ring{opacity:1}
+  #veil{position:fixed;pointer-events:none;opacity:0;transition:opacity .3s}
+  .setup #veil{opacity:1}
   #ring::before{content:"";position:absolute;left:-36px;top:-36px;width:72px;height:72px;border-radius:50%;border:2px dashed rgba(77,66,56,.7);background:rgba(251,248,241,.18)}
   #ring::after{content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
-  #thumb{position:fixed;right:18px;top:14px;max-width:120px;max-height:84px;border-radius:3px;opacity:0;transition:opacity .6s;box-shadow:0 0 0 1px rgba(90,70,40,.12)}
-  .painting #thumb,.done #thumb{opacity:.9}
-  .drop{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px}
-  .empty .drop{display:grid}
-  .drop .box{max-width:420px}
-  .drop h1{font-size:30px;font-weight:500;margin:0 0 10px}
-  .drop p{margin:0 0 22px;opacity:.75;line-height:1.5}
+  #thumb{display:none}
+  .setup #ring::before{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{50%{transform:scale(1.08)}}
+  .drop{position:fixed;inset:0;display:none;overflow-y:auto;padding:20px 16px 40px;background:var(--paper)}
+  .empty .drop{display:block}
+  .home{max-width:1080px;margin:0 auto}
+  .homehead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:4px 0 26px}
+  .homehead h1{font-size:28px;font-weight:500;margin:0 0 4px;text-align:left}
+  .homehead p{margin:0;color:var(--muted);line-height:1.45;text-align:left;max-width:520px}
+  .newwrap{position:relative;flex:none}
+  #newMenu{top:52px;min-width:250px;z-index:4}
+  .home h2{font-size:15px;font-weight:500;color:var(--muted);margin:0 0 12px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+  .ex{font:inherit;color:var(--ink);background:none;border:0;padding:0;text-align:left;cursor:pointer}
+  .ex img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;display:block;box-shadow:0 0 0 1px rgba(90,70,40,.14);background:#f3eee4;transition:transform .2s}
+  .ex:hover img{transform:translateY(-2px)}
+  .ex b{display:block;font-weight:500;font-size:15px;margin:9px 0 1px}
+  .ex span{font-size:13px;color:var(--muted)}
+  .newcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;aspect-ratio:4/3;border-radius:14px;box-shadow:inset 0 0 0 1.5px rgba(90,70,40,.3);font-size:15px}
+  .newcard svg{width:26px;height:26px}
+  .home .small{text-align:left}
+  @media (max-width:600px){.gallery{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.homehead h1{font-size:24px}.ex b{font-size:14px}}
+  .small{font-size:13px;color:var(--muted);margin:10px 0 0 !important;line-height:1.45}
+  .small a{color:inherit}
+  .or{display:flex;align-items:center;gap:12px;margin:26px 0 16px;font-size:13px;color:var(--muted)}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:rgba(90,70,40,.25)}
   .btn{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:9px 18px;cursor:pointer;box-shadow:0 0 0 1px rgba(90,70,40,.25)}
   .btn.primary{background:var(--ink);color:var(--paper);box-shadow:none}
   .btn:disabled{opacity:.4;cursor:default}
+  .btn.primary{padding-left:18px;padding-right:18px}
   .dragging .drop .box{outline:2px dashed rgba(77,66,56,.5);outline-offset:24px;border-radius:12px}
-  .bar{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:none;flex-wrap:wrap;justify-content:center;gap:8px;align-items:center;max-width:calc(100vw - 24px)}
-  .preview .bar,.painting .bar,.done .bar{display:flex}
-  .bar .btn{padding:7px 14px;font-size:14px}
+  /* one top bar: back, the step, one main action */
+  #top{position:fixed;left:0;right:0;top:0;height:60px;display:none;align-items:center;justify-content:space-between;padding:0 12px;z-index:3;pointer-events:none}
+  #top>*{pointer-events:auto}
+  .setup #top,.painting #top,.done #top{display:flex}
+  .iconbtn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--ink);cursor:pointer;display:grid;place-items:center;padding:0}
+  .iconbtn:hover{background:rgba(90,70,40,.08)}
+  .iconbtn svg{width:22px;height:22px}
+  .painting #topBack .i-back,#topBack .i-close{display:none}
+  .painting #topBack .i-close{display:block}
+  #step{position:absolute;left:50%;transform:translateX(-50%);font-size:16px;font-weight:500;white-space:nowrap;pointer-events:none}
+  .topr{position:relative;display:flex;justify-content:flex-end;min-width:40px}
+  #topPrimary{padding:8px 18px;font-size:15px}
+  .painting #topPrimary{visibility:hidden}
+  .menu{position:absolute;right:0;top:48px;background:var(--paper);border-radius:14px;box-shadow:0 0 0 1px rgba(90,70,40,.18),0 10px 28px rgba(60,40,20,.14);padding:6px;display:flex;flex-direction:column;min-width:210px}
+  .menu[hidden]{display:none}
+  .menu button{font:inherit;font-size:15px;text-align:left;background:none;border:0;padding:9px 12px;border-radius:9px;color:var(--ink);cursor:pointer}
+  .menu button:hover{background:rgba(90,70,40,.07)}
+  .menu small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
+  /* one panel under the picture (beside it on desktop), showing only the current step */
+  #panel{position:fixed;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;padding:8px 14px max(14px,env(safe-area-inset-bottom));z-index:2}
+  .setup #panel,.painting #panel,.done #panel{display:flex}
+  #panel>section{display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:520px}
+  .setup #panel>[data-for=setup],.painting #panel>[data-for=painting],.done #panel>[data-for=done]{display:flex}
+  .desc{margin:0;font-size:14px;color:var(--muted);text-align:center;line-height:1.35;min-height:1.35em}
+  .tabs{display:flex;gap:4px;justify-content:center;border-top:1px solid rgba(90,70,40,.12);padding-top:8px;width:100%}
+  .tabs button{font:inherit;font-size:15px;background:none;border:0;color:var(--muted);padding:7px 16px;border-radius:999px;cursor:pointer}
+  .tabs button[aria-selected="true"]{color:var(--ink);background:rgba(90,70,40,.08);font-weight:500}
+  .tabpane{display:none;flex-direction:column;align-items:center;gap:10px;min-height:118px;justify-content:center;width:100%}
+  body[data-tab=image] .tabpane[data-tab=image],body[data-tab=animate] .tabpane[data-tab=animate],body[data-tab=style] .tabpane[data-tab=style]{display:flex}
+  #playBtn{position:fixed;width:68px;height:68px;margin:-34px 0 0 -34px;border-radius:50%;border:0;background:rgba(251,248,241,.94);color:var(--ink);box-shadow:0 0 0 1px rgba(90,70,40,.2),0 8px 22px rgba(60,40,20,.18);display:none;place-items:center;cursor:pointer;z-index:2;padding:0}
+  #playBtn svg{width:26px;height:26px;margin-left:4px}
+  body.done[data-tab=animate] #playBtn{display:grid}
+  #focusTag{position:fixed;transform:translateX(-50%);background:rgba(251,248,241,.94);border-radius:999px;padding:6px 12px;font-size:13.5px;box-shadow:0 0 0 1px rgba(90,70,40,.18);pointer-events:none;display:none;white-space:nowrap;z-index:2}
+  .setup #focusTag{display:block}
+  @media (min-width:900px){
+    #panel{left:auto;right:16px;top:72px;bottom:16px;width:300px;padding:18px 16px;border-radius:18px;background:rgba(251,248,241,.92);box-shadow:0 0 0 1px rgba(90,70,40,.14)}
+    #panel>section{justify-content:flex-start;height:100%}
+    .tabs{order:-1;border-top:0;border-bottom:1px solid rgba(90,70,40,.12);padding:0 0 10px}
+    .tabpane{justify-content:flex-start;min-height:0;padding-top:6px}
+    .looks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 12px}
+    .look,.look img{width:118px}.look img{height:118px}
+  }
+  .seg{display:inline-flex;border-radius:999px;box-shadow:0 0 0 1px rgba(90,70,40,.25);overflow:hidden}
+  .seg button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:0;padding:7px 11px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
   .switch[aria-pressed="true"]{background:var(--ink);color:var(--paper);box-shadow:none}
-  .status{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 52px);font-size:14px;opacity:.75;pointer-events:none;text-align:center;width:max-content;max-width:calc(100vw - 32px)}
+  .status{font-size:14px;color:var(--muted);text-align:center;min-height:1.35em}
   .err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;background:var(--paper)}
   input[type=file]{display:none}
-  .still .bar,.still .status,.still .title,.still #thumb{display:none}
+  .still #top,.still #panel,.still #playBtn,.still #focusTag,.still .title,.still #thumb{display:none!important}
 </style>
 </head>
 <body class="empty">
+<div id="stage">
 <canvas id="c" aria-hidden="true"></canvas>
+<canvas id="gc" aria-hidden="true"></canvas>
+<canvas id="gcGrain" aria-hidden="true"></canvas>
+<canvas id="gcFx" aria-hidden="true"></canvas>
+<canvas id="gcGlow" aria-hidden="true"></canvas>
 <canvas id="ink" aria-hidden="true"></canvas>
+<canvas id="snow" aria-hidden="true"></canvas>
 <img id="ref" alt="">
+<canvas id="veil" aria-hidden="true"></canvas>
 <div id="ring"></div>
-<div id="hit" aria-label="Painting. Tap to move the focus."></div>
-<img id="thumb" alt="The photo being painted">
-<div class="title">Paint <i>photo to watercolour</i></div>
-<div class="drop"><div class="box">
-  <h1>Turn a photo into a watercolour</h1>
-  <p>It's painted live, wash by wash, by a simulation of water and pigment on paper. It paints the parts that matter and lets the rest fade to paper. Your photo stays on this device.</p>
-  <button class="btn primary" id="choose">Choose a photo</button>
-  <p style="margin-top:14px;font-size:13px">or drop or paste one here</p>
-</div></div>
-<div class="status" id="status"></div>
-<div class="bar" id="bar">
-  <button class="btn primary" id="go">Paint</button>
-  <button class="btn" id="finish">Finish now</button>
-  <button class="btn switch" id="inkBtn" aria-pressed="false">Ink</button>
-  <button class="btn" id="again">Repaint</button>
-  <button class="btn" id="save" disabled>Download</button>
-  <button class="btn" id="newPhoto">New photo</button>
+<div id="hit" aria-label="The photo. Tap to choose where the painting focuses."></div>
 </div>
-<input type="file" id="file" accept="image/*">
+<img id="thumb" alt="The photo being painted">
+<div class="title">Paint <i>photo to painting</i></div>
+<header id="top">
+  <button class="iconbtn" id="topBack" aria-label="Back"><svg class="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><svg class="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div id="step"></div>
+  <div class="topr"><button class="btn primary" id="topPrimary">Paint</button>
+    <div class="menu" id="saveMenu" hidden><button id="saveImg">Image<small>The painting, as a PNG</small></button><button id="saveVid">Video<small>The animation you just played</small></button></div></div>
+</header>
+<div id="focusTag">Tap the picture to choose the focus</div>
+<button id="playBtn" aria-label="Play the animation"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></button>
+<div class="drop"><div class="home">
+  <div class="homehead">
+    <div><h1>Paint</h1><p>Photos and scenes, painted live in code, stroke by stroke, then brought to life: day to night, seasons, rain, people and birds.</p></div>
+    <div class="newwrap"><button class="btn primary" id="newBtn">New painting</button>
+      <div class="menu" id="newMenu" hidden>
+        <button id="choose">From a photo<small>Choose, drop or paste one. It stays on this device.</small></button>
+        <button id="openScene">From a scene file<small>An SVG any AI can write for you</small></button>
+        <button id="copyPrompt">Copy the scene prompt<small>Paste it into any chatbot, then describe a place</small></button>
+      </div></div>
+  </div>
+  <h2>Examples</h2>
+  <div class="gallery" id="gallery"></div>
+</div></div>
+<div id="brush"></div>
+<div id="panel">
+  <section data-for="setup">
+    <div class="looks" id="looks" role="group" aria-label="Style">
+      <button class="look" data-v="wc"><img src="styles/wc.jpg" alt=""><span>Watercolour</span></button>
+      <button class="look" data-v="wci"><img src="styles/wci.jpg" alt=""><span>Watercolour + ink</span></button>
+      <button class="look" data-v="iw"><img src="styles/iw.jpg" alt=""><span>Ink &amp; wash</span></button>
+      <button class="look" data-v="gc"><img src="styles/gc.jpg" alt=""><span>Gouache</span></button>
+    </div>
+    <p class="desc lookDesc"></p>
+    <span class="seg" id="detail" role="group" aria-label="Detail"><button data-v="0">Loose</button><button data-v="1">Balanced</button><button data-v="2">Fine</button></span>
+    <button class="btn switch" id="inkBtn" aria-pressed="false">Ink</button>
+  </section>
+  <section data-for="painting">
+    <div class="progress"><i id="prog"></i></div>
+    <div class="status" id="status" aria-live="polite"></div>
+    <button class="btn" id="finish">Skip ahead</button>
+  </section>
+  <section data-for="done">
+    <div class="tabpane" data-tab="image">
+      <p class="desc">Add detail paints a pass of finer marks on top. You can add it more than once.</p>
+      <button class="btn" id="more">Add detail</button>
+    </div>
+    <div class="tabpane" data-tab="animate">
+      <span class="chips" id="anim" role="group" aria-label="What changes">
+        <button data-a="life" aria-pressed="true">Life</button>
+        <button data-a="night" aria-pressed="false">Day to night</button>
+        <button data-a="seasons" aria-pressed="false">Seasons</button>
+        <button data-a="rain" aria-pressed="false">Rain</button>
+        <button data-a="story" aria-pressed="false">The scene's story</button>
+      </span>
+      <p class="desc" id="animDesc">Pick what changes, then press play on the picture.</p>
+    </div>
+    <div class="tabpane" data-tab="style">
+      <div class="looks" role="group" aria-label="Style">
+      <button class="look" data-v="wc"><img src="styles/wc.jpg" alt=""><span>Watercolour</span></button>
+      <button class="look" data-v="wci"><img src="styles/wci.jpg" alt=""><span>Watercolour + ink</span></button>
+      <button class="look" data-v="iw"><img src="styles/iw.jpg" alt=""><span>Ink &amp; wash</span></button>
+      <button class="look" data-v="gc"><img src="styles/gc.jpg" alt=""><span>Gouache</span></button>
+      </div>
+      <button class="btn" id="repaint">Paint again in this style</button>
+    </div>
+    <nav class="tabs" role="tablist"><button data-tab="image" role="tab">Image</button><button data-tab="animate" role="tab">Animate</button><button data-tab="style" role="tab">Style</button></nav>
+  </section>
+</div>
+<input type="file" id="file" accept="image/*,.svg">
 <div class="err" id="err"></div>
+<script src="motion/world.js"></script>
+<script src="motion/style.js"></script>
+<script src="motion/figures.js"></script>
+<script src="motion/birds.js"></script>
+<script src="motion/water.js"></script>
+<script src="motion/clouds.js"></script>
+<script src="motion/smoke.js"></script>
+<script src="motion/boats.js"></script>
+<script src="motion/understand.js"></script>
+<script src="motion/director.js"></script>
+<script src="motion/weather.js"></script>
+<!-- before the main script, so a cached photo can never start painting before the gouache painter exists -->
+<script src="gouache.js"></script>
 <script>
 // Photo to watercolour, painted by the same small Curtis-style simulation as Meadow
 // (Curtis et al. 1997, simplified, on the GPU). Nothing here generates an image: the photo is
@@ -133,7 +306,7 @@ function draw(Pg,u,outs,vw,vh){
     if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit++);}
     else if(typeof v==='number')gl.uniform1f(l,v);
     else if(v.i)v.i.length===1?gl.uniform1i(l,v.i[0]):gl.uniform2i(l,v.i[0],v.i[1]);
-    else if(v.length===2)gl.uniform2f(l,...v);else if(v.length===3)gl.uniform3f(l,...v);}
+    else if(v.length===2)gl.uniform2f(l,...v);else if(v.length===3)gl.uniform3f(l,...v);else if(v.length===4)gl.uniform4f(l,...v);}
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 
@@ -182,19 +355,35 @@ void main(){
 // A wash read from the photo: per-cell pigment (rgb) and water (a), laid down a slice at a time.
 // O holds the order the brush reaches each cell (0..1); [lo,hi) is the slice laid this frame.
 const LAY=program(`
-uniform sampler2D W,G,F,O,P;uniform float lo,hi;
+uniform sampler2D W,G,F,O,P;uniform float lo,hi,ev;
 layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
 void main(){
   ivec2 p=ivec2(gl_FragCoord.xy);
   float o=texelFetch(O,p,0).r;
-  float m=step(lo,o)*(1.-step(hi,o));
+  // ev: a change of light, laid evenly everywhere a little each frame instead of in brush sweeps
+  float m=ev>.5?(min(hi,1.)-lo)*step(o,1.5):step(lo,o)*(1.-step(hi,o));
   vec4 f=texelFetch(F,p,0);
   m*=.9+.2*texelFetch(P,p,0).b;
   oW=vec4(texelFetch(W,p,0).x+f.a*m,0,0,1);
   oG=vec4(texelFetch(G,p,0).rgb+f.rgb*m,1);
 }`);
+// Lifting: rewet an area and blot it, taking pigment back off the paper (floating and settled alike).
+const COPY=program(`
+uniform sampler2D T;out vec4 o;
+void main(){o=texelFetch(T,ivec2(gl_FragCoord.xy),0);}`);
+const LIFT=program(`
+uniform sampler2D W,G,D,F,O,P;uniform float lo,hi,strength,ev;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;layout(location=2) out vec4 oD;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float fa=texelFetch(F,p,0).a,o=texelFetch(O,p,0).r,m=step(lo,o)*(1.-step(hi,o))*fa;
+  float k=clamp(m*strength,0.,1.);
+  if(ev>.5){float d=min(hi,1.)-lo;m=d*fa*step(o,1.5);k=1.-pow(max(1.-clamp(strength*fa,0.,1.),1e-4),d);}
+  oW=vec4(texelFetch(W,p,0).x+m*.05,0,0,1);
+  oG=vec4(texelFetch(G,p,0).rgb*(1.-k),1);oD=vec4(texelFetch(D,p,0).rgb*(1.-k),1);
+}`);
 const SHOW=program(`
-uniform sampler2D W,G,D,P;uniform vec2 scr;uniform float density,dpr;
+uniform sampler2D W,G,D,P;uniform vec4 map;uniform float density,dpr;
 out vec4 o;
 float hh(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
@@ -203,13 +392,14 @@ float tooth(vec2 q){return .5*vn(q/2.4)+.3*vn(q/6.5)+.2*vn(q/18.);}
 vec4 bl(sampler2D T,vec2 s){ivec2 i=ivec2(floor(s));vec2 f=fract(s);
   return mix(mix(texelFetch(T,C(i),0),texelFetch(T,C(i+ivec2(1,0)),0),f.x),mix(texelFetch(T,C(i+ivec2(0,1)),0),texelFetch(T,C(i+ivec2(1,1)),0),f.x),f.y);}
 void main(){
-  vec2 s=gl_FragCoord.xy/scr*vec2(sz)-.5;
+  vec2 s=vec2(gl_FragCoord.x*map.x+map.y,gl_FragCoord.y*map.z+map.w);
+  float inside=float(all(greaterThan(s,vec2(-1)))&&all(lessThan(s,vec2(sz))));
   vec2 q=gl_FragCoord.xy/dpr;
   float h=tooth(q),rel=tooth(q+vec2(-.7,.7))-tooth(q+vec2(.7,-.7));
   vec3 a=vec3(0);
   for(int i=0;i<4;i++){vec2 j=vec2(i==0||i==2?-.4:.4,i<2?-.4:.4);a+=bl(D,s+j).rgb+bl(G,s+j).rgb*.85;}
-  a*=.25*density*(.8+.4*(1.-h));
-  float w=bl(W,s).x;
+  a*=.25*density*(.8+.4*(1.-h))*inside;
+  float w=bl(W,s).x*inside;
   vec3 paper=vec3(.984,.969,.936)*(.978+.03*(h-.5)+.06*rel);
   vec3 col=paper*exp(-a);
   col*=1.-.06*smoothstep(0.,.08,w);
@@ -217,6 +407,14 @@ void main(){
 }`);
 const P={kw:.2,kd:.06,kg:.03,kh:.03,evap:.0005,evapEdge:.0012,front:.14,dep:.0004,gran:.0004,lift:.0003};
 const STEPS_PER_SEC=300,DENSITY=.6,PAPER=[.984,.969,.936];
+// Detail: 0 loose, 1 balanced, 2 fine. Remembered between visits.
+let DETAIL=1;try{DETAIL=clamp(+(localStorage.getItem('paint.detail')??1),0,2);}catch(e){}
+if(Q.has('detail'))DETAIL=clamp(+Q.get('detail'),0,2);
+// Style: 'wc' loose watercolour, 'iw' ink & wash (pen sketch, flat bright washes, lavender shadows)
+let STYLE='wc';try{STYLE=localStorage.getItem('paint.style')||'wc';}catch(e){}
+if(Q.get('style'))STYLE=Q.get('style');
+const IW=()=>STYLE==='iw',GC=()=>STYLE==='gc';
+const LV=(...v)=>v[DETAIL];
 
 let W,H,SW,SH,S,Wt,Gt,Dt,paper,fieldTex,orderTex,fieldBuf;
 function hash(x,y,s){let h=Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(s,982451653)|0;
@@ -236,14 +434,26 @@ function makePaper(){
 function setupGL(){
   W=innerWidth;H=innerHeight;const dpr=Math.min(2,devicePixelRatio||1);
   cv.width=W*dpr;cv.height=H*dpr;
-  S=Math.min(1,Math.sqrt((+(Q.get('px'))||650000)/(W*H)));SW=Math.round(W*S);SH=Math.round(H*S);
+  // paper, not black, until the first frame is drawn
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,cv.width,cv.height);gl.clearColor(.984,.969,.941,1);gl.clear(gl.COLOR_BUFFER_BIT);
+}
+// The simulation only covers the painting and a margin for it to bleed into, so every cell is spent on
+// the picture: about one cell per screen pixel or finer.
+let GOX=0,GOY=0,grid=null;
+function allocGrid(rect){
+  const m=Math.max(rect.w,rect.h)*.06;GOX=rect.x-m;GOY=rect.y-m;
+  const cw=rect.w+2*m,ch=rect.h+2*m;
+  S=Math.min(2.5,Math.sqrt((+(Q.get('px'))||LV(600000,1100000,1800000))/(cw*ch)));SW=Math.round(cw*S);SH=Math.round(ch*S);
+  if(grid)for(const t of grid)gl.deleteTexture(t);
   for(const f of fbos.values())gl.deleteFramebuffer(f);fbos.clear();
   Wt=pair(SW,SH);Gt=pair(SW,SH);Dt=pair(SW,SH);paper=makePaper();
   fieldTex=tex(SW,SH);orderTex=tex(SW,SH);fieldBuf=new Float32Array(SW*SH*4);
+  grid=[Wt.a,Wt.b,Gt.a,Gt.b,Dt.a,Dt.b,paper,fieldTex,orderTex];
+  if(snap){for(const t of [snap.W,snap.G,snap.D])gl.deleteTexture(t);snap=null;}
   clearAll();
 }
 function clearAll(){
-  gl.clearColor(0,0,0,0);
+  if(!Wt)return;gl.clearColor(0,0,0,0);
   for(const p of [Wt,Gt,Dt])for(const t of [p.a,p.b]){gl.bindFramebuffer(gl.FRAMEBUFFER,fbo([t]));gl.clear(gl.COLOR_BUFFER_BIT);}
 }
 const sz=()=>({i:[SW,SH]});
@@ -251,9 +461,42 @@ function step(){
   draw(FLOW,{sz:sz(),W:Wt.a,G:Gt.a,P:paper,...P},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();
   draw(SETTLE,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,...P},[Gt.b,Dt.b],SW,SH);Gt.swap();Dt.swap();
 }
-function lay(lo,hi){draw(LAY,{sz:sz(),W:Wt.a,G:Gt.a,F:fieldTex,O:orderTex,P:paper,lo,hi},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();}
+const SPLATM=program(`
+uniform sampler2D W,G,M,P;uniform vec3 pig;uniform float water,conc;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
+void main(){ivec2 p=ivec2(gl_FragCoord.xy);float m=texelFetch(M,p,0).r*(.9+.2*texelFetch(P,p,0).b);
+  oW=vec4(texelFetch(W,p,0).x+m*water,0,0,1);oG=vec4(texelFetch(G,p,0).rgb+m*conc*pig,1);}`);
+function paintSheet(gw,gh,ow,oh,washes,steps){
+  const w=pair(gw,gh),g=pair(gw,gh),d=pair(gw,gh),Z={i:[gw,gh]},mine=[w.a,w.b,g.a,g.b,d.a,d.b];
+  gl.clearColor(0,0,0,0);for(const t of mine){gl.bindFramebuffer(gl.FRAMEBUFFER,fbo([t]));gl.clear(gl.COLOR_BUFFER_BIT);}
+  const mc=document.createElement('canvas');mc.width=gw;mc.height=gh;const m=mc.getContext('2d'),mt=tex(gw,gh,false);
+  const run=n=>{for(let i=0;i<n;i++){
+    draw(FLOW,{sz:Z,W:w.a,G:g.a,P:paper,...P},[w.b,g.b],gw,gh);w.swap();g.swap();
+    draw(SETTLE,{sz:Z,W:w.a,G:g.a,D:d.a,P:paper,...P},[g.b,d.b],gw,gh);g.swap();d.swap();}};
+  for(const [shape,pig,water,conc,after] of washes){
+    m.setTransform(1,0,0,1,0,0);m.fillStyle='#000';m.fillRect(0,0,gw,gh);m.fillStyle='#fff';shape(m);
+    gl.bindTexture(gl.TEXTURE_2D,mt);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE,mc);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+    draw(SPLATM,{sz:Z,W:w.a,G:g.a,M:mt,P:paper,pig,water,conc},[w.b,g.b],gw,gh);w.swap();g.swap();
+    run(after);
+  }
+  run(steps);
+  const out=tex(ow,oh,false);out.id=++tid;
+  draw(SHOW,{sz:Z,W:w.a,G:g.a,D:d.a,P:paper,map:[gw/ow,-.5,gh/oh,-.5],density:DENSITY,dpr:Math.min(2,devicePixelRatio||1)},[out],ow,oh);
+  const px=new Uint8Array(ow*oh*4);gl.readPixels(0,0,ow,oh,gl.RGBA,gl.UNSIGNED_BYTE,px);
+  const ids=new Set([...mine,out].map(t=>t.id));
+  for(const [k,f] of [...fbos])if(k.split(',').some(i=>ids.has(+i))){gl.deleteFramebuffer(f);fbos.delete(k);}
+  for(const t of [...mine,out,mt])gl.deleteTexture(t);
+  const c=document.createElement('canvas');c.width=ow;c.height=oh;const cg=c.getContext('2d'),im=cg.createImageData(ow,oh);
+  for(let y=0;y<oh;y++)im.data.set(px.subarray((oh-1-y)*ow*4,(oh-y)*ow*4),y*ow*4);
+  cg.putImageData(im,0,0);return c;
+}
+let EVEN=0;
+function lay(lo,hi){draw(LAY,{sz:sz(),W:Wt.a,G:Gt.a,F:fieldTex,O:orderTex,P:paper,lo,hi,ev:EVEN},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();}
+function liftLay(lo,hi,strength){draw(LIFT,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,F:fieldTex,O:orderTex,P:paper,lo,hi,strength,ev:EVEN},[Wt.b,Gt.b,Dt.b],SW,SH);Wt.swap();Gt.swap();Dt.swap();}
 function upload(t,buf){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,SW,SH,0,gl.RGBA,gl.FLOAT,buf);}
-function show(){draw(SHOW,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,scr:[cv.width,cv.height],density:DENSITY,dpr:cv.width/W},null,cv.width,cv.height);}
+function show(){const dpr=cv.width/W,k=S/dpr;
+  draw(SHOW,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,map:[k,-GOX*S-.5,k,SH-(H-GOY)*S-.5],density:DENSITY,dpr},null,cv.width,cv.height);}
 
 // ---------- reading the photo ----------
 // Everything below runs on a small copy of the photo, one sample per simulation cell.
@@ -279,13 +522,18 @@ function norm(a){let mn=Infinity,mx=-Infinity;for(const v of a){if(v<mn)mn=v;if(
 function quantile(a,q){const s=[];const st=Math.max(1,Math.floor(a.length/20000));for(let i=0;i<a.length;i+=st)s.push(a[i]);s.sort((x,y)=>x-y);return s[Math.floor(clamp(q,0,1)*(s.length-1))];}
 
 let IM=null; // the analysed photo
+// where the picture sits for a viewport: desktop keeps the panel on the right, phone puts it underneath
+function fitRect(ar,vw,vh){
+  const desk=vw>=900,top=desk?68:60,bot=desk?24:250,side=vw<600?14:Math.max(24,vw*.04),right=desk?332:0;
+  const aw=vw-side*2-right,ah=vh-top-bot;
+  let w=aw,h=aw/ar;if(h>ah){h=ah;w=ah*ar;}w*=.96;h*=.96;
+  return {x:side+(aw-w)/2,y:top+(ah-h)/2,w,h};
+}
 function analyse(img){
   // fit the photo into the page, leaving room for the title and the buttons
-  const top=58,bot=110,side=W<600?14:Math.max(24,W*.05);
-  const aw=W-side*2,ah=H-top-bot,ar=img.naturalWidth/img.naturalHeight;
-  let w=aw,h=aw/ar;if(h>ah){h=ah;w=ah*ar;}w*=.84;h*=.84;
-  const rect={x:(W-w)/2,y:top+(ah-h)/2,w,h};
-  const gx0=Math.round(rect.x*S),gy0=Math.round(rect.y*S),gw=Math.max(8,Math.round(rect.w*S)),gh=Math.max(8,Math.round(rect.h*S));
+  const rect=fitRect(img.naturalWidth/img.naturalHeight,W,H);let w=rect.w,h=rect.h;
+  allocGrid(rect);
+  const gx0=Math.round((rect.x-GOX)*S),gy0=Math.round((rect.y-GOY)*S),gw=Math.max(8,Math.round(rect.w*S)),gh=Math.max(8,Math.round(rect.h*S));
   const c=document.createElement('canvas');c.width=gw;c.height=gh;const g=c.getContext('2d',{willReadFrequently:true});
   g.imageSmoothingQuality='high';g.drawImage(img,0,0,gw,gh);
   const px=g.getImageData(0,0,gw,gh).data,n=gw*gh;
@@ -300,13 +548,13 @@ function analyse(img){
   // dilute strong colours as a whole, so the hue survives
   for(let i=0;i<n;i++){const r=-Math.log(clamp(R[i]/PAPER[0],.04,1))/DENSITY,g2=-Math.log(clamp(G[i]/PAPER[1],.04,1))/DENSITY,b=-Math.log(clamp(B[i]/PAPER[2],.04,1))/DENSITY;
     const mx=Math.max(r,g2,b,1e-4),k=2.2*Math.tanh(mx/2.2)*.95/mx;Ar[i]=r*k;Ag[i]=g2*k;Ab[i]=b*k;}
-  const m=Math.min(gw,gh),rBig=Math.max(2,m*.018);
+  const m=Math.min(gw,gh),rBig=Math.max(1.2,m*LV(.012,.008,.005));
   const Br=boxBlur(Ar,gw,gh,rBig),Bg=boxBlur(Ag,gw,gh,rBig),Bb=boxBlur(Ab,gw,gh,rBig);
-  const Lbig=boxBlur(L,gw,gh,Math.max(3,m*.04)),Lmid=boxBlur(L,gw,gh,Math.max(1,m*.012));
+  const Lbig=boxBlur(L,gw,gh,Math.max(3,m*.04)),Lmid=boxBlur(L,gw,gh,Math.max(1,m*.012)),Lfine=boxBlur(L,gw,gh,Math.max(1.5,m*.004));
   // highlights: left as bare paper
   const HL=new Float32Array(n);{const Lh=boxBlur(L,gw,gh,1.5);for(let i=0;i<n;i++)HL[i]=smooth(88,95,Lh[i]);}
   // colour regions: k-means in Lab
-  const K=10,cent=[];
+  const K=IW()?14:10,cent=[];
   for(let k=0;k<K;k++){const i=Math.floor(Math.random()*n);cent.push([L[i],La[i],Lb[i]]);}
   const samp=[];for(let s=0;s<16000;s++)samp.push(Math.floor(Math.random()*n));
   for(let it=0;it<10;it++){
@@ -317,6 +565,12 @@ function analyse(img){
   }
   const lab=new Uint8Array(n);
   for(let i=0;i<n;i++){let best=0,bd=Infinity;for(let k=0;k<K;k++){const c2=cent[k],d=(L[i]-c2[0])**2+1.4*((La[i]-c2[1])**2+(Lb[i]-c2[2])**2);if(d<bd){bd=d;best=k;}}lab[i]=best;}
+  if(IW())for(let pass=0;pass<2;pass++){ // majority filter: cleaner, flatter regions
+    const nl=new Uint8Array(lab),cnt=new Uint8Array(K);
+    for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){cnt.fill(0);let best=lab[y*gw+x],bc=0;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const v=lab[(y+dy)*gw+x+dx];if(++cnt[v]>bc){bc=cnt[v];best=v;}}
+      nl[y*gw+x]=bc>=5?best:lab[y*gw+x];}
+    lab.set(nl);}
   const clusters=cent.map((c2,k)=>({k,L:c2[0],A:[0,0,0],count:0}));
   for(let i=0;i<n;i++){const cl=clusters[lab[i]];cl.A[0]+=Ar[i];cl.A[1]+=Ag[i];cl.A[2]+=Ab[i];cl.count++;}
   for(const cl of clusters)if(cl.count)cl.A=cl.A.map(v=>v/cl.count);
@@ -329,14 +583,19 @@ function analyse(img){
   const sal=norm(boxBlur(norm(boxBlur(E,gw,gh,m*.03)).map((v,i)=>v),gw,gh,1)).map((v,i)=>v);
   const col=norm(boxBlur(Cd,gw,gh,m*.04));
   const S0=new Float32Array(n);for(let i=0;i<n;i++)S0[i]=.6*sal[i]+.4*col[i];
-  const Sshape=norm(boxBlur(S0,gw,gh,m*.05));
+  const Sshape=norm(boxBlur(S0,gw,gh,m*.05)),Ed=boxBlur(E,gw,gh,1.5);
+  {const q=quantile(Ed,.92)||1;for(let i=0;i<n;i++)Ed[i]=clamp(Ed[i]/q,0,1);}
   // a guess at the focus: the most interesting broad area, nudged toward the middle
   const Sb=boxBlur(S0,gw,gh,m*.12);let best=0,bv=-1;
   for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x,dx=x/gw-.5,dy=y/gh-.5,v=Sb[i]*(1-.9*(dx*dx+dy*dy));if(v>bv){bv=v;best=i;}}
   // ink: thin strong edges, traced into lines
-  IM={img,rect,gx0,gy0,gw,gh,n,R,G,B,L,Lbig,Lmid,Ar,Ag,Ab,Br,Bg,Bb,HL,lab,clusters,S0,Sshape,
+  IM={img,rect,gx0,gy0,gw,gh,n,R,G,B,L,Lbig,Lmid,Lfine,Ar,Ag,Ab,Br,Bg,Bb,HL,lab,clusters,S0,Sshape,Ed,
       focus:{x:(best%gw+.5)/gw,y:(Math.floor(best/gw)+.5)/gh},noise:Math.floor(Math.random()*1e6)};
-  IM.lines=traceInk(IM);
+  // foliage: green-ish and busy; painted as leaf dabs in ink & wash
+  {const Lv=boxBlur(L.map((v,i)=>(v-Lmid[i])**2),gw,gh,Math.max(1.5,m*.006)),leaf=new Float32Array(n);
+    for(let i=0;i<n;i++)leaf[i]=smooth(4,14,-La[i]+.25*Lb[i])*smooth(-20,8,Lb[i])*smooth(8,40,Lv[i])*smooth(92,60,L[i]);
+    IM.leaf=boxBlur(leaf,gw,gh,Math.max(1.5,m*.01)).map(v=>smooth(.12,.4,v));}
+  IM.lines=traceInk(IM);IM.detail=DETAIL;IM.style=STYLE;
   setFocus(IM.focus.x,IM.focus.y);
 }
 // The painted shape follows the subject: where the detail and colour are, pulled a little toward the
@@ -349,29 +608,30 @@ function keepMain(B,w,h){
     sizes.push(cnt);id++;}
   const big=Math.max(0,...sizes);return B.map((v,i)=>v&&sizes[lab[i]]>=big*.2?1:0);
 }
-function setFocus(fx,fy){
+function setFocus(fx,fy){fuMask=null;
   const I=IM,{gw,gh,n}=I,sd=I.noise,m=Math.min(gw,gh);I.focus={x:fx,y:fy};
   const Fr=new Float32Array(n),fine=new Float32Array(n);
   for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x,u=x/gw,v=y/gh;
     const prior=Math.exp(-(((u-fx)/.48)**2+((v-fy)/.48)**2)),edge=Math.min(u,1-u,v,1-v);
     const wob=(vn(x/14,y/14,sd)-.5)*.5+(vn(x/40,y/40,sd+1)-.5)*.6;
-    Fr[i]=.8*I.Sshape[i]+.55*prior+.2*wob-.9*(1-smooth(0,.07,edge));
+    Fr[i]=IW()?.25*I.Sshape[i]+.25*prior+.9*smooth(0,.14,edge)+.22*wob:.8*I.Sshape[i]+.55*prior+.2*wob-.9*(1-smooth(0,.07,edge));
     fine[i]=(vn(x/6,y/6,sd+2)-.5)+(vn(x/18,y/18,sd+3)-.5)*.7;}
-  const t=quantile(Fr,1-(+(Q.get('cover'))||.42));
+  const t=quantile(Fr,1-(+(Q.get('cover'))||(IW()?LV(.62,.7,.78):LV(.34,.42,.52))));
   const B=keepMain(Fr.map(v=>v>t?1:0),gw,gh);
   const Bb=boxBlur(B,gw,gh,Math.max(2,m*.03)),sh=Bb.map((v,i)=>v+fine[i]*.13);
   I.Fg=sh.map(v=>smooth(.4,.52,v));
   // a looser, paler halo past the silhouette, so the shape dissolves instead of stopping
-  const Bw=boxBlur(B,gw,gh,Math.max(4,m*.09));
+  const Bw=boxBlur(B,gw,gh,Math.max(4,m*(IW()?.035:.09)));
   I.Fu=Bw.map((v,i)=>{const x=i%gw,y=(i-x)/gw,e=Math.min(x/gw,1-x/gw,y/gh,1-y/gh),n2=vn(x/30,y/30,sd+7)-.5;
     return Math.max(I.Fg[i],smooth(.16,.3,v+fine[i]*.18+n2*.25))*smooth(0,.05+n2*.08+.03,e);});
   I.Fa=boxBlur(I.Fg,gw,gh,Math.max(2,m*.05)).map(v=>smooth(.62,.88,v));
   // near the edge the brush runs dry: horizontal streaks with paper showing through
+  if(GC()){I.Fg.fill(1);I.Fu.fill(1);I.Fa.fill(1);}
   I.dry=Bw.map((v,i)=>{const x=i%gw,y=(i-x)/gw,streak=smooth(.3,.62,vn(x/34,y/2.3,sd+5));return lerp(1,streak,1-smooth(.25,.6,v));});
 }
 function traceInk(I){
   const {gw,gh,n,Lmid}=I,mag=new Float32Array(n),dir=new Uint8Array(n);
-  const Ls=boxBlur(I.L,gw,gh,1);
+  const Ls=boxBlur(I.L,gw,gh,IW()?1.6:1);
   for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){const i=y*gw+x,
     gx=(Ls[i-gw+1]+2*Ls[i+1]+Ls[i+gw+1])-(Ls[i-gw-1]+2*Ls[i-1]+Ls[i+gw-1]),
     gy=(Ls[i+gw-1]+2*Ls[i+gw]+Ls[i+gw+1])-(Ls[i-gw-1]+2*Ls[i-gw]+Ls[i-gw+1]);
@@ -379,7 +639,7 @@ function traceInk(I){
   const thin=new Float32Array(n),off=[[1,0],[1,1],[0,1],[-1,1]];
   for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){const i=y*gw+x,[dx,dy]=off[dir[i]];
     if(mag[i]>=mag[i+dx+dy*gw]&&mag[i]>=mag[i-dx-dy*gw])thin[i]=mag[i];}
-  const hiT=quantile(thin.filter(v=>v>0),.9),loT=hiT*.5,keep=new Uint8Array(n),stack=[];
+  const hiT=quantile(thin.filter(v=>v>0),IW()?LV(.88,.84,.78):LV(.93,.9,.85)),loT=hiT*.5,keep=new Uint8Array(n),stack=[];
   for(let i=0;i<n;i++)if(thin[i]>=hiT){keep[i]=1;stack.push(i);}
   while(stack.length){const i=stack.pop(),x=i%gw,y=(i-x)/gw;
     for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const j=(y+dy)*gw+x+dx;if(j>=0&&j<n&&!keep[j]&&thin[j]>=loT){keep[j]=1;stack.push(j);}}}
@@ -390,19 +650,24 @@ function traceInk(I){
       const x=cur%gw,y=Math.floor(cur/gw);let nx=-1;
       for(let dy=-1;dy<=1&&nx<0;dy++)for(let dx=-1;dx<=1;dx++){const j=(y+dy)*gw+x+dx;if(j>=0&&j<n&&keep[j]&&!used[j]){nx=j;break;}}
       cur=nx;}
-    if(line.length>=12)lines.push(line.filter((_,k)=>k%2===0||k===line.length-1));}
+    if(line.length>=Math.max(8,Math.round(Math.min(gw,gh)*(IW()?LV(.05,.04,.03):.015)))){
+      let pts=line.filter((_,k)=>k%3===0||k===line.length-1);
+      for(let it=0;it<2;it++){const o=[pts[0]];for(let k=0;k<pts.length-1;k++){const a=pts[k],b=pts[k+1];
+        o.push([.75*a[0]+.25*b[0],.75*a[1]+.25*b[1]],[.25*a[0]+.75*b[0],.25*a[1]+.75*b[1]]);}o.push(pts[pts.length-1]);pts=o;}
+      lines.push(pts);}}
   return lines;
 }
 
 // ---------- the painting plan ----------
 // Lightest first, like a painter: an underwash in bands, colour glazes light to dark,
 // dark accents, then (optionally) ink. Each wash is laid in brush sweeps, top to bottom.
-function buildOrder(){
-  const I=IM,b=new Float32Array(SW*SH*4),bands=Math.max(6,Math.round(I.gh/(SH*.035))),sd=I.noise+7;
+function buildOrder(mode){
+  const even=mode==='even',I=IM,b=new Float32Array(SW*SH*4),bands=Math.max(6,Math.round(I.gh/(SH*.035))),sd=I.noise+7;I.bands=bands;
   for(let y=0;y<I.gh;y++)for(let x=0;x<I.gw;x++){
     const wob=(vn(x/14,y/14,sd)-.5)*1.2,band=clamp(Math.floor(y/I.gh*bands+wob*.35),0,bands-1);
     const dir=band%2?1-x/I.gw:x/I.gw;
-    b[((SH-1-(I.gy0+y))*SW+I.gx0+x)*4]=clamp((band+dir*.97+wob*.03)/bands,0,.9999);}
+    // a change of light reaches everywhere at once, a fleck at a time, rather than in brush sweeps
+    b[((SH-1-(I.gy0+y))*SW+I.gx0+x)*4]=even?clamp(.55*hash(x,y,sd)+.45*vn(x/5,y/5,sd+3),0,.9999):clamp((band+dir*.97+wob*.03)/bands,0,.9999);}
   for(let i=0;i<SW*SH;i++)if(!b[i*4])b[i*4]=2; // cells outside the photo are never reached
   upload(orderTex,b);
 }
@@ -413,6 +678,9 @@ function fieldFrom(fn){
   upload(fieldTex,fieldBuf);
 }
 function plan(){
+  if(GC())return gcPlan();
+  if(IW())return planInkWash();
+  INK={start:paintEndFor(),dur:4,label:'Drawing in ink'};
   const I=IM,ev=[];
   // 1. underwash: a pale, broad version of the colours, very wet so neighbours run together
   ev.push({t:.2,dur:2.4,label:'Laying a pale underwash',make:()=>fieldFrom(i=>{const m=I.Fu[i]*(1-I.HL[i])*I.dry[i];if(m<.01)return 0;
@@ -421,59 +689,327 @@ function plan(){
   // 2. glazes: the colour regions, light to dark, in three goes so each can dry
   const cl=I.clusters.filter(c=>c.count&&c.L<78).sort((a,b)=>b.L-a.L),groups=[[],[]];
   cl.forEach((c,k)=>groups[Math.min(1,Math.floor(k/cl.length*2))].push(c.k));
-  const inGroup=g=>{const s=new Set(g),ind=new Float32Array(I.n);for(let i=0;i<I.n;i++)ind[i]=s.has(I.lab[i])?1:0;return boxBlur(ind,I.gw,I.gh,Math.max(3,Math.min(I.gw,I.gh)*.012));};
+  const inGroup=g=>{const s=new Set(g),ind=new Float32Array(I.n);for(let i=0;i<I.n;i++)ind[i]=s.has(I.lab[i])?1:0;return boxBlur(ind,I.gw,I.gh,Math.max(1.2,Math.min(I.gw,I.gh)*LV(.007,.004,.0025)));};
   const names=['Glazing the middle tones','Glazing the darks'];
   groups.forEach((g,k)=>{if(!g.length)return;
     ev.push({t:5.5+k*3.5,dur:2.4,label:names[k],make:()=>{const M=inGroup(g),cs=I.clusters;fieldFrom(i=>{
-      const m=smooth(.05,.85,M[i])*I.Fg[i]*(1-I.HL[i])*I.dry[i];if(m<.01)return 0;const c=cs[I.lab[i]].A,f=.18+.06*k,l=.3+.06*k;
+      const m=smooth(.25,.75,M[i])*I.Fg[i]*(1-I.HL[i])*I.dry[i];if(m<.01)return 0;const c=cs[I.lab[i]].A,f=.18+.06*k,l=.3+.06*k;
       return [(f*c[0]+l*I.Br[i])*m,(f*c[1]+l*I.Bg[i])*m,(f*c[2]+l*I.Bb[i])*m,.15*m];});}});});
   // 3. accents: what is darker than its surroundings, near the focus only
   ev.push({t:14.5,dur:1.6,label:'Dropping in the darks',make:()=>fieldFrom(i=>{
-    const d=smooth(6,22,I.Lbig[i]-I.L[i])*smooth(70,40,I.L[i]),m=d*I.Fa[i];if(m<.02)return 0;
-    return [.55*I.Ar[i]*m,.55*I.Ag[i]*m,.55*I.Ab[i]*m,.09*m];})});
-  ev.push({t:16.6,dur:1.2,label:'Last touches',make:()=>fieldFrom(i=>{
-    const d=smooth(5,16,I.Lmid[i]-I.L[i])*smooth(60,25,I.L[i]),m=d*I.Fa[i];if(m<.03)return 0;
-    return [.35*I.Ar[i]*m,.35*I.Ag[i]*m,.35*I.Ab[i]*m,.05*m];})});
+    const d=smooth(LV(8,6,4),LV(24,22,16),I.Lbig[i]-I.L[i])*smooth(LV(65,70,78),40,I.L[i]),m=d*I.Fg[i]*lerp(LV(.4,.55,.75),1,I.Fa[i]);if(m<.02)return 0;
+    return [.65*I.Ar[i]*m,.65*I.Ag[i]*m,.65*I.Ab[i]*m,.09*m];})});
+  ev.push({t:16.6,dur:1.2,label:'Picking out small things',make:()=>fieldFrom(i=>{
+    // small things darker or more colourful than what's around them: windows, trim, a figure
+    const d=smooth(LV(6,5,3),LV(18,16,11),I.Lmid[i]-I.L[i])*smooth(LV(55,60,72),25,I.L[i]);
+    const extra=Math.max(0,I.Ar[i]-I.Br[i])+Math.max(0,I.Ag[i]-I.Bg[i])+Math.max(0,I.Ab[i]-I.Bb[i]);
+    const m=Math.max(d,smooth(LV(.14,.1,.06),LV(.45,.4,.3),extra))*I.Fg[i]*lerp(LV(.4,.55,.75),1,I.Fa[i]);if(m<.03)return 0;
+    return [.55*I.Ar[i]*m,.55*I.Ag[i]*m,.55*I.Ab[i]*m,.04*m];})});
+  // Balanced and Fine finish with one or two passes of fine marks
+  const passes=LV(0,1,2);for(let k=0;k<passes;k++)ev.push(detailEvent(k,19.2+k*2.4));
+  extraPasses=passes;paintEnd=19+passes*2.4;INK.start=paintEnd;
   return ev;
+}
+function paintEndFor(){return 19+LV(0,1,2)*2.4;}
+// Ink & wash, the way an urban sketcher works: pen first, then flat bright washes light to dark,
+// leaves dabbed in two greens, shadows glazed lavender, a few darks last.
+const LAV=[.72,.72,.88].map(v=>-Math.log(v)/DENSITY);
+function stampLeaves(I,where,size,count,seed){
+  const c=document.createElement('canvas');c.width=I.gw;c.height=I.gh;const g=c.getContext('2d');g.fillStyle='#fff';
+  let placed=0;for(let tries=0;tries<count*12&&placed<count;tries++){
+    const x=Math.random()*I.gw,y=Math.random()*I.gh,i=Math.floor(y)*I.gw+Math.floor(x);if(!where(i))continue;placed++;
+    const s=size*rnd(.7,1.3),a=rnd(0,Math.PI*2);g.save();g.translate(x,y);g.rotate(a);g.beginPath();
+    g.moveTo(-s,0);g.quadraticCurveTo(0,-s*.55,s,0);g.quadraticCurveTo(0,s*.55,-s,0);g.fill();g.restore();}
+  const d=g.getImageData(0,0,I.gw,I.gh).data,m=new Float32Array(I.n);for(let i=0;i<I.n;i++)m[i]=d[i*4+3]/255;return m;
+}
+function planInkWash(){
+  const I=IM,ev=[],mm=Math.min(I.gw,I.gh),hk=.8; // high-key: everything a little lighter
+  INK={start:.2,dur:3.8,label:'Sketching in pen'};
+  const cl=I.clusters.filter(c=>c.count&&c.L<92).sort((a,b)=>b.L-a.L),groups=[[],[],[]];
+  cl.forEach((c,k)=>groups[Math.min(2,Math.floor(k/cl.length*3))].push(c.k));
+  const inGroup=g=>{const st=new Set(g),ind=new Float32Array(I.n);for(let i=0;i<I.n;i++)ind[i]=st.has(I.lab[i])?1:0;
+    const crisp=boxBlur(ind,I.gw,I.gh,1.2),soft=boxBlur(ind,I.gw,I.gh,Math.max(3,mm*.025));
+    return crisp.map((c,i)=>{const e=smooth(.15,.5,I.Ed[i]);return lerp(smooth(.02,.6,soft[i]),smooth(.3,.7,c),e);});};
+  ['Washing in the light colours','Washing in the middle colours','Washing in the deeper colours'].forEach((label,k)=>{if(!groups[k].length)return;
+    ev.push({t:4.3+k*2.9,dur:2.1,label,make:()=>{const M=inGroup(groups[k]),cs=I.clusters;fieldFrom(i=>{
+      const m=M[i]*I.Fg[i]*(1-I.HL[i])*(1-.55*I.leaf[i]);if(m<.01)return 0;const c=cs[I.lab[i]].A;
+      return [(.5*c[0]+.18*I.Br[i])*hk*m,(.5*c[1]+.18*I.Bg[i])*hk*m,(.5*c[2]+.18*I.Bb[i])*hk*m,.12*m];});}});});
+  let t=12.9;
+  if(I.leaf.reduce((a,v)=>a+v,0)>I.n*.02){
+    const sz=mm*LV(.02,.015,.011),area=I.leaf.reduce((a,v,i)=>a+v*I.Fg[i],0),n=Math.round(area/(sz*sz)*LV(.5,.7,.9));
+    ev.push({t,dur:1.6,label:'Dabbing in leaves',make:()=>{const S2=stampLeaves(I,i=>I.leaf[i]>.35&&I.Fg[i]>.3,sz,n);fieldFrom(i=>{
+      const m=S2[i]*I.leaf[i]*I.Fg[i];if(m<.02)return 0;return [.5*I.Br[i]*hk*m,.5*I.Bg[i]*hk*m,.5*I.Bb[i]*hk*m,.06*m];});}});
+    ev.push({t:t+1.9,dur:1.4,label:'Darker leaves',make:()=>{const S2=stampLeaves(I,i=>I.leaf[i]>.35&&I.Fg[i]>.3&&I.L[i]<I.Lmid[i]-2,sz*.8,Math.round(n*.6));fieldFrom(i=>{
+      const m=S2[i]*I.leaf[i]*I.Fg[i];if(m<.02)return 0;return [.75*I.Ar[i]*m,.75*I.Ag[i]*m,.75*I.Ab[i]*m,.05*m];});}});
+    t+=3.6;}
+  const sh=boxBlur(I.L.map((v,i)=>smooth(4,14,I.Lbig[i]-v)*smooth(85,25,v)),I.gw,I.gh,Math.max(1.2,mm*.004));
+  ev.push({t,dur:1.6,label:'Glazing the shadows',make:()=>fieldFrom(i=>{
+    const m=smooth(.15,.5,sh[i])*I.Fg[i]*(1-.6*I.leaf[i]);if(m<.02)return 0;
+    return [(.95*LAV[0]+.22*I.Ar[i])*m,(.95*LAV[1]+.22*I.Ag[i])*m,(.95*LAV[2]+.22*I.Ab[i])*m,.08*m];})});
+  t+=2.1;
+  ev.push({t,dur:1.2,label:'Picking out the darks',make:()=>fieldFrom(i=>{
+    const d=smooth(LV(8,6,4),LV(22,18,14),I.Lmid[i]-I.L[i])*smooth(55,20,I.L[i]),m=d*I.Fg[i];if(m<.03)return 0;
+    return [.5*I.Ar[i]*m,.5*I.Ag[i]*m,.5*I.Ab[i]*m,.035*m];})});
+  t+=1.6;
+  const passes=LV(0,1,2);for(let k=0;k<passes;k++)ev.push(detailEvent(k,t+.4+k*2.2));
+  extraPasses=passes;paintEnd=t+passes*2.2+.4;
+  return ev;
+}
+
+// ---------- the scene's parts, for the animations ----------
+function components(B,w,h){
+  const lab=new Int32Array(B.length).fill(-1),comps=[];
+  for(let s0=0;s0<B.length;s0++){if(!B[s0]||lab[s0]>=0)continue;const id=comps.length,st=[s0],px=[];lab[s0]=id;
+    let x0=1e9,y0=1e9,x1=-1,y1=-1;
+    while(st.length){const i=st.pop();px.push(i);const x=i%w,y=(i-x)/w;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
+      for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1])if(j>=0&&B[j]&&lab[j]<0){lab[j]=id;st.push(j);}}
+    comps.push({px,x0,y0,x1,y1});}
+  return comps;
+}
+function parts(){
+  const I=IM;if(I.parts)return I.parts;const {gw,gh,n}=I,mm=Math.min(gw,gh),sc=I.scene&&I.scene.ready?I.scene:null;
+  // sky: calm, not warm, reachable from the top edge
+  const c=new Uint8Array(n);for(let i=0;i<n;i++){const y=Math.floor(i/gw);c[i]=y<gh*.7&&I.Ed[i]<.14&&I.L[i]>35&&I.leaf[i]<.3?1:0;}
+  const skyB=new Uint8Array(n),st=[];for(let x=0;x<gw;x++)if(c[x]){skyB[x]=1;st.push(x);}
+  while(st.length){const i=st.pop(),x=i%gw,y=(i-x)/gw;for(const j of [x>0?i-1:-1,x<gw-1?i+1:-1,y>0?i-gw:-1,y<gh-1?i+gw:-1])if(j>=0&&c[j]&&!skyB[j]){skyB[j]=1;st.push(j);}}
+  const sky=sc&&sc.roles.has('sky')?boxBlur(sc.union('sky','cloud'),gw,gh,1):boxBlur(skyB,gw,gh,2);
+  // lights: small dark shapes on buildings, roughly rectangular (glass looks dark by day)
+  const dk=new Uint8Array(n);for(let i=0;i<n;i++)dk[i]=I.Lmid[i]-I.L[i]>7&&I.L[i]<60&&I.Fg[i]>.5&&I.leaf[i]<.35&&sky[i]<.3?1:0;
+  const amin=Math.max(3,(mm*.005)**2),amax=(mm*.06)**2;
+  let lit=components(dk,gw,gh).filter(o=>{const w=o.x1-o.x0+1,h=o.y1-o.y0+1,a=o.px.length;return a>=amin&&a<=amax&&w/h>.42&&w/h<5&&a/(w*h)>.35;}).slice(0,80);
+  const LB=new Float32Array(n);
+  if(sc&&sc.lightGroups.length){for(const g of sc.lightGroups)for(let i=0;i<n;i++)LB[i]=Math.max(LB[i],g.mask[i]);lit=sc.lightGroups;}
+  else for(const o of lit)for(const i of o.px)LB[i]=1;
+  // ground under foliage: a band below the leaves, for fallen leaves
+  const ground=new Float32Array(n),TL=new Uint8Array(n);for(let i=0;i<n;i++)TL[i]=I.leaf[i]>.4?1:0;
+  for(const o of components(TL,gw,gh).filter(o=>o.px.length>n*.004).slice(0,6)){
+    const cx=(o.x0+o.x1)/2,rx=(o.x1-o.x0)*.6,gy=o.y1+(o.y1-o.y0)*.12,ry=Math.max(4,(o.y1-o.y0)*.12);
+    for(let y=Math.max(0,Math.floor(gy-ry*2));y<Math.min(gh,gy+ry*2);y++)for(let x=Math.max(0,Math.floor(cx-rx));x<Math.min(gw,cx+rx);x++){
+      const i=y*gw+x,d=((x-cx)/rx)**2+((y-gy)/ry)**2;if(d<1&&I.leaf[i]<.3&&sky[i]<.3)ground[i]=1-d;}}
+  // top edges: lighter above, darker below; where snow settles
+  const tops=new Float32Array(n);
+  for(let y=3;y<gh-3;y++)for(let x=0;x<gw;x++){const i=y*gw+x,d=I.Lmid[i-2*gw]-I.Lmid[i+2*gw];
+    if(d>10&&I.Ed[i]>.2&&I.Fg[i]>.4)for(let k=0;k<3;k++)tops[i+k*gw]=1;}
+  if(sc&&sc.roles.has('roof')){const rf=sc.union('roof');tops.fill(0);
+    for(let y=3;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x;if(rf[i]>.5&&rf[i-3*gw]<.5)for(let k=0;k<4&&y+k<gh;k++)tops[i+k*gw]=1;}
+    const gr=sc.union('ground','grass');for(let y=3;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x;if(gr[i]>.5&&gr[i-3*gw]<.5)tops[i]=1;}}
+  // bare branches: for each tree's leaf mass, a trunk from its base splitting into tapering branches
+  const branches=[],TB=new Uint8Array(n);for(let i=0;i<n;i++)TB[i]=I.leaf[i]>.35&&I.Fu[i]>.3?1:0;
+  const inside=boxBlur(TB,gw,gh,Math.max(2,mm*.02));
+  for(const o of components(TB,gw,gh).filter(o=>o.px.length>n*.004).slice(0,6)){
+    let bx=0,cnt=0;for(const i of o.px){const y=Math.floor(i/gw);if(y>o.y1-(o.y1-o.y0)*.15){bx+=i%gw;cnt++;}}bx/=cnt||1;
+    const H2=o.y1-o.y0,grow=(x,y,a,len,w,depth)=>{
+      const pts=[[x,y]];let cx=x,cy=y,ca=a;
+      for(let k=0;k<8;k++){ca+=rnd(-.18,.18);cx+=Math.cos(ca)*len/8;cy+=Math.sin(ca)*len/8;
+        const j=Math.round(cy)*gw+Math.round(cx);if(cx<0||cy<0||cx>=gw||cy>=gh||(depth<5&&inside[j]<.15))break;pts.push([cx,cy]);}
+      if(pts.length>1)branches.push({pts,w});
+      if(depth>0&&pts.length>3){const [ex,ey]=pts[pts.length-1],kids=depth>2?2:rnd(1,3)|0||1;
+        for(let k=0;k<kids+1;k++)grow(ex,ey,ca+rnd(-.75,.75)+(k-kids/2)*.35,len*rnd(.6,.78),w*.62,depth-1);}};
+    const base=Math.min(gh-1,o.y1+H2*.12);grow(bx,base,-Math.PI/2+rnd(-.1,.1),H2*.45,Math.max(1.5,mm*.006),5);
+  }
+  if(sc&&sc.branches.length){branches.length=0;branches.push(...sc.branches);}
+  I.parts={sky,lights:LB,lightsSoft:boxBlur(LB,gw,gh,2),glow:boxBlur(LB,gw,gh,Math.max(3,mm*.012)),ground:boxBlur(ground,gw,gh,Math.max(2,mm*.01)),tops:boxBlur(tops,gw,gh,1),
+    branches,skyArea:sky.reduce((a,v)=>a+v,0)/n,leafArea:I.leaf.reduce((a,v,i)=>a+v*I.Fu[i],0)/n,lightCount:lit.length};
+  return I.parts;
+}
+const C2A=c=>c.map(v=>-Math.log(v)/DENSITY);
+function glaze(t,dur,label,mask,color,conc,water){return {t,dur,label,make:()=>{const A=C2A(color);
+  fieldFrom(i=>{const m=mask(i);return m<.01?0:[A[0]*conc*m,A[1]*conc*m,A[2]*conc*m,water*m];});}};}
+function blot(t,dur,label,mask,strength){return {t,dur,label,lift:strength,make:()=>fieldFrom(i=>{const m=mask(i);return m<.01?0:[0,0,0,m];})};}
+function dabs(t,dur,label,where,size,count,color,conc,water){return {t,dur,label,make:()=>{const S2=stampLeaves(IM,where,size,count),A=C2A(color);
+  fieldFrom(i=>{const m=S2[i];return m<.02?0:[A[0]*conc*m,A[1]*conc*m,A[2]*conc*m,water*m];});}};}
+// The finished painting is kept, so Day to night and Seasons always start from it rather than
+// from whatever the last transition left on the paper.
+let snap=null,animRan=false;
+function copyTex(src,dst){draw(COPY,{sz:sz(),T:src},[dst],SW,SH);}
+function saveSnapshot(){
+  if(!snap){const mk1=()=>{const t=tex(SW,SH);t.id=++tid;return t;};snap={W:mk1(),G:mk1(),D:mk1(),ink:document.createElement('canvas')};}
+  copyTex(Wt.a,snap.W);copyTex(Gt.a,snap.G);copyTex(Dt.a,snap.D);
+  snap.ink.width=inkCv.width;snap.ink.height=inkCv.height;const g=snap.ink.getContext('2d');g.clearRect(0,0,inkCv.width,inkCv.height);g.drawImage(inkCv,0,0);
+}
+function restoreSnapshot(){
+  copyTex(snap.W,Wt.a);copyTex(snap.G,Gt.a);copyTex(snap.D,Dt.a);
+  inkJobs=[];ictx.setTransform(1,0,0,1,0,0);ictx.clearRect(0,0,inkCv.width,inkCv.height);ictx.globalAlpha=1;ictx.drawImage(snap.ink,0,0);
+  snowOn=false;flakes=[];rainOn=false;drops=[];
+}
+function beginTransition(name){
+  if(snap)restoreSnapshot();animRan=true;buildOrder();EVEN=1;startRecording(name);
+}
+
+// ---------- recording a transition ----------
+// The painting is framed with a little paper around it, a caption names each stage, and the
+// recording runs from a moment before the change to a moment after.
+let rec=null,lastVideo=null;
+function captionFor(label){return /^(Night|Lifting out)/.test(label)?'Night':label.split(':')[0];}
+function startRecording(name){
+  if(rec||!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return;
+  const types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'],type=types.find(t=>MediaRecorder.isTypeSupported(t));if(!type)return;
+  const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),crop={x:r.x-pad,y:r.y-pad,w:r.w+2*pad,h:r.h+2*pad};
+  const ow=Math.round(Math.min(1080,crop.w*(cv.width/W))/2)*2,oh0=Math.round(ow*crop.h/crop.w),band=0,oh=Math.round(oh0/2)*2; // just the painting: no caption strip
+  const c=document.createElement('canvas');c.width=ow;c.height=oh;
+  const mr=new MediaRecorder(c.captureStream(30),{mimeType:type,videoBitsPerSecond:6e6}),chunks=[];
+  mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+  mr.onstop=()=>{lastVideo={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name};document.body.classList.add('hasvideo');};
+  rec={c,g:c.getContext('2d'),mr,crop,ow,oh0,oh,band,caption:'',shown:'',fade:1};mr.start(250);
+  lastVideo=null;document.body.classList.remove('hasvideo');
+}
+function recordFrame(dt){
+  if(!rec)return;const {g,crop,ow,oh0,oh,band}=rec,dpr=cv.width/W,sx=crop.x*dpr,sy=crop.y*dpr,sw=crop.w*dpr,sh=crop.h*dpr;
+  g.globalCompositeOperation='source-over';g.globalAlpha=1;g.fillStyle='#fbf8f1';g.fillRect(0,0,ow,oh);
+  g.drawImage(cv,sx,sy,sw,sh,0,0,ow,oh0);
+  if(GC())gcCompose(g,sx,sy,sw,sh,ow,oh0);
+  g.globalCompositeOperation='multiply';g.drawImage(lifeCv,sx,sy,sw,sh,0,0,ow,oh0);g.drawImage(inkCv,sx,sy,sw,sh,0,0,ow,oh0);
+  g.globalCompositeOperation='source-over';g.drawImage(figCv,sx,sy,sw,sh,0,0,ow,oh0);
+  g.globalCompositeOperation='source-over';g.drawImage(snowCv,sx,sy,sw,sh,0,0,ow,oh0);
+}
+function stopRecording(){if(rec){const r=rec;rec=null;try{r.mr.stop();}catch(e){}}}
+function saveVideo(){if(!lastVideo)return;const a=document.createElement('a');a.href=URL.createObjectURL(lastVideo.blob);
+  a.download=`${lastVideo.name}.${lastVideo.ext}`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
+
+function runExtra(evs){
+  fast=false;const fb=$('finish');fb.disabled=false;fb.textContent='Skip to the end';
+  evs.sort((a,b)=>a.t-b.t);events.push(...evs);passStart=simT;
+  const last=evs[evs.length-1];endT=Math.max(endT,last.t+last.dur+2.2);setState('painting');
+}
+
+// Day to night: golden hour, dusk, night. Window-like shapes are lifted back to paper and dropped
+// with warm yellow while wet, so they glow; a moon and stars are lifted out of the sky.
+function dayToNight(){beginTransition('day-to-night');runExtra(nightEvents(simT+1.2));}
+function nightEvents(t){
+  const I=IM,Pt=parts(),{gw,gh}=I,mm=Math.min(gw,gh),F=i=>I.Fu[i];
+  // warm the land; the sky only gets a light peach toward the horizon (yellow over blue would turn green)
+  const ev=[glaze(t,2.2,'Golden hour',i=>F(i)*(1-.9*Pt.sky[i]),[1,.86,.64],.85,.14)];
+  if(Pt.skyArea>.03)ev.push(glaze(t+2.6,1.5,'Golden hour: a warm horizon',i=>F(i)*Pt.sky[i]*smooth(.15,.7,Math.floor(i/gw)/gh),[1,.86,.76],.55,.12));
+  ev.push(glaze(t+4.6,2.2,'Dusk',F,[.8,.76,.92],1,.12));
+  ev.push(glaze(t+7.4,2.4,'Night',i=>F(i)*(1-Pt.lightsSoft[i]),[.5,.55,.8],1.1,.14));
+  ev.push(glaze(t+10.3,1.6,'Night deepens',i=>F(i)*(1-Pt.lightsSoft[i])*Math.min(1,Pt.sky[i]*.8+(1-Math.floor(i/gw)/gh)*.45),[.55,.6,.85],.9,.12));
+  // the moon and stars, lifted from the sky
+  const moonStars=new Float32Array(I.n);
+  if(Pt.skyArea>.03){
+    let best=-1,bv=-1;const sb=boxBlur(Pt.sky,gw,gh,mm*.06);
+    for(let y=Math.floor(gh*.08);y<gh*.4;y++)for(let x=Math.floor(gw*.15);x<gw*.85;x++){const i=y*gw+x,v=sb[i]*(I.Fu[i]>.95?1:0)*(1-y/gh)*(.6+.4*x/gw);if(v>bv){bv=v;best=i;}}
+    if(best>=0&&bv>.5){const mx=best%gw,my=Math.floor(best/gw),r=mm*.035;
+      for(let y=Math.max(0,Math.floor(my-r-2));y<Math.min(gh,my+r+2);y++)for(let x=Math.max(0,Math.floor(mx-r-2));x<Math.min(gw,mx+r+2);x++)
+        moonStars[y*gw+x]=Math.max(moonStars[y*gw+x],smooth(r+1,r-1,Math.hypot(x-mx,y-my)));}
+    for(let k=0,tries=0;k<28&&tries<4000;tries++){const i=Math.floor(Math.random()*I.n);if(Pt.sky[i]<.85||Math.floor(i/gw)>gh*.55||I.Fu[i]<.95)continue;
+      const x=i%gw,y=Math.floor(i/gw),r=rnd(1,2.1);k++;
+      for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const j=(y+dy)*gw+x+dx;if(j>=0&&j<I.n)moonStars[j]=Math.max(moonStars[j],smooth(r+.6,r-.4,Math.hypot(dx,dy)));}}
+  }
+  ev.push(blot(t+12.3,1.2,'Lifting out the moon',i=>moonStars[i],1));
+  const groups=I.scene&&I.scene.lightGroups?I.scene.lightGroups.length:0;
+  ev.push(...lightEvents(t+13.8,groups>1,null,'Lights on'));
+  return ev;
+}
+
+// Seasons, from the painting as it is: autumn, winter, spring, back to summer.
+let snowOn=false;
+function seasons(){
+  if(parts().leafArea<.015){statusEl.textContent="There aren't enough trees or plants in this picture for seasons. Try one with greenery.";return;}
+  beginTransition('seasons');runExtra(seasonEvents(simT+1.2));
+}
+function seasonEvents(t){
+  const I=IM,Pt=parts(),{gw,gh}=I,mm=Math.min(gw,gh);if(Pt.leafArea<.015)return null;
+  const leaf=i=>I.leaf[i]*I.Fu[i],sz=mm*.014,n=Math.round(Pt.leafArea*I.n/(sz*sz)*.75),gArea=Pt.ground.reduce((a,v)=>a+v,0);
+  const onLeaf=i=>I.leaf[i]>.35&&I.Fu[i]>.3,ev=[];
+  // autumn
+  ev.push(blot(t,1.6,'Autumn: lifting the greens',leaf,.6));
+  ev.push(dabs(t+2,1.4,'Autumn: ochre',onLeaf,sz,Math.round(n*.6),[.93,.74,.36],1,.06));
+  ev.push(dabs(t+3.6,1.3,'Autumn: orange',onLeaf,sz*.9,Math.round(n*.4),[.93,.56,.3],1,.05));
+  ev.push(dabs(t+5,1.2,'Autumn: red',onLeaf,sz*.85,Math.round(n*.25),[.78,.33,.28],1,.05));
+  if(gArea>I.n*.003)ev.push(dabs(t+6.4,1.4,'Autumn: falling leaves',i=>Pt.ground[i]>.4,sz*.55,Math.round(gArea/(sz*sz)*.5),[.9,.58,.3],1,.04));
+  // winter
+  ev.push(blot(t+8.6,1.6,'Winter: the leaves come down',i=>Math.max(leaf(i),Pt.ground[i]*.8),.85));
+  ev.push({t:t+10.4,dur:1.6,label:'Winter: bare branches',make:()=>{},onStart:()=>inkJob(Pt.branches,1.6,'#4a3528',1.1,2)});
+  ev.push(blot(t+12.2,1.2,'Winter: snow settles',i=>Pt.tops[i]*I.Fu[i],.92));
+  ev.push({...glaze(t+13.6,1.4,'Winter: a cold light',i=>I.Fu[i]*(1-Pt.tops[i]),[.88,.9,.97],.8,.1),onStart:()=>{snowOn=true;}});
+  // spring
+  ev.push({...dabs(t+15.6,1.4,'Spring: new green',onLeaf,sz*.9,Math.round(n*.55),[.74,.87,.46],.9,.06),onStart:()=>{snowOn=false;}});
+  ev.push(dabs(t+17.2,1.2,'Spring: blossom',onLeaf,sz*.45,Math.round(n*.35),[.97,.77,.82],1,.04));
+  // summer
+  ev.push(dabs(t+18.8,1.4,'Summer: deep greens',onLeaf,sz,Math.round(n*.55),[.42,.63,.38],1,.06));
+  ev.push(dabs(t+20.4,1.2,'Summer: shade under the leaves',i=>onLeaf(i)&&I.L[i]<I.Lmid[i]-2,sz*.8,Math.round(n*.3),[.3,.5,.36],1,.05));
+  return ev;
+}
+
+// One more pass of small marks laid over the dry painting. Each press looks at finer contrast and
+// reaches a little further out from the focus.
+let extraPasses=0;
+function detailEvent(k,t0){
+  const I=IM,lo=Math.max(1.2,3-k*.6),hi=Math.max(5,10-k*1.5),reach=Math.min(.9,.35+k*.2);
+  return {t:t0,dur:1.4,label:k?'Adding finer detail':'Adding detail',make:()=>fieldFrom(i=>{
+    const d=smooth(lo,hi,I.Lfine[i]-I.L[i])*smooth(80,20,I.L[i]);
+    const extra=Math.max(0,I.Ar[i]-I.Br[i])+Math.max(0,I.Ag[i]-I.Bg[i])+Math.max(0,I.Ab[i]-I.Bb[i]);
+    const m=Math.max(d,smooth(.05,.25,extra)*.8)*Math.max(I.Fg[i]*lerp(reach,1,I.Fa[i]),0)*(1-I.HL[i]*.7);if(m<.04)return 0;
+    return [.32*I.Ar[i]*m,.32*I.Ag[i]*m,.32*I.Ab[i]*m,.025*m];})};
+}
+function detailPass(){
+  fast=false;buildOrder();EVEN=0;const t0=simT+.3,ev=detailEvent(extraPasses++,t0);
+  events.push(ev);passStart=simT;endT=Math.max(endT,t0+ev.dur+2.2);setState('painting');
 }
 
 // ---------- ink ----------
 const inkCv=document.getElementById('ink'),ictx=inkCv.getContext('2d');
 let inkOn=false,inkLines=[],inkDrawn=0,inkStart=null;
 function prepareInk(){
-  const I=IM,fx=I.focus.x*I.gw,fy=I.focus.y*I.gh,toCss=([x,y])=>[(I.gx0+x+.5)/S,(I.gy0+y+.5)/S];
+  const I=IM,fx=I.focus.x*I.gw,fy=I.focus.y*I.gh,toCss=([x,y])=>[GOX+(I.gx0+x+.5)/S,GOY+(I.gy0+y+.5)/S];
   const pieces=[];
   for(const l of I.lines){let cur=[];const flush=()=>{if(cur.length>=5)pieces.push(cur);cur=[];};
-    for(const [x,y] of l){const i=y*I.gw+x;if(I.Fg[i]>.5&&I.HL[i]<.6)cur.push([x,y]);else flush();}flush();}
-  inkLines=pieces.filter(l=>{const [x,y]=l[Math.floor(l.length/2)];return I.Fa[y*I.gw+x]>.2;})
-    .map(l=>({pts:l.map(toCss),d:Math.hypot(l[0][0]-fx,l[0][1]-fy),a:rnd(.5,.85),w:rnd(.7,1.25)}))
+    for(const [x,y] of l){const i=Math.round(y)*I.gw+Math.round(x);if(I.Fg[i]>.5&&(IW()||I.HL[i]<.6))cur.push([x,y]);else flush();}flush();}
+  inkLines=pieces.filter(l=>{const [x,y]=l[Math.floor(l.length/2)],i=Math.round(y)*I.gw+Math.round(x);return (IW()?I.Fg:I.Fa)[i]>.2&&!(IW()&&I.leaf[i]>.4);})
+    .map(l=>IW()?{pts:l.map(toCss),d:Math.hypot(l[0][0]-fx,l[0][1]-fy),a:rnd(.7,.9),w:rnd(.75,1.1),c:'#6b4430'}:{pts:l.map(toCss),d:Math.hypot(l[0][0]-fx,l[0][1]-fy),a:rnd(.5,.85),w:rnd(.7,1.25),c:'#3a2e27'})
     .sort((a,b)=>a.d-b.d);
   inkDrawn=0;
 }
 function drawInkUpTo(k){
   const dpr=inkCv.width/W;ictx.setTransform(dpr,0,0,dpr,0,0);ictx.lineCap=ictx.lineJoin='round';ictx.strokeStyle='#3a2e27';
   for(;inkDrawn<k&&inkDrawn<inkLines.length;inkDrawn++){const L=inkLines[inkDrawn];
-    ictx.globalAlpha=L.a;ictx.lineWidth=L.w;ictx.beginPath();
-    L.pts.forEach(([x,y],i)=>{const jx=x+rnd(-.35,.35),jy=y+rnd(-.35,.35);i?ictx.lineTo(jx,jy):ictx.moveTo(jx,jy);});
+    ictx.globalAlpha=L.a;ictx.lineWidth=L.w;ictx.strokeStyle=L.c;ictx.beginPath();
+    L.pts.forEach(([x,y],i)=>{const j=IW()?.15:.35,jx=x+rnd(-j,j),jy=y+rnd(-j,j);i?ictx.lineTo(jx,jy):ictx.moveTo(jx,jy);});
     ictx.stroke();}
 }
-function clearInk(){ictx.setTransform(1,0,0,1,0,0);ictx.clearRect(0,0,inkCv.width,inkCv.height);inkDrawn=0;}
+let inkJobs=[];
+function inkJob(lines,dur,color,wLo,wHi){const I=IM,toCss=([x,y])=>[GOX+(I.gx0+x+.5)/S,GOY+(I.gy0+y+.5)/S];
+  inkJobs.push({lines:lines.map(l=>Array.isArray(l)?{pts:l.map(toCss),w:rnd(wLo,wHi),a:rnd(.7,.9)}:{pts:l.pts.map(toCss),w:clamp(l.w/S,.6,6),a:.85}),start:simT,dur,done:0,color});}
+function runInkJobs(){
+  const dpr=inkCv.width/W;ictx.setTransform(dpr,0,0,dpr,0,0);ictx.lineCap=ictx.lineJoin='round';
+  for(const j of inkJobs){const k=Math.ceil(j.lines.length*clamp((simT-j.start)/j.dur,0,1));
+    for(;j.done<k;j.done++){const L=j.lines[j.done];ictx.strokeStyle=j.color;ictx.globalAlpha=L.a;ictx.lineWidth=L.w;ictx.beginPath();
+      L.pts.forEach(([x,y],i)=>i?ictx.lineTo(x,y):ictx.moveTo(x,y));ictx.stroke();}}
+  inkJobs=inkJobs.filter(j=>j.done<j.lines.length);
+}
+function clearInk(){if(typeof gcClear==='function')gcClear();inkJobs=[];ictx.setTransform(1,0,0,1,0,0);ictx.clearRect(0,0,inkCv.width,inkCv.height);inkDrawn=0;}
 
 // ---------- running it ----------
-let events=[],active=[],simT=0,state='empty',fast=false,chunk=300,doneAt=0;
-const $=id=>document.getElementById(id),statusEl=$('status');
-function setState(s){state=s;document.body.className=s+(Q.has('still')?' still':'');
-  $('go').style.display=s==='preview'?'':'none';$('finish').style.display=s==='painting'?'':'none';
-  $('again').style.display=s==='painting'||s==='done'?'':'none';$('save').disabled=s!=='done';
-  statusEl.textContent=s==='preview'?'Tap the photo to choose what to focus on, then paint.':s==='done'?'Done. Tap the painting to repaint around another spot.':'';}
+let events=[],active=[],simT=0,state='empty',fast=false,chunk=300,doneAt=0,dtHold=false,endT=0,passStart=0,paintEnd=19,fastRate=1,INK={start:19,dur:4,label:'Drawing in ink'};
+const $=id=>document.getElementById(id),statusEl=$('status'),brushEl=$('brush'),progEl=$('prog');
+const HINT={empty:'',setup:'',
+  done:'Finished. Choose what to animate, then Play: the video shows the change itself, not the painting.'};
+function setState(s){state=s;document.body.className=s+' style-'+STYLE+(Q.has('still')?' still':'')+(lastVideo?' hasvideo':'')+(IM&&IM.scene&&IM.scene.timeline?' hastimeline':'');
+  if(s==='done'&&!animRan&&Wt&&IM)saveSnapshot();
+  if(s==='done'&&!spritesOn&&sprites.length){spritesOn=true;spriteClock=0;ambBase=null;amb=null;}
+  if(s==='done'&&rec)setTimeout(stopRecording,1500);
+  if(s!=='done'&&s!=='painting')stopRecording();
+  statusEl.textContent=s==='setup'&&IM&&IM.scene?sceneReport(IM.scene):s==='done'&&animRan?'Finished. Save video downloads this transition; the painting goes back to how it was for the next one.':HINT[s]||'';
+  if(s!=='painting')brushEl.classList.remove('on');if(s==='done')progEl.style.width='100%';
+  if(s==='done')showAnim();
+  const playing=s==='painting'&&animRan;
+  $('step').textContent={setup:'Choose a style',painting:playing?'Playing':'Painting',done:'Your painting'}[s]||'';
+  $('topPrimary').textContent=s==='setup'?'Paint':'Save';$('topBack').setAttribute('aria-label',s==='painting'?(playing?'Stop':'Stop painting'):s==='setup'?'Choose another picture':'Back to styles');
+  $('saveMenu').hidden=true;document.body.dataset.tab=TAB;placeRef();}
 function startPainting(){
-  clearAll();clearInk();buildOrder();events=plan();active=[];simT=0;fast=false;doneAt=0;
+  fuMask=null;
+  spritesOn=false;rainOn=false;drops=[];
+  snowOn=false;flakes=[];birds=[];if(IM)IM.parts=null;animRan=false;stopRecording();lastVideo=null;
+  const fb=$('finish');fb.disabled=false;fb.textContent='Skip ahead';
+  endT=0;passStart=0;EVEN=0;clearAll();clearInk();buildOrder();events=plan();active=[];simT=0;fast=false;doneAt=0;
+  ambBase=null;amb=null;ambT=0;resetWeather(); // a new picture starts with its own light and dry weather
   prepareInk();inkStart=null;setState('painting');
 }
 function advance(n){
+  if(GC()&&state==='painting'){simT+=n/STEPS_PER_SEC;return;} // gouache paints strokes on its own canvas; the water simulation rests
   for(let s=0;s<n;s++){
-    while(events.length&&events[0].t<=simT){const e=events.shift();e.make();e.done=0;active.push(e);statusEl.textContent=e.label;}
-    for(const e of active){const p=clamp((simT-e.t)/e.dur,0,1);if(p>e.done){lay(e.done,p>=1?1.0001:p);e.done=p;}}
+    while(events.length&&events[0].t<=simT){const e=events.shift();e.make();e.done=0;active.push(e);statusEl.textContent=e.label;if(rec)rec.caption=captionFor(e.label);if(e.onStart)e.onStart();}
+    for(const e of active){const p=clamp((simT-e.t)/e.dur,0,1);if(p>e.done){const hi=p>=1?1.0001:p;if(e.lift!=null)liftLay(e.done,hi,e.lift);else lay(e.done,hi);e.done=p;}}
     // fields share one texture, so only the newest wash is ever being laid
     active=active.filter(e=>e.done<1);
     step();simT+=1/STEPS_PER_SEC;
@@ -482,61 +1018,506 @@ function advance(n){
 function frame(now){
   requestAnimationFrame(frame);
   if(!frame.prev)frame.prev=now;const dt=Math.min(.05,(now-frame.prev)/1000);frame.prev=now;
-  if(state==='painting'&&Q.has('hold')){}else if(state==='painting'){
-    if(fast){advance(chunk);chunk=dt>.03?Math.max(60,chunk*.7):Math.min(1500,chunk*1.25);}
-    else advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));
-    const lastT=19;
-    if(inkOn&&simT>lastT){if(inkStart===null)inkStart=simT;statusEl.textContent='Drawing in ink';
-      drawInkUpTo(fast?inkLines.length:Math.ceil(inkLines.length*clamp((simT-inkStart)/4,0,1)));}
-    if(!events.length&&!active.length&&simT>lastT+(inkOn?4.2:0)){setState('done');}
+  if(state==='painting'){if(Q.has('hold'))dtHold=true;
+    if(!Q.has('hold'))advance(Math.max(1,Math.round(dt*STEPS_PER_SEC*(fast?fastRate:1))));
+    const lastT=paintEnd,total=Math.max(endT,IW()||GC()?lastT:lastT+(inkOn?4.2:0)),r=IM.rect;let tip=null,pen=false;
+    if(active.length&&!animRan){const e=active[0],p=clamp((simT-e.t)/e.dur,0,1),bd=IM.bands,band=Math.min(bd-1,Math.floor(p*bd)),f=p*bd-band;
+      tip=[r.x+(band%2?1-f:f)*r.w,r.y+(band+.5)/bd*r.h];statusEl.textContent=e.label;}
+    else if(events.length)statusEl.textContent='Letting it dry';
+    const inking=(IW()||inkOn)&&simT>=INK.start;
+    if(inking){drawInkUpTo(Math.ceil(inkLines.length*clamp((simT-INK.start)/INK.dur,0,1)));
+      const L=inkLines[inkDrawn-1];if(L&&inkDrawn<inkLines.length){tip=L.pts[L.pts.length-1];pen=true;statusEl.textContent=INK.label;}}
+    if(!inking&&!active.length&&!events.length)statusEl.textContent='Letting it dry';
+    if(fast)statusEl.textContent+=' · fast-forward';
+    if(tip){brushEl.style.transform=`translate(${tip[0]}px,${tip[1]}px)`;brushEl.classList.add('on');brushEl.classList.toggle('pen',pen);}
+    else brushEl.classList.remove('on');
+    runInkJobs();
+    progEl.style.width=Math.round(clamp((simT-passStart)/(total-passStart),0,1)*100)+'%';
+    if(!events.length&&!active.length&&simT>total){fast=false;fastRate=1;setState('done');} // skipping ahead ends with the painting
   }else if(state==='done'){advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));}
-  if(state!=='empty')show();
+  if(state!=='empty'&&Wt)show();
+  if(GC()&&(state==='painting'||state==='done')&&typeof gcFrame==='function')gcFrame();
+  snowFrame(dt);spriteFrame(dt);
+  if(state!=='empty'&&Wt)recordFrame(dt);
 }
 
 // ---------- page ----------
-const refImg=$('ref'),ring=$('ring');
-function placeRef(){if(!IM)return;const r=IM.rect;Object.assign(refImg.style,{left:r.x+'px',top:r.y+'px',width:r.w+'px',height:r.h+'px'});
+const refImg=$('ref'),ring=$('ring'),veil=$('veil');
+function placeRef(){if(!IM)return;const r=IM.rect;
+  Object.assign($('playBtn').style,{left:(r.x+r.w/2)+'px',top:(r.y+r.h/2)+'px'});Object.assign($('focusTag').style,{left:(r.x+r.w/2)+'px',top:(r.y+12)+'px'});
+  for(const el of [refImg,veil])Object.assign(el.style,{left:r.x+'px',top:r.y+'px',width:r.w+'px',height:r.h+'px'});
   ring.style.left=(r.x+IM.focus.x*r.w)+'px';ring.style.top=(r.y+IM.focus.y*r.h)+'px';}
+// setup preview: what won't be painted is faded back toward paper
+function drawVeil(){
+  if(!IM)return;const I=IM,c=document.createElement('canvas');c.width=I.gw;c.height=I.gh;
+  const g=c.getContext('2d'),im=g.createImageData(I.gw,I.gh);
+  for(let i=0;i<I.n;i++){const k=i*4,a=GC()?.5*(1-Math.exp(-((((i%I.gw)/I.gw-I.focus.x)/.4)**2+((Math.floor(i/I.gw)/I.gh-I.focus.y)/.4)**2))):1-Math.max(I.Fg[i],I.Fu[i]*.9);im.data[k]=251;im.data[k+1]=248;im.data[k+2]=241;im.data[k+3]=a*150;}
+  g.putImageData(im,0,0);
+  const dpr=Math.min(2,devicePixelRatio||1);veil.width=Math.round(I.rect.w*dpr);veil.height=Math.round(I.rect.h*dpr);
+  const v=veil.getContext('2d');v.imageSmoothingQuality='high';v.clearRect(0,0,veil.width,veil.height);v.drawImage(c,0,0,veil.width,veil.height);
+}
+function refreshSetup(keepFocus){const f=keepFocus&&IM&&IM.focus,sc=IM&&IM.scene,ph=IM&&IM.photo;analyse(IM.img);IM.scene=sc;if(ph)readPhoto(IM);if(f)setFocus(f.x,f.y);placeRef();drawVeil();}
+function toSetup(){fast=false;const re=resetStage();clearAll();clearInk();if(re||IM.detail!==DETAIL||IM.style!==STYLE)refreshSetup(true);else{placeRef();drawVeil();}setState('setup');}
 function openImage(src){
-  const img=new Image();img.onload=()=>{
+  const img=new Image();img.onload=()=>{resetStage();
     refImg.src=src;$('thumb').src=src;
-    clearAll();clearInk();analyse(img);placeRef();
-    if(Q.has('auto'))startPainting();else setState('preview');
-    if(Q.has('t')){fast=!Q.has('hold');const t=+Q.get('t');advance(Math.round(t*STEPS_PER_SEC));if(inkOn&&simT>19)drawInkUpTo(1e9);if(!events.length)setState('done');}
+    clearAll();clearInk();IM=null;sprites=[];spritesOn=false;analyse(img);IM.scene=pendingScene;pendingScene=null;readPhoto(IM);
+    if(pendingFocus){setFocus(pendingFocus.x,pendingFocus.y);pendingFocus=null;}
+    placeRef();drawVeil();
+    if(IM.scene){statusEl.textContent=sceneReport(IM.scene);prepareScene().then(()=>drawVeil());}
+    const go=()=>{
+    if(Q.has('t')||Q.has('auto')||autoStart){autoStart=false;startPainting();if(IM.scene)paintSprites();}else setState('setup');
+    if(Q.has('t')){fast=!Q.has('hold');const t=+Q.get('t');advance(Math.round(t*STEPS_PER_SEC));if((IW()||inkOn)&&simT>INK.start+INK.dur)drawInkUpTo(1e9);if(!events.length)setState('done');}
+    if(Q.get('play')){ANIM.clear();Q.get('play').split(',').forEach(k=>ANIM.add(k));playAnim();const at=+(Q.get('at')||8);advance(Math.round(at*STEPS_PER_SEC));fast=false;}
+    if(Q.get('anim')){({night:dayToNight,seasons,scene:playTimeline})[Q.get('anim')]();const at=+(Q.get('at')||40);advance(Math.round(at*STEPS_PER_SEC));fast=false;
+      if(Q.has('hold')){runInkJobs();for(let k=0;k<200;k++)snowFrame(.05);}}
+    };
+    if(IM.scene&&(Q.has('t')||Q.has('auto')||autoStart))prepareScene().then(go);else go();
   };
   img.onerror=()=>{statusEl.textContent="That file couldn't be read as an image. Try a JPEG or PNG.";};
   img.src=src;
 }
-function openFile(f){if(!f||!f.type.startsWith('image/'))return;openImage(URL.createObjectURL(f));}
-$('choose').onclick=$('newPhoto').onclick=()=>$('file').click();
-$('file').onchange=e=>openFile(e.target.files[0]);
+// ---------- scene files ----------
+// A scene is an SVG with labelled parts (data-role), moving sprites (data-sprite) and a timeline
+// (<metadata id="paint-timeline">). Any model can write one from paint-skill/PROMPT.md.
+let pendingFocus=null,pendingScene=null;
+const SVG_OK=new Set(['svg','g','defs','path','polygon','polyline','rect','circle','ellipse','line','lineargradient','radialgradient','stop','metadata','title','desc']);
+const SHAPES='path,polygon,polyline,rect,circle,ellipse,line';
+function readScene(text){
+  const a=text.indexOf('<svg'),b=text.lastIndexOf('</svg>');if(a<0||b<0)throw new Error("That isn't an SVG scene.");
+  const doc=new DOMParser().parseFromString(text.slice(a,b+6),'image/svg+xml'),root=doc.documentElement;
+  if(root.nodeName.toLowerCase()!=='svg'||doc.getElementsByTagName('parsererror').length)throw new Error("The scene file isn't valid SVG, so it can't be read.");
+  let removed=0;
+  for(const el of [...root.querySelectorAll('*')]){
+    if(!SVG_OK.has(el.nodeName.toLowerCase())){el.remove();removed++;continue;}
+    for(const at of [...el.attributes]){const n=at.name.toLowerCase(),v=at.value;
+      if(n.startsWith('on')||n==='style'||((n==='href'||n==='xlink:href')&&!v.startsWith('#'))||/url\(\s*['"]?(?!#)/i.test(v))el.removeAttribute(at.name);}}
+  for(const at of [...root.attributes])if(at.name.toLowerCase().startsWith('on'))root.removeAttribute(at.name);
+  const vb=(root.getAttribute('viewBox')||'0 0 900 1200').trim().split(/[\s,]+/).map(Number);
+  const view={x:vb[0]||0,y:vb[1]||0,w:vb[2]>0?vb[2]:900,h:vb[3]>0?vb[3]:1200};
+  root.setAttribute('width',view.w);root.setAttribute('height',view.h);root.setAttribute('preserveAspectRatio','none');
+  const warn=[];
+  if(root.getAttribute('data-paint')!=='1')warn.push('no data-paint="1"');
+  let focus=null;const f=(root.getAttribute('data-focus')||'').trim().split(/[\s,]+/).map(Number);
+  if(f.length===2&&f.every(Number.isFinite))focus={x:clamp((f[0]-view.x)/view.w,.05,.95),y:clamp((f[1]-view.y)/view.h,.05,.95)};else warn.push('no focus');
+  // the timeline
+  let timeline=null;const md=root.querySelector('metadata#paint-timeline');
+  if(md){try{timeline=JSON.parse(md.textContent);if(!Array.isArray(timeline.steps))throw 0;}catch(e){timeline=null;warn.push("the timeline isn't valid JSON");}}
+  for(const m of [...root.querySelectorAll('metadata')])m.remove();
+  // sprites come out of the still painting
+  const sprites=[...root.querySelectorAll('g[data-sprite],g[data-figure]')].slice(0,12).map(g=>{const o={name:g.getAttribute('data-sprite')||g.getAttribute('data-figure'),path:g.getAttribute('data-path')||'',
+    dur:+g.getAttribute('data-duration')||10,delay:+g.getAttribute('data-delay')||0,repeat:g.getAttribute('data-repeat')||'loop',
+    bob:+g.getAttribute('data-bob')||0,step:+g.getAttribute('data-step')||0,flip:g.getAttribute('data-flip')!=='none',markup:g.innerHTML,
+    scaleEnd:+(g.getAttribute('data-scale-end')||1)||1,fadeEnd:clamp(+(g.getAttribute('data-fade-end')??1),0,1)};if(g.hasAttribute('data-figure'))Object.assign(o,readFigure(g),{bob:0});return o;}).filter(o=>o.path);
+  for(const g of [...root.querySelectorAll('g[data-sprite],g[data-figure]')])g.remove();
+  const roles=new Set([...root.querySelectorAll('[data-role]')].map(e=>e.getAttribute('data-role')));
+  if(timeline)for(const st of timeline.steps){const tg=st.glaze||st.lift||st.dabs;if(typeof tg==='string'&&tg!=='all'){const r=tg.replace(/^not:/,'');if(!roles.has(r))warn.push(`the timeline uses "${r}", which no part is labelled as`);}}
+  const style=root.getAttribute('data-style');
+  return {svg:new XMLSerializer().serializeToString(root),doc,root,view,focus,timeline,sprites,roles,removed,warn,
+    title:root.getAttribute('data-title')||'',style:style==='ink-wash'?'iw':style==='watercolour'?'wc':null};
+}
+function openSvg(text){
+  let sc;try{sc=readScene(text);}catch(e){statusEl.textContent=e.message;return;}
+  if(sc.style&&sc.style!==STYLE&&!Q.get("style")&&!lookLocked){STYLE=sc.style;inkOn=false;showStyle();}lookLocked=false;
+  pendingFocus=sc.focus;pendingScene=sc;openImage(URL.createObjectURL(new Blob([sc.svg],{type:'image/svg+xml'})));
+}
+function sceneReport(sc){
+  const bits=[];if(sc.title)bits.push(`“${sc.title}”`);
+  bits.push(`${sc.roles.size} labelled part${sc.roles.size===1?'':'s'}`);
+  if(sc.sprites.length)bits.push(`${sc.sprites.length} moving thing${sc.sprites.length===1?'':'s'}`);
+  if(sc.timeline)bits.push(`a ${sc.timeline.steps.length}-step timeline`);
+  let msg='Scene '+bits.join(', ')+'.';
+  const w=[...new Set(sc.warn)];if(sc.removed)w.push(`${sc.removed} unsupported element${sc.removed===1?' was':'s were'} left out`);
+  if(w.length)msg+=' Note: '+w.slice(0,3).join('; ')+'.';
+  return msg+' Tap to move the focus, then start painting.';
+}
+// Rasterise one or more roles as a mask the size of the painting grid. Everything else is drawn in
+// black, in document order, so a part hidden behind something in front stays hidden.
+function roleOf(el){const r=el.closest('[data-role]');return r?r.getAttribute('data-role'):null;}
+function maskFor(sc,test,w,h){
+  const root=sc.root.cloneNode(true);root.setAttribute('width',w);root.setAttribute('height',h);root.setAttribute('preserveAspectRatio','none');
+  const bg=root.ownerDocument.createElementNS('http://www.w3.org/2000/svg','rect');
+  bg.setAttribute('x',sc.view.x);bg.setAttribute('y',sc.view.y);bg.setAttribute('width',sc.view.w);bg.setAttribute('height',sc.view.h);bg.setAttribute('fill','#000');
+  root.insertBefore(bg,root.firstChild);
+  // map clone elements back to the originals so tests can compare identity
+  const orig=[...sc.root.querySelectorAll(SHAPES)],copy=[...root.querySelectorAll(SHAPES)].filter(e=>e!==bg);
+  copy.forEach((el,k)=>{const on=test(orig[k]),c=on?'#fff':'#000';
+    if(el.getAttribute('fill')!=='none')el.setAttribute('fill',c);if(el.getAttribute('stroke')&&el.getAttribute('stroke')!=='none')el.setAttribute('stroke',c);
+    for(const a of ['opacity','fill-opacity','stroke-opacity'])el.removeAttribute(a);});
+  for(const g of root.querySelectorAll('g'))g.removeAttribute('opacity');
+  const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(root)],{type:'image/svg+xml'}));
+  return new Promise(res=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d',{willReadFrequently:true});
+    g.drawImage(im,0,0,w,h);const d=g.getImageData(0,0,w,h).data,m=new Float32Array(w*h);for(let i=0;i<m.length;i++)m[i]=d[i*4]/255;URL.revokeObjectURL(url);res(m);};
+    im.onerror=()=>{URL.revokeObjectURL(url);res(null);};im.src=url;});
+}
+// A live, hidden copy of some SVG, for geometry (branch lines, sprite paths and sizes).
+function liveSvg(markup,view){
+  const holder=document.createElement('div');holder.style.cssText='position:fixed;left:-10000px;top:0;width:10px;height:10px;overflow:hidden;visibility:hidden';
+  holder.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${view.x} ${view.y} ${view.w} ${view.h}" width="${view.w}" height="${view.h}">${markup}</svg>`;
+  document.body.appendChild(holder);return {svg:holder.firstChild,done:()=>holder.remove()};
+}
+async function prepareScene(){
+  const I=IM,sc=I&&I.scene;if(!sc||sc.ready)return;const {gw,gh}=I,has=r=>sc.roles.has(r);
+  const masks={};
+  for(const r of sc.roles)masks[r]=await maskFor(sc,el=>roleOf(el)===r,gw,gh);
+  const union=(...rs)=>{const m=new Float32Array(I.n);for(const r of rs)if(masks[r])for(let i=0;i<I.n;i++)m[i]=Math.max(m[i],masks[r][i]);return m;};
+  sc.masks=masks;sc.union=union;
+  // lights: windows, lamps and anything given data-light, grouped by their number
+  const lightEls=[...sc.root.querySelectorAll(SHAPES)].filter(el=>{const r=roleOf(el);return el.closest('[data-light]')||r==='window'||r==='lamp';});
+  const groups=new Map();
+  for(const el of lightEls){const host=el.closest('[data-light]');const k=host?+host.getAttribute('data-light')||1:0;
+    if(!groups.has(k))groups.set(k,{n:k,color:host&&host.getAttribute('data-light-color'),els:new Set()});groups.get(k).els.add(el);}
+  sc.lightGroups=[];
+  for(const g of [...groups.values()].sort((a,b)=>a.n-b.n).slice(0,14)){
+    const m=await maskFor(sc,el=>g.els.has(el),gw,gh);
+    const col=hexRGB(g.color)||[1,.83,.48];
+    if(m)sc.lightGroups.push({n:g.n,mask:m,color:col});}
+  // branches: real geometry from trunk and branch shapes, drawn in ink in winter
+  sc.branches=[];
+  if(has('trunk')||has('branch')){
+    const live=liveSvg(sc.root.innerHTML,sc.view);
+    try{for(const el of live.svg.querySelectorAll(SHAPES)){const r=roleOf(el);if(r!=='trunk'&&r!=='branch')continue;
+      const m=el.getCTM&&el.getCTM();if(!m)continue;const pts=[];
+      const toG=(x,y)=>{const q=new DOMPoint(x,y).matrixTransform(m);return [(q.x-sc.view.x)/sc.view.w*gw,(q.y-sc.view.y)/sc.view.h*gh];};
+      let w=+(el.getAttribute('stroke-width')||0);
+      if(el.getTotalLength&&(el.tagName==='path'||el.tagName==='line'||el.tagName==='polyline')){const L=el.getTotalLength();for(let k=0;k<=24;k++){const q=el.getPointAtLength(L*k/24);pts.push(toG(q.x,q.y));}}
+      else{const b=el.getBBox();pts.push(toG(b.x+b.width/2,b.y+b.height),toG(b.x+b.width/2,b.y));w=w||b.width*.5;}
+      if(pts.length>1)sc.branches.push({pts,w:Math.max(1.2,w/sc.view.w*gw*.7)});}}finally{live.done();}
+  }
+  // the scene's own foliage, so dabs and seasons land on the leaves it drew
+  if(has('foliage')){const f=boxBlur(union('foliage'),gw,gh,1);I.leaf=f.map(v=>smooth(.2,.6,v));}
+  I.parts=null;sc.ready=true;
+}
+
+// ---------- sprites: painted once, then moved along their paths ----------
+const lifeCv=document.createElement('canvas');lifeCv.id='life';lifeCv.setAttribute('aria-hidden','true');
+// figures sit on their own layer, drawn normally (not multiplied) so they stay clear in front of dark doors, and tinted by the scene's light
+const figCv=document.createElement('canvas');figCv.id='figs';figCv.setAttribute('aria-hidden','true');const figMask=document.createElement('canvas');let amb=null,ambBase=null,ambT=0;
+let sprites=[],spriteClock=0,spritesOn=false,lifeOn=true;
+async function paintSprites(){
+  const I=IM,sc=I&&I.scene;sprites=[];if(!sc||!sc.sprites.length)return;
+  const k=I.rect.w/sc.view.w,dpr=Math.min(2,devicePixelRatio||1);
+  for(const sp of sc.sprites){
+    if(sp.figure){ // drawn every frame, not painted; its speed comes from its gait and size, so no duration is needed
+      const live=liveSvg(`<path d="${sp.path.replace(/"/g,'')}" fill="none"/>`,sc.view);
+      try{const pathEl=live.svg.lastChild,L=pathEl.getTotalLength(),N=240,pts=[];for(let i=0;i<=N;i++){const q=pathEl.getPointAtLength(L*i/N);pts.push([q.x,q.y]);}
+        const fs=(sp.figure==='cyclist'?CYCLE_SPEED:GAITS[sp.gait].speed)*sp.height/95*(1+sp.scaleEnd)/2;
+        sprites.push({...sp,pts,len:L,dur:L/fs,st:null});}catch(e){}
+      live.done();continue;}
+    const live=liveSvg(`<g>${sp.markup}</g><path d="${sp.path.replace(/"/g,'')}" fill="none"/>`,sc.view);let box;
+    try{box=live.svg.firstChild.getBBox();const pathEl=live.svg.lastChild,L=pathEl.getTotalLength();
+      // sample the path once, so playback needs no DOM
+      const N=240,pts=[];for(let i=0;i<=N;i++){const q=pathEl.getPointAtLength(L*i/N);pts.push([q.x,q.y]);}sp.pts=pts;sp.len=L;}
+    catch(e){live.done();continue;}
+    live.done();
+    if(!box||!(box.width>0)||!(box.height>0)||!sp.pts)continue;
+    // smoke rises from its chimney as soft puffs (motion/smoke.js); several smoke sprites from one chimney make one emitter
+    if(/smoke|steam/i.test(sp.name)){const a=sp.pts[0];if(sprites.some(o=>o.smoke&&Math.hypot(o.smoke.x0-a[0],o.smoke.y0-a[1])<Math.max(8,box.width)))continue;
+      sprites.push({...sp,smoke:makeSmoke(sp,box)});continue;}
+    // birds aren't painted once and slid along: they flap and glide every frame (see drawBird); the drawing gives their size and colour
+    if(/bird|gull|swallow|swift|crow|sparrow|pigeon|heron|tern|martin|starling|raven|rook|kite|hawk|eagle|stork/i.test(sp.name)&&!/duck|goose|swan/i.test(sp.name)){
+      const m=sp.markup.match(/(?:stroke|fill)="(#[0-9a-fA-F]{6})"/);sprites.push({...sp,bob:0,bird:birdState(birdKind(sp.name)),span:Math.max(box.width,box.height*1.6),col:m?m[1]:'#2f2c36',tilt:0});continue;}
+    const pad=Math.max(box.width,box.height)*.15,bx=box.x-pad,by=box.y-pad,bw=box.width+2*pad,bh=box.height+2*pad;
+    const ow=Math.max(8,Math.ceil(bw*k*dpr*1.5)),oh=Math.max(8,Math.ceil(bh*k*dpr*1.5)),gw2=Math.max(16,Math.ceil(bw*k*S*2)),gh2=Math.max(16,Math.ceil(bh*k*S*2));
+    // one wash per colour, so each part keeps its colour and neighbours bleed a little where they meet
+    const sdoc=new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bx} ${by} ${bw} ${bh}">${sp.markup}</svg>`,'image/svg+xml').documentElement;
+    const cols=new Map();
+    for(const el of sdoc.querySelectorAll(SHAPES))for(const a of ['fill','stroke']){const v=(el.getAttribute(a)||'').trim();if(/^#[0-9a-f]{6}$/i.test(v)){if(!cols.has(v))cols.set(v,new Set());cols.get(v).add(el);}}
+    const scSprite={root:sdoc,view:{x:bx,y:by,w:bw,h:bh}};
+    const washes=[];let unionMask=null;
+    for(const [hex,els] of cols){const m=await maskFor(scSprite,el=>els.has(el),gw2,gh2);if(!m)continue;
+      const mc=document.createElement('canvas');mc.width=gw2;mc.height=gh2;const mg2=mc.getContext('2d'),id=mg2.createImageData(gw2,gh2);
+      for(let i=0;i<m.length;i++){const v=m[i]*255;id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255;}mg2.putImageData(id,0,0);
+      washes.push([g=>g.drawImage(mc,0,0),hexRGB(hex).map(v=>-Math.log(v)/DENSITY),.1,1.15,0]);
+      if(!unionMask)unionMask=new Float32Array(m.length);for(let i=0;i<m.length;i++)unionMask[i]=Math.max(unionMask[i],m[i]);}
+    if(!washes.length)continue;
+    const c=paintSheet(gw2,gh2,ow,oh,washes,320),g=c.getContext('2d');
+    // keep only the sprite itself, not the paper around it
+    const um=document.createElement('canvas');um.width=gw2;um.height=gh2;const ug=um.getContext('2d'),uid=ug.createImageData(gw2,gh2);
+    for(let i=0;i<unionMask.length;i++)uid.data[i*4+3]=Math.min(255,unionMask[i]*320);ug.putImageData(uid,0,0);
+    g.globalCompositeOperation='destination-in';g.imageSmoothingQuality='high';g.drawImage(um,0,0,ow,oh);
+    sprites.push({...sp,img:c,ox:bx,oy:by,bw,bh,boat:/boat|ship|yacht|dinghy|sail|ferry|barge|canoe|kayak|punt|gondola|skiff|raft|duck|swan|goose|coot/i.test(sp.name)?floatState(sp.name):null});
+  }
+  if(state==='done'&&sprites.length&&!spritesOn){spritesOn=true;spriteClock=0;ambBase=null;amb=null;}
+}
+function spritePos(sp,t){
+  const u=(t-sp.delay)/sp.dur;if(u<0)return null;let p;
+  if(sp.repeat==='once'){if(u>1)return null;p=u;}else if(sp.repeat==='pingpong'){const f=u%2;p=f<1?f:2-f;}else p=u%1;
+  const P2=sp.pts,N=P2.length-1,x=p*N,i=Math.min(N-1,Math.floor(x)),f=x-i,a=P2[i],b=P2[i+1];
+  let dx=b[0]-a[0];if(sp.repeat==='pingpong'&&(u%2)>=1)dx=-dx;
+  return {x:a[0]+(b[0]-a[0])*f,y:a[1]+(b[1]-a[1])*f,dx,p,u};
+}
+// a base that throws must never stop the frame (or the video being recorded): it is skipped, and warned about once
+const failed=new Set();function safely(name,fn){if(failed.has(name))return;try{fn();}catch(e){failed.add(name);console.warn('Paint: '+name+' stopped:',e);}}
+function spriteFrame(dt){
+  const dpr=lifeCv.width/W,g=lifeCv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+  const fg=figCv.getContext('2d');fg.setTransform(dpr,0,0,dpr,0,0);fg.clearRect(0,0,W,H);let figs=0;
+  // moving things run once the painting is done, and while a transition plays if Life is on
+  const live=IM&&IM.Fu&&(spritesOn||state==='done'||(state==='painting'&&animRan&&lifeOn)),ddt=dt*(fast?fastRate:1);
+  if(!live)return;
+  worldStep(ddt); // one clock, one wind, one light for every base (motion/world.js)
+  // ambient bases: they need no scene file, only where they can live
+  safely('clouds',()=>{if(!IM.clouds)IM.clouds=makeClouds();if(IM.clouds.length)figs+=cloudFrame(fg,ddt);});
+  safely('ripples',()=>{if(masksOf(IM)){if(!IM.ripples)IM.ripples=makeRipples();if(IM.ripples.length)figs+=rippleFrame(g,fg,ddt);}});
+  // a photo gets its own cast, placed by the director (motion/director.js) from what was read in it
+  if(!IM.scene&&IM.photo)safely('cast',()=>{figs+=castFrame(g,fg,ddt);});
+  if(spritesOn&&sprites.length&&IM.scene){
+    spriteClock+=ddt;
+    const sc=IM.scene,r=IM.rect,sx=r.w/sc.view.w,sy=r.h/sc.view.h;
+    safely('sprites',()=>{for(const sp of sprites){
+      if(sp.smoke){figs+=smokeFrame(fg,sp,ddt,sx,sy);continue;}
+      const q=spritePos(sp,spriteClock);if(!q)continue;
+      // with data-step the bob is tied to distance travelled: one rise per step, so a walker never bobs faster or slower than it moves
+      const bob=!sp.bob||sp.boat?0:sp.step>0&&sp.len?-Math.abs(Math.sin(Math.PI*q.u*sp.len/sp.step))*sp.bob:Math.sin(spriteClock*Math.PI*2*1.3+sp.delay)*sp.bob,flip=sp.flip&&q.dx<0?-1:1;
+      const cx=r.x+(q.x-sc.view.x)*sx,cy=r.y+(q.y+bob-sc.view.y)*sy;
+      // only where the painting is: sprites fade out with the painted area, never float on bare paper
+      const gx=Math.round(clamp((q.x-sc.view.x)/sc.view.w,0,1)*(IM.gw-1)),gy=Math.round(clamp((q.y-sc.view.y)/sc.view.h,0,1)*(IM.gh-1));
+      const inPaint=(q.x<sc.view.x||q.y<sc.view.y||q.x>sc.view.x+sc.view.w||q.y>sc.view.y+sc.view.h)?0:smooth(.15,.6,IM.Fu[gy*IM.gw+gx]);
+      if(inPaint<=.01)continue;
+      const alpha=lerp(1,sp.fadeEnd,q.p)*inPaint,size=lerp(1,sp.scaleEnd,q.p);
+      if(sp.bird){const w=birdStep(sp.bird,ddt),pv=sp.prev||[q.x,q.y];sp.prev=[q.x,q.y];
+        sp.tilt=lerp(sp.tilt,clamp(Math.atan2(q.y-pv[1],Math.abs(q.x-pv[0])||1e-3),-.35,.35)*.6,.08);
+        drawBird(g,cx,cy,sp.span*size*sx,w,flip,sp.tilt*flip,sp.col,alpha);continue;}
+      if(sp.figure){figs++;sp.figScale=sp.height/95*size;drawFigure(fg,sp,q,cx,cy,sp.figScale*sx,flip,alpha,ddt);continue;}
+      if(sp.boat){boatFrame(g,sp,q,cx,cy,sx,sy,flip,size,alpha,ddt);continue;}
+      g.save();g.globalAlpha=alpha;g.translate(cx,cy);g.scale(flip*size,size);g.drawImage(sp.img,sp.ox*sx,sp.oy*sy,sp.bw*sx,sp.bh*sy);g.restore();}});
+  }
+  if(figs)lightOpaque(fg,dt);
+  if(Q.has('see'))seeOverlay(fg,IM);
+}
+// a photo is read for its parts (motion/understand.js) while it paints; the bases pick it up when it's ready
+// (when it arrives, the director's birds replace any photo birds started before it was read)
+function readPhoto(I){if(I.scene)return;understandPhoto(I).then(p=>{if(IM!==I)return;I.photo=p;I.clouds=null;I.ripples=null;I.surfaces=null;birds=[];}).catch(e=>console.warn('Paint: could not read the photo',e));}
+// the scene's light falls on everything drawn opaque (people, clouds, smoke, glints): multiply by how much the
+// painting has darkened or cooled since it was finished, so nothing glows at night
+function lightOpaque(fg,dt){
+  if((ambT-=dt)<=0){ambT=.4;const m=sceneMean();if(m){if(!ambBase)ambBase=m;amb=m.map((v,i)=>clamp(v/ambBase[i],.28,1.05));}}
+  if(!amb||!amb.some(v=>v<.98))return;
+  const mg=figMask.getContext('2d');mg.setTransform(1,0,0,1,0,0);mg.clearRect(0,0,figMask.width,figMask.height);mg.drawImage(figCv,0,0);
+  fg.save();fg.setTransform(1,0,0,1,0,0);fg.globalCompositeOperation='multiply';fg.fillStyle=`rgb(${amb.map(v=>Math.round(Math.min(1,v)*255)).join(',')})`;fg.fillRect(0,0,figCv.width,figCv.height);
+  fg.globalCompositeOperation='destination-in';fg.drawImage(figMask,0,0);fg.restore();
+}
+// average colour of the painting, from a tiny copy of the canvas
+const meanCv=document.createElement('canvas');meanCv.width=meanCv.height=12;
+function sceneMean(){try{const r=IM.rect,dpr=cv.width/W,m=meanCv.getContext('2d'),gc=GC()&&typeof gcCv!=='undefined';
+  // gouache paints on its own canvas and puts the time of day in a tint layer (FX.tint), so read those instead
+  m.drawImage(gc?gcCv:cv,r.x*dpr,r.y*dpr,r.w*dpr,r.h*dpr,0,0,12,12);
+  const d=m.getImageData(0,0,12,12).data;let a=[0,0,0];for(let i=0;i<d.length;i+=4){a[0]+=d[i];a[1]+=d[i+1];a[2]+=d[i+2];}
+  a=a.map(v=>v/144/255+.001);if(gc&&typeof FX!=='undefined'&&FX.tint)a=a.map((v,i)=>v*FX.tint[i]);return a;}catch(e){return null;}}
+
+// ---------- the timeline ----------
+function hexRGB(h){return /^#[0-9a-f]{6}$/i.test(h||'')?[1,3,5].map(k=>clamp(parseInt(h.slice(k,k+2),16)/255,.05,1)):null;}
+function targetMask(t){
+  const I=IM,sc=I.scene;if(!t||t==='all')return I.Fu;
+  const neg=t.startsWith('not:'),r=t.replace(/^not:/,''),m=sc&&sc.masks&&sc.masks[r];
+  if(!m)return neg?I.Fu:new Float32Array(I.n);
+  return I.Fu.map((v,i)=>v*(neg?1-m[i]:m[i]));
+}
+function playTimeline(){
+  const I=IM,sc=I.scene;if(!sc||!sc.timeline)return;
+  beginTransition((sc.timeline.title||sc.title||'scene').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'scene');
+  const ev=timelineEvents(simT+1.2);if(ev.length)runExtra(ev);
+}
+function timelineEvents(t0){
+  const I=IM,sc=I.scene;let t=t0;const ev=[];
+  const add=list=>{if(!list.length)return;for(const e of list)ev.push(e);t=Math.max(t,...list.map(e=>e.t+e.dur))+1;};
+  for(const st of sc.timeline.steps){
+    const cap=st.caption||'',dur=clamp(+st.duration||2,.6,8);
+    if(st.preset==='night')add(nightEvents(t));
+    else if(st.preset==='seasons'){const e=seasonEvents(t);if(e)add(e);}
+    else if(st.preset==='rain')add(rainEvents(t));
+    else if(st.glaze){const col=hexRGB(st.color)||[.8,.8,.85],m=targetMask(st.glaze);add([glaze(t,dur,cap||'Glaze',i=>m[i],col,1.25*clamp(st.strength==null?.5:+st.strength,0,1),.13)]);t+=.6;}
+    else if(st.lift){const m=targetMask(st.lift);add([blot(t,Math.max(.6,dur*.6),cap||'Lifting',i=>m[i],clamp(st.strength==null?.85:+st.strength,0,1))]);}
+    else if(st.dabs){const col=hexRGB(st.color)||[.5,.7,.4],m=targetMask(st.dabs),sz=Math.min(I.gw,I.gh)*({small:.009,large:.02}[st.size]||.014);
+      const area=m.reduce((a,v)=>a+v,0),n=Math.round(area/(sz*sz)*clamp(st.amount==null?.5:+st.amount,0,1)*1.2);
+      add([dabs(t,Math.max(.6,dur*.7),cap||'Dabs',i=>m[i]>.4,sz,n,col,1,.05)]);}
+    else if(st.lights)add(lightEvents(t,st.lights==='sequence',hexRGB(st.color),cap||'Lights on'));
+    else if('snow' in st)add([{t,dur:.2,label:cap||(st.snow?'Snow':'The snow stops'),make:()=>{},onStart:()=>{snowOn=!!st.snow;}}]);
+    else if('rain' in st)add([{t,dur:.2,label:cap||(st.rain?'Rain':'The rain stops'),make:()=>{},onStart:()=>{rainOn=!!st.rain;}}]);
+    else if(st.wait){const w=clamp(+st.wait,0,10);add([{t,dur:w,label:cap||'',make:()=>{}}]);t-=1;}
+  }
+  return ev;
+}
+// windows and lamps: lifted back to paper, then warmed while wet so they glow; in sequence if asked
+function lightEvents(t,sequence,color,label){
+  const I=IM,sc=I.scene,Pt=parts(),ev=[];
+  const groups=sc&&sc.lightGroups&&sc.lightGroups.length?sc.lightGroups:(Pt.lightCount?[{mask:Pt.lights,color:[1,.83,.48]}]:[]);
+  if(!groups.length)return ev;
+  const list=sequence?groups:[{mask:groups.reduce((m,g)=>{for(let i=0;i<I.n;i++)m[i]=Math.max(m[i],g.mask[i]);return m;},new Float32Array(I.n)),color:groups[0].color}];
+  const gap=sequence?Math.min(1.1,6/Math.max(1,list.length)):0;
+  list.forEach((g,k)=>{const tt=t+k*gap,mk=g.mask,soft=boxBlur(mk,I.gw,I.gh,2),glow=boxBlur(mk,I.gw,I.gh,Math.max(3,Math.min(I.gw,I.gh)*.012)),c=color||g.color;
+    ev.push(blot(tt,.7,label,i=>mk[i],1));
+    ev.push(glaze(tt+.8,.8,label,i=>Math.min(1,mk[i]+soft[i]*.6),c,1.1,.2));
+    ev.push(glaze(tt+1.8,.8,label,i=>glow[i]*(1-mk[i]),c.map(v=>Math.min(1,v+.08)),.45,.22));});
+  return ev;
+}
+// rain: the sky and land darken, rain falls, and roads and paths pick up a wet shine
+let rainOn=false,drops=[];
+function rainEvents(t){
+  const I=IM,Pt=parts(),sc=I.scene,F=i=>I.Fu[i],road=sc&&sc.masks?sc.union('path','road','ground'):Pt.ground;
+  const shine=road.map((v,i)=>{const x=i%I.gw,y=Math.floor(i/I.gw);return v*smooth(.55,.75,vn(x/40,y/3,7));});
+  return [glaze(t,2.2,'Clouds gather',i=>F(i)*Pt.sky[i],[.62,.66,.74],1,.13),
+    {...glaze(t+2.8,2.2,'Rain',i=>F(i)*(1-.5*Pt.sky[i]),[.8,.83,.88],.8,.12),onStart:()=>{rainOn=true;}},
+    blot(t+5.6,1.2,'Rain: wet streets',i=>shine[i]*F(i),.55)];
+}
+
+function openFile(f){if(!f)return;
+  if(f.type==='image/svg+xml'||/\.svg$/i.test(f.name)){f.text().then(openSvg);return;}
+  if(!f.type.startsWith('image/'))return;pendingFocus=null;pendingScene=null;openImage(URL.createObjectURL(f));}
+$('choose').onclick=$('openScene').onclick=()=>{$('newMenu').hidden=true;$('file').click();};
+$('file').onchange=e=>{openFile(e.target.files[0]);e.target.value='';};
 addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('dragging');});
 addEventListener('dragleave',()=>document.body.classList.remove('dragging'));
 addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('dragging');openFile(e.dataTransfer.files[0]);});
-addEventListener('paste',e=>{for(const it of e.clipboardData.items)if(it.type.startsWith('image/')){openFile(it.getAsFile());break;}});
-$('go').onclick=startPainting;
-$('again').onclick=startPainting;
-$('finish').onclick=()=>{fast=true;};
-$('inkBtn').onclick=function(){inkOn=!inkOn;this.setAttribute('aria-pressed',inkOn);
-  if(state==='done'){if(inkOn){prepareInk();drawInkUpTo(1e9);}else clearInk();}else if(!inkOn)clearInk();};
+addEventListener('paste',e=>{const txt=e.clipboardData.getData('text');if(txt&&txt.includes('<svg')){openSvg(txt);return;}
+  for(const it of e.clipboardData.items)if(it.type.startsWith('image/')){openFile(it.getAsFile());break;}});
+const goPaint=async()=>{if(IM.detail!==DETAIL||IM.style!==STYLE){refreshSetup(true);if(IM.scene){IM.scene.ready=false;await prepareScene();}}
+  else if(IM.scene&&!IM.scene.ready)await prepareScene();startPainting();if(IM.scene)paintSprites();};
+// ---------- home: examples to open, and New ----------
+let autoStart=false,lookLocked=false;
+const EXAMPLES=[
+  {svg:'../paint-skill/examples/street-dusk.svg',look:'iw',title:'Evening on the little street',tag:'Ink & wash · people walking, lights on',img:'examples/street-iw.jpg'},
+  {svg:'../paint-skill/examples/lake-cottage.svg',look:'wc',title:'Lake cottage',tag:'Watercolour · through the seasons',img:'examples/lake-wc.jpg'},
+  {svg:'../paint-skill/examples/harbour-rain.svg',look:'wci',title:'Harbour in the rain',tag:'Watercolour + ink · rain, boats',img:'examples/harbour-wci.jpg'},
+  {svg:'../paint-skill/examples/lake-cottage.svg',look:'gc',title:'Lake cottage, in gouache',tag:'Gouache · day to night',img:'examples/lake-gc.jpg'},
+  {svg:'../paint-skill/examples/street-dusk.svg',look:'gc',title:'The little street, in gouache',tag:'Gouache · night falls',img:'examples/street-gc.jpg'}];
+$('gallery').innerHTML=`<button class="ex" id="newCard"><div class="newcard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New painting</div><b>Start your own</b><span>From a photo or a scene file</span></button>`+
+  EXAMPLES.map((e,i)=>`<button class="ex" data-i="${i}"><img src="${e.img}" alt="" loading="lazy"><b>${e.title}</b><span>${e.tag}</span></button>`).join('');
+document.querySelectorAll('.ex[data-i]').forEach(b=>b.onclick=()=>{const e=EXAMPLES[+b.dataset.i];setLook(e.look);lookLocked=true;autoStart=true;
+  fetch(e.svg).then(r=>r.text()).then(openSvg).catch(()=>{autoStart=false;lookLocked=false;});});
+$('newCard').onclick=()=>$('file').click();
+$('newBtn').onclick=ev=>{ev.stopPropagation();$('newMenu').hidden=!$('newMenu').hidden;};
+addEventListener('pointerdown',e=>{if(!$('newMenu').hidden&&!e.target.closest('.newwrap'))$('newMenu').hidden=true;});
+// the top bar: back (or stop), and the step's one main action
+let TAB='animate';
+function stopAnim(){events=[];active=[];fast=false;if(rec)rec.mr.onstop=null;stopRecording();
+  if(GC()){if(G)G.anim=null;gcRestore();}else if(snap)restoreSnapshot();rainOn=false;drops=[];snowOn=false;flakes=[];setState('done');}
+$('topBack').onclick=()=>{if(state==='setup'){setState('empty');return;}
+  if(state==='painting'&&animRan){stopAnim();return;}toSetup();};
+$('topPrimary').onclick=e=>{if(state==='setup'){goPaint();return;}
+  if(state==='done'){if(!lastVideo){saveImage();return;}e.stopPropagation();$('saveMenu').hidden=!$('saveMenu').hidden;}};
+$('saveImg').onclick=()=>{$('saveMenu').hidden=true;saveImage();};
+$('saveVid').onclick=()=>{$('saveMenu').hidden=true;saveVideo();};
+addEventListener('pointerdown',e=>{if(!$('saveMenu').hidden&&!e.target.closest('.topr'))$('saveMenu').hidden=true;});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;showTabs();});
+function showTabs(){document.body.dataset.tab=TAB;document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===TAB));}
+showTabs();
+$('repaint').onclick=()=>{toSetup();goPaint();};
+$('finish').onclick=function(){
+  const total=Math.max(endT,IW()||GC()?paintEnd:paintEnd+(inkOn?4.2:0));fastRate=Math.max(3,(total+.2-simT)/2.5);fast=true;
+  this.disabled=true;this.textContent='Speeding up';};
+$('more').onclick=()=>GC()?gcMore():detailPass();
+$('copyPrompt').onclick=async function(){
+  try{const t=await (await fetch('../paint-skill/PROMPT.txt')).text();await navigator.clipboard.writeText(t);this.innerHTML='Copied<small>Now paste it into any chatbot and describe a place</small>';}
+  catch(e){window.open('../paint-skill/PROMPT.txt','_blank','noopener');}};
+function showDetail(){document.querySelectorAll('#detail button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.v===DETAIL));}
+document.querySelectorAll('#detail button').forEach(b=>b.onclick=()=>{
+  if(+b.dataset.v===DETAIL)return;DETAIL=+b.dataset.v;try{localStorage.setItem('paint.detail',DETAIL);}catch(e){}showDetail();
+  if(IM&&state==='setup')refreshSetup(true);});
+showDetail();
+// the four looks: three painting styles, and watercolour with a pen line over it
+const lookNow=()=>STYLE==='wc'&&inkOn?'wci':STYLE;
+const LOOK_DESC={wc:'Loose, wet washes; the paper shows through at the edges.',wci:'Watercolour washes with a fine pen line over them.',iw:'A pen drawing first, then flat, bright washes.',gc:'Opaque brush strokes, edge to edge, big to small.'};
+function showStyle(){document.querySelectorAll('.looks button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===lookNow()));
+  document.querySelectorAll('.lookDesc').forEach(d=>d.textContent=LOOK_DESC[lookNow()]+' Styles are shown on an example picture.');setState(state);}
+function setLook(v){STYLE=v==='wci'?'wc':v;inkOn=v==='wci';$('inkBtn').setAttribute('aria-pressed',inkOn);
+  try{localStorage.setItem('paint.style',STYLE);localStorage.setItem('paint.ink',inkOn?1:0);}catch(e){}showStyle();}
+try{if(localStorage.getItem('paint.ink')==='1'&&!Q.get('style'))inkOn=true;}catch(e){}
+document.querySelectorAll('.looks button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.v===lookNow())return;const was=STYLE;setLook(b.dataset.v);
+  if(IM&&state==='setup'&&(STYLE!==was||IM.style!==STYLE))refreshSetup(true);});
+showStyle();
+$('inkBtn').onclick=function(){inkOn=!inkOn;this.setAttribute('aria-pressed',inkOn);};
 $('hit').addEventListener('pointerdown',e=>{
-  if(!IM||state==='empty')return;const r=IM.rect,x=(e.clientX-r.x)/r.w,y=(e.clientY-r.y)/r.h;
-  if(x<0||x>1||y<0||y>1)return;setFocus(clamp(x,.05,.95),clamp(y,.05,.95));placeRef();
-  if(state!=='preview')startPainting();});
-$('save').onclick=()=>{
+  if(!IM||state!=='setup')return;const r=IM.rect,x=(e.clientX-r.x)/r.w,y=(e.clientY-r.y)/r.h;
+  if(x<0||x>1||y<0||y>1)return;setFocus(clamp(x,.05,.95),clamp(y,.05,.95));placeRef();drawVeil();});
+// ---------- animating the finished painting ----------
+// Each choice makes a real change to the painting (glazes, lifts, dabs, light), and the video shows
+// only that change: the painting itself is already done.
+const ANIM=new Set(['life']);
+function animAvail(){const I=IM;if(!I)return {};const Pt=parts(),sc=I.scene;
+  return {night:true,seasons:Pt.leafArea>=.015,rain:true,life:!!(sc&&sc.sprites&&sc.sprites.length)||Pt.skyArea>.03,story:!!(sc&&sc.timeline)};}
+function showAnim(){const av=animAvail();
+  document.querySelectorAll('#anim button').forEach(b=>{const k=b.dataset.a;b.hidden=!av[k];b.setAttribute('aria-pressed',!!(av[k]&&ANIM.has(k)));});
+  const any=[...ANIM].some(k=>av[k]);$('playBtn').style.visibility=any?'':'hidden';
+  $('animDesc').textContent=any?'Press play on the picture. The video records only the change, never the painting.':'Pick at least one thing to animate.';}
+document.querySelectorAll('#anim button').forEach(b=>b.onclick=()=>{const k=b.dataset.a;
+  if(ANIM.has(k))ANIM.delete(k);else{ANIM.add(k);if(k==='story')['night','seasons','rain'].forEach(x=>ANIM.delete(x));else if(k!=='life')ANIM.delete('story');}
+  showAnim();});
+function playAnim(){
+  fast=false;fastRate=1; // a skip-ahead during painting must never carry into the animation
+  resetWeather();castClock=0; // every playback starts from the beginning
+  const av=animAvail(),on=k=>ANIM.has(k)&&!!av[k];if(![...ANIM].some(k=>av[k]))return;
+  const chosen=['story','seasons','rain','night'].filter(on),name=(chosen.length?chosen:['life']).join('-').replace('story','scene');
+  // life: the scene's own moving things, or birds over the sky of a photo
+  spritesOn=on('life')&&sprites.length>0;spriteClock=0;ambBase=null;amb=null;lifeOn=on('life');birds=on('life')&&!sprites.length&&!IM.photo?makeBirds():[];birdClock=0; // a read photo gets the director's cast instead
+  if(GC())return gcPlay(on,name);
+  beginTransition(name);
+  let t=simT+1.2;const ev=[],add=list=>{if(!list||!list.length)return;ev.push(...list);t=Math.max(...list.map(e=>e.t+e.dur))+1;};
+  if(on('story'))add(timelineEvents(t));
+  else{if(on('seasons'))add(seasonEvents(t));if(on('rain'))add(rainEvents(t));if(on('night'))add(nightEvents(t));}
+  if(!ev.length)ev.push({t,dur:12,label:'',make:()=>{}});
+  else ev.push({t,dur:2.5,label:'',make:()=>{}}); // a moment to take in the end
+  runExtra(ev);
+}
+$('playBtn').onclick=playAnim;
+// birds for a photo with sky: a few, at different heights and speeds, flapping and gliding
+let birds=[],birdClock=0;
+function makeBirds(){const I=IM,Pt=parts();if(Pt.skyArea<.03)return [];
+  let y0=-1,y1=-1;for(let y=0;y<I.gh;y++){let s2=0;for(let x=0;x<I.gw;x++)s2+=Pt.sky[y*I.gw+x];if(s2/I.gw>.3){if(y0<0)y0=y;y1=y;}}
+  if(y0<0)return [];const r=I.rect,top=r.y+y0/I.gh*r.h,bot=r.y+Math.min(y1,y0+(y1-y0)*.8)/I.gh*r.h,out=[];
+  for(let k=0;k<4;k++){const dir=Math.random()<.6?1:-1,s=r.w*rnd(.011,.02);
+    out.push({dir,s,y:lerp(top+(bot-top)*.12,bot-(bot-top)*.1,Math.random()),v:r.w/rnd(8,14),ph:rnd(0,6),delay:k*rnd(1.2,3),x:dir>0?r.x-30:r.x+r.w+30});}
+  return out;}
+function birdsFrame(dt){const r=IM.rect;birdClock+=dt;sctx.lineCap='round';
+  for(const b of birds){if(birdClock<b.delay)continue;b.x+=b.dir*b.v*dt;b.ph+=dt;
+    if(b.dir>0?b.x>r.x+r.w+40:b.x<r.x-40){b.x=b.dir>0?r.x-40:r.x+r.w+40;b.y+=rnd(-1,1)*r.h*.03;b.delay=birdClock+rnd(1,4);}
+    // real wingbeats and glides (drawBird), with a slow rise and fall along the way
+    if(!b.w)b.w=birdState(b.s>r.w*.017?'big':'mid');const w=birdStep(b.w,dt);
+    drawBird(sctx,b.x,b.y+Math.sin(b.ph*.7)*b.s*.6,b.s*2,w,b.dir,Math.cos(b.ph*.7)*-.06*b.dir,'rgba(48,42,58,.85)',1);}}
+function saveImage(){
   show(); // read the canvas in the same task it was drawn
-  const r=IM.rect,pad=28,dpr=cv.width/W,x=Math.max(0,r.x-pad),y=Math.max(0,r.y-pad),w=Math.min(W-x,r.w+pad*2),h=Math.min(H-y,r.h+pad*2);
+  const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),dpr=cv.width/W,x=Math.max(0,r.x-pad),y=Math.max(0,r.y-pad),w=Math.min(W-x,r.w+pad*2),h=Math.min(H-y,r.h+pad*2);
   const o=document.createElement('canvas');o.width=Math.round(w*dpr);o.height=Math.round(h*dpr);const g=o.getContext('2d');
   g.drawImage(cv,x*dpr,y*dpr,w*dpr,h*dpr,0,0,o.width,o.height);
+  if(GC())gcCompose(g,x*dpr,y*dpr,w*dpr,h*dpr,o.width,o.height);
   g.globalCompositeOperation='multiply';g.drawImage(inkCv,x*dpr,y*dpr,w*dpr,h*dpr,0,0,o.width,o.height);
-  o.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='watercolour.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png');
+  o.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=GC()?'gouache.png':'watercolour.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png');
 };
-function sizeAll(){setupGL();const dpr=Math.min(2,devicePixelRatio||1);inkCv.width=W*dpr;inkCv.height=H*dpr;}
-let rT;addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{sizeAll();if(IM){analyse(IM.img);placeRef();if(state==='painting'||state==='done')startPainting();}},250);});
+function sizeAll(){setupGL();Object.assign($('stage').style,{width:W+'px',height:H+'px'});const dpr=Math.min(2,devicePixelRatio||1),gcEl=$("gc");for(const id of ['gcFx','gcGlow']){$(id).width=W*dpr;$(id).height=H*dpr;}gcEl.width=inkCv.width=snowCv.width=lifeCv.width=figCv.width=figMask.width=W*dpr;gcEl.height=inkCv.height=snowCv.height=lifeCv.height=figCv.height=figMask.height=H*dpr;}
+const snowCv=$('snow'),sctx=snowCv.getContext('2d');let flakes=[];
+inkCv.after(lifeCv);lifeCv.after(figCv);
+// things placed in picture coordinates move and scale with the stage
+for(const id of ['brush','focusTag','playBtn'])$('stage').appendChild($(id));
+let fuMask=null;
+function paintedAreaMask(){ // the painted area as an alpha image, for clipping weather
+  const I=IM,c=document.createElement('canvas');c.width=I.gw;c.height=I.gh;const g=c.getContext('2d'),id=g.createImageData(I.gw,I.gh);
+  for(let i=0;i<I.n;i++)id.data[i*4+3]=Math.min(255,I.Fu[i]*300);g.putImageData(id,0,0);return c;}
+function snowFrame(dt){
+  const dpr=snowCv.width/W;sctx.setTransform(dpr,0,0,dpr,0,0);sctx.clearRect(0,0,W,H);
+  // rain and snow that touch the picture: they stop on roofs, ground, trees and water (motion/weather.js)
+  safely('weather',()=>weatherFrame(sctx,dt));
+  if(IM&&birds.length&&state!=='setup'&&state!=='empty')birdsFrame(dt);
+  if(IM&&(snowOn||flakes.length||rainOn||drops.length||birds.length||splashes.length||snowCover>0)){if(!fuMask)fuMask=paintedAreaMask();const r=IM.rect;
+    sctx.globalCompositeOperation='destination-in';sctx.globalAlpha=1;sctx.drawImage(fuMask,r.x,r.y,r.w,r.h);sctx.globalCompositeOperation='source-over';}
+}
+// A resize never throws the painting away. While it paints or once it's done, the canvases keep their
+// size and the stage is scaled and moved so the picture fits the new window; the next new layout (setup,
+// a new picture) resets it. In setup nothing is painted yet, so it simply lays out again.
+let rT,stageScaled=false;
+function fitStage(){const st=$('stage');if(!IM){st.style.transform='';return;}
+  const r=IM.rect,to=fitRect(r.w/r.h,innerWidth,innerHeight),k=to.w/r.w;
+  st.style.transform=`translate(${(to.x-r.x*k).toFixed(2)}px,${(to.y-r.y*k).toFixed(2)}px) scale(${k.toFixed(5)})`;stageScaled=Math.abs(k-1)>1e-4||Math.abs(to.x-r.x)>.5||Math.abs(to.y-r.y)>.5;}
+function resetStage(){if(!stageScaled)return false;stageScaled=false;$('stage').style.transform='';sizeAll();return true;}
+addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{
+  if(IM&&(state==='painting'||state==='done')){fitStage();return;}
+  stageScaled=false;$('stage').style.transform='';sizeAll();if(IM)refreshSetup(true);},150);});
 sizeAll();setState('empty');
 const still=Q.has('still'); // for the share image
 if(Q.has('ink')){inkOn=true;$('inkBtn').setAttribute('aria-pressed','true');}
+showStyle();
 if(Q.get('img'))openImage(Q.get('img'));
+if(Q.get('svg'))fetch(Q.get('svg')).then(r=>r.text()).then(openSvg);
 requestAnimationFrame(frame);
 </script>
 </body>

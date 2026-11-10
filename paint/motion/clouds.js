@@ -1,0 +1,69 @@
+// Paint motion base: clouds. A few soft clouds drift across the open sky with the wind, slowly changing shape.
+// Watercolour clouds are mostly paper: a light, soft top and a cool grey-violet underside. They are drawn
+// in front of the painted sky and masked to the sky, so they never cross a roof or a tree. See ../MOTION.md.
+//
+// Real numbers: fair-weather cumulus drift at the wind's speed; in a painting a cloud crossing the whole
+// sky in 2-4 minutes reads as "moving" without looking sped up. Nearer (lower) clouds look larger and faster.
+const cloudCv=document.createElement('canvas');
+let skyMaskCv=null;
+function cloudSky(){
+  const I=IM,M=masksOf(I),m=(M&&M.sky)||parts().sky;
+  return m;
+}
+function makeClouds(){
+  const I=IM,m=cloudSky();if(!m)return [];
+  // where the open sky is, row by row
+  let y0=-1,y1=-1,area=0;
+  for(let y=0;y<I.gh;y++){let s=0;for(let x=0;x<I.gw;x++){const v=m[y*I.gw+x]*I.Fu[y*I.gw+x];s+=v;area+=v;}if(s/I.gw>.25){if(y0<0)y0=y;y1=y;}}
+  area/=I.n;if(y0<0||area<.06)return [];
+  // the sky as a soft mask image the size of the grid, drawn smoothly over the painting
+  skyMaskCv=document.createElement('canvas');skyMaskCv.width=I.gw;skyMaskCv.height=I.gh;
+  const mg=skyMaskCv.getContext('2d'),id=mg.createImageData(I.gw,I.gh);
+  for(let i=0;i<I.n;i++){id.data[i*4+3]=Math.round(255*smooth(.35,.85,m[i])*smooth(.3,.7,I.Fu[i]));}
+  mg.putImageData(id,0,0);
+  const r=I.rect,top=r.y+y0/I.gh*r.h,bot=r.y+(y0+(y1-y0)*.75)/I.gh*r.h,n=clamp(Math.round(area*7),1,4),out=[];
+  for(let k=0;k<n;k++){
+    const d=Math.random(),w=r.w*lerp(.14,.26,d),y=lerp(top+r.h*.03,bot,d*.9+Math.random()*.1);
+    const puffs=[];const np=5+((Math.random()*4)|0);
+    for(let j=0;j<np;j++){const u=j/(np-1)-.5,hump=Math.cos(u*Math.PI);
+      puffs.push({dx:u*w*.9+(Math.random()-.5)*w*.08,dy:-hump*w*.16*(.6+Math.random()*.5),r:w*(.13+.1*hump)*(.8+Math.random()*.4),ph:Math.random()*6,f:.04+Math.random()*.05});}
+    // gouache: the painting's own mark, short opaque dabs laid in rows across each puff, cool violet-grey
+    // underneath, cream in the body, near-white on top; made once (seeded), so only the cloud moves
+    const rng=seeded(1000+k*77),strokes=[],dw=w*.055,dl=dw*1.7;
+    for(const p of puffs)for(let yy=-p.r*.85;yy<=p.r*.7;yy+=dw*.75){const half=Math.sqrt(Math.max(0,p.r*p.r-yy*yy))*.92;
+      const u=(yy+p.r)/(1.7*p.r),col=u>.72?[.76,.75,.84]:u>.5?[.93,.91,.88]:u>.25?[.98,.96,.92]:[1,.99,.97];
+      for(let xx=-half;xx<=half-dl*.5;xx+=dl*(.7+rng()*.25)){const x0=p.dx+xx+(rng()-.5)*dw*.4,y0=p.dy+yy+(rng()-.5)*dw*.35,tilt=(rng()-.5)*dw*.3;
+        strokes.push({pts:[[x0,y0],[x0+dl*.5,y0+tilt*.5],[x0+dl,y0+tilt]],w:dw*(.85+rng()*.3),col:col.map(v=>v*(.97+rng()*.05)),look:strokeLook(rng,3)});}}
+    out.push({x:r.x+r.w*(k+.2+Math.random()*.6)/n,y,w,d,puffs,strokes,seed:k*3.1+1,speed:lerp(.6,1.2,d)});
+  }
+  return out;
+}
+function cloudFrame(fg,dt){
+  const I=IM,r=I.rect;if(!skyMaskCv)return 0;
+  const dpr=lifeCv.width/W;if(cloudCv.width!==lifeCv.width||cloudCv.height!==lifeCv.height){cloudCv.width=lifeCv.width;cloudCv.height=lifeCv.height;}
+  const c=cloudCv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,W,H);
+  for(const cl of I.clouds){
+    cl.x+=WORLD.wind*r.w*.012*cl.speed*dt; // about 1.2% of the painting a second in the usual breeze
+    if(cl.x-cl.w>r.x+r.w)cl.x=r.x-cl.w;else if(cl.x+cl.w<r.x)cl.x=r.x+r.w+cl.w;
+    const md=medium();
+    if(md==='gouache'){for(const st of cl.strokes)brushStroke(c,st.pts.map(([x,y])=>[cl.x+x,cl.y+y]),st.w,st.col,st.look,.97);continue;}
+    if(md==='ink'){ // a flat pale wash underneath, then the pen: a scalloped top and a flat-ish base
+      c.fillStyle='rgba(196,196,216,.32)';c.beginPath();for(const p of cl.puffs){c.moveTo(cl.x+p.dx+p.r*.9,cl.y+p.dy+p.r*.25);c.ellipse(cl.x+p.dx,cl.y+p.dy+p.r*.25,p.r*.9,p.r*.55,0,0,7);}c.fill();
+      c.fillStyle='rgba(252,250,246,.9)';c.beginPath();for(const p of cl.puffs){c.moveTo(cl.x+p.dx+p.r*.95,cl.y+p.dy);c.arc(cl.x+p.dx,cl.y+p.dy,p.r*.95,0,7);}c.fill();
+      const lw=Math.max(.9,cl.w*.006);cl.puffs.forEach((p,j)=>{const pts=[];for(let a=0;a<=12;a++){const th=Math.PI*(1.12+.76*a/12);pts.push([cl.x+p.dx+Math.cos(th)*p.r*.95,cl.y+p.dy+Math.sin(th)*p.r*.95]);}penPath(c,pts,lw,cl.seed+j);});
+      const xs=cl.puffs.map(p=>p.dx),base=cl.y+Math.max(...cl.puffs.map(p=>p.dy+p.r*.55));penPath(c,[[cl.x+Math.min(...xs),base],[cl.x+(Math.min(...xs)+Math.max(...xs))/2,base+cl.w*.006],[cl.x+Math.max(...xs),base]],lw*.8,cl.seed+9);
+      continue;}
+    // watercolour: the cool underside first, a little lower, then the light body over it, soft as a wet wash
+    for(const pass of [0,1])for(const p of cl.puffs){
+      const rr=p.r*(1+.07*Math.sin(WORLD.clock*p.f*6.28+p.ph)),x=cl.x+p.dx,y=cl.y+p.dy+(pass?0:rr*.28);
+      const gr=c.createRadialGradient(x,y,0,x,y,rr);
+      if(pass){gr.addColorStop(0,'rgba(253,251,247,.82)');gr.addColorStop(.55,'rgba(250,248,244,.55)');gr.addColorStop(1,'rgba(250,248,244,0)');}
+      else{gr.addColorStop(0,'rgba(176,176,198,.38)');gr.addColorStop(.6,'rgba(186,186,206,.2)');gr.addColorStop(1,'rgba(190,190,210,0)');}
+      c.fillStyle=gr;c.beginPath();c.arc(x,y,rr,0,7);c.fill();}
+  }
+  if(medium()==='gouache')grainOver(c,0,0,cloudCv.width,cloudCv.height);
+  // only over open sky
+  c.globalCompositeOperation='destination-in';c.imageSmoothingEnabled=true;c.drawImage(skyMaskCv,r.x,r.y,r.w,r.h);c.globalCompositeOperation='source-over';
+  fg.save();fg.setTransform(1,0,0,1,0,0);fg.drawImage(cloudCv,0,0);fg.restore();
+  return I.clouds.length;
+}
