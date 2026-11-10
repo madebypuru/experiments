@@ -25,25 +25,34 @@ function makeClouds(){
   for(let k=0;k<n;k++){
     const d=Math.random(),w=r.w*lerp(.14,.26,d),y=lerp(top+r.h*.03,bot,d*.9+Math.random()*.1);
     const puffs=[];const np=5+((Math.random()*4)|0);
-    for(let j=0;j<np;j++){const u=j/(np-1)-.5,hump=Math.cos(u*Math.PI);
-      puffs.push({dx:u*w*.9+(Math.random()-.5)*w*.08,dy:-hump*w*.16*(.6+Math.random()*.5),r:w*(.13+.1*hump)*(.8+Math.random()*.4),ph:Math.random()*6,f:.04+Math.random()*.05});}
+    // irregular: bumps of very different sizes, unevenly spaced, the odd one missing so the outline breaks
+    for(let j=0;j<np;j++){const u=j/(np-1)-.5+(Math.random()-.5)*.12,hump=Math.cos(u*Math.PI);if(j>0&&j<np-1&&Math.random()<.18)continue;
+      puffs.push({dx:u*w*.9+(Math.random()-.5)*w*.1,dy:-hump*w*.16*(.4+Math.random()*.8),r:w*(.1+.12*hump)*(.6+Math.random()*.8),ph:Math.random()*6,f:.04+Math.random()*.05});}
     // gouache: the painting's own mark, short opaque dabs laid in rows across each puff, cool violet-grey
     // underneath, cream in the body, near-white on top; made once (seeded), so only the cloud moves
     // gouache, as a painter shapes a cloud: broad strokes to fill each puff, then curved strokes that follow its
     // rounded top (the light side), and a cool stroke or two along the base; made once (seeded) so only it moves
     const rng=seeded(1000+k*77),strokes=[],arc=(cx,cy,R,a0,a1,n=5)=>Array.from({length:n},(_,q)=>{const t=a0+(a1-a0)*q/(n-1);return [cx+Math.cos(t)*R,cy+Math.sin(t)*R];});
-    const cool=[.76,.75,.84],cream=[.95,.93,.89],light=[1,.99,.97];
+    // colours from the sky the cloud sits in: lit tops are the sky's own light, not pure white; the shade is the sky, cooler
+    const gx=clamp(Math.round((r.x+r.w*(k+.5)/n-r.x)/r.w*I.gw),0,I.gw-1),gy=clamp(Math.round((y-r.y)/r.h*I.gh),0,I.gh-1),si=gy*I.gw+gx;
+    const sk=[I.R[si],I.G[si],I.B[si]],mixc=(a,b,t)=>a.map((v,q)=>v+(b[q]-v)*t);
+    const light=mixc(sk,[1,.98,.94],.78),cream=mixc(sk,[.96,.93,.88],.62),cool=mixc(sk,[.62,.6,.72],.55);
     for(const p of puffs){
       for(const [yy,col] of [[.38,cool],[.12,cream],[-.14,cream],[-.42,cream]]){const half=Math.sqrt(Math.max(0,1-yy*yy))*p.r*.86,y0=p.dy+yy*p.r+(rng()-.5)*p.r*.08;
         strokes.push({pts:[[p.dx-half,y0],[p.dx,y0+(rng()-.5)*p.r*.1],[p.dx+half,y0]],w:p.r*.46,col:col.map(v=>v*(.97+rng()*.05)),look:strokeLook(rng,4)});}
       // the rounded top: two or three overlapping curved strokes, a little inside the edge
       const a0=Math.PI*(1.08+rng()*.06),a1=Math.PI*(1.92-rng()*.06),segs=2+((rng()*2)|0);
       for(let q=0;q<segs;q++){const t0=a0+(a1-a0)*(q/segs)-.12,t1=a0+(a1-a0)*((q+1)/segs)+.12;
-        strokes.push({pts:arc(p.dx,p.dy+p.r*.04,p.r*.6,t0,t1),w:p.r*.44,col:light.map(v=>v*(.98+rng()*.03)),look:strokeLook(rng,4)});}
+        strokes.push({pts:arc(p.dx,p.dy+p.r*.04,p.r*(.55+rng()*.1),t0,t1),w:p.r*(.38+rng()*.12),col:light.map(v=>v*(.97+rng()*.04)),look:strokeLook(rng,4),alpha:.8+rng()*.15});}
     }
     // a cool base along the bottom of the whole cloud
-    {const xs=puffs.map(p=>p.dx),base=Math.max(...puffs.map(p=>p.dy+p.r*.42)),x0=Math.min(...xs),x1=Math.max(...xs);
-      strokes.push({pts:[[x0,base],[(x0+x1)/2,base+w*.012],[x1,base]],w:w*.055,col:cool,look:strokeLook(rng,5)});}
+    // the base: a few short soft cool strokes, broken, not one stripe
+    {const xs=puffs.map(p=>p.dx),base=Math.max(...puffs.map(p=>p.dy+p.r*.42)),x0=Math.min(...xs),x1=Math.max(...xs),nb=3+((rng()*2)|0);
+      for(let q=0;q<nb;q++){const a=lerp(x0,x1,q/nb)+rng()*w*.05,b=a+(x1-x0)/nb*(.6+rng()*.5),yb=base+(rng()-.5)*w*.025;
+        strokes.push({pts:[[a,yb],[(a+b)/2,yb+w*.008],[b,yb]],w:w*(.035+rng()*.025),col:cool.map(v=>v*(.96+rng()*.06)),look:strokeLook(rng,4),alpha:.7+rng()*.2});}
+      // and a couple of thin strokes trailing downwind past the outline
+      for(let q=0;q<2;q++){const yb=lerp(Math.min(...puffs.map(p=>p.dy)),base,.35+rng()*.4),a=x1-w*.08,b=x1+w*(.12+rng()*.14);
+        strokes.push({pts:[[a,yb],[(a+b)/2,yb-w*.01],[b,yb+w*.005]],w:w*(.022+rng()*.015),col:cream,look:strokeLook(rng,3),alpha:.55+rng()*.25});}}
     out.push({x:r.x+r.w*(k+.2+Math.random()*.6)/n,y,w,d,puffs,strokes,seed:k*3.1+1,speed:lerp(.6,1.2,d)});
   }
   return out;
@@ -56,7 +65,7 @@ function cloudFrame(fg,dt){
     cl.x+=WORLD.wind*r.w*.012*cl.speed*dt; // about 1.2% of the painting a second in the usual breeze
     if(cl.x-cl.w>r.x+r.w)cl.x=r.x-cl.w;else if(cl.x+cl.w<r.x)cl.x=r.x+r.w+cl.w;
     const md=medium();
-    if(md==='gouache'){for(const st of cl.strokes)brushStroke(c,st.pts.map(([x,y])=>[cl.x+x,cl.y+y]),st.w,st.col,st.look,.97);continue;}
+    if(md==='gouache'){for(const st of cl.strokes)brushStroke(c,st.pts.map(([x,y])=>[cl.x+x,cl.y+y]),st.w,st.col,st.look,st.alpha??.92);continue;}
     if(md==='ink'){ // a flat pale wash underneath, then the pen: a scalloped top and a flat-ish base
       c.fillStyle='rgba(196,196,216,.32)';c.beginPath();for(const p of cl.puffs){c.moveTo(cl.x+p.dx+p.r*.9,cl.y+p.dy+p.r*.25);c.ellipse(cl.x+p.dx,cl.y+p.dy+p.r*.25,p.r*.9,p.r*.55,0,0,7);}c.fill();
       c.fillStyle='rgba(252,250,246,.9)';c.beginPath();for(const p of cl.puffs){c.moveTo(cl.x+p.dx+p.r*.95,cl.y+p.dy);c.arc(cl.x+p.dx,cl.y+p.dy,p.r*.95,0,7);}c.fill();
