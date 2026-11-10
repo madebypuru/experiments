@@ -118,13 +118,12 @@ For a photo it places bases from what was read; it never animates anything by ha
 - **Gulls** fly over water and other birds elsewhere, crossing the sky in 7–14 s. Clouds and ripples come from their own bases.
 - **During playback** it all runs while a transition plays, if Life is on, and in the painting's medium and light.
 
-## 8. The look, depth layers and export (`motion/depth.js`)
+## 8. The look and export (`motion/export.js`)
 
-- **The look** is the painting's state: season (spring, summer, autumn, winter), time of day (day, golden, dusk, night), weather (clear, rain, snow), life (on, off) and depth (flat, 2, 3, 4 layers). Changing one restores the finished painting and runs only the transition stages that lead to it (picked by their labels), fast-forwarded. Play runs them at their own pace and records them.
-- **Depth layers** keep every object whole. The ground is cut into bands by distance; each object goes into the band of whatever it rests on (placed lowest first, so a roof follows its walls and leaves their trunk); mountains and hills stay at the back. The sky, the paper and the soft painted edge are in the back layer and never move. Behind each nearer layer, the farther layers are filled from their own surroundings, so moving never opens a hole.
-- **Parallax**: each layer has a distance (how far it moves at the edge, in % of the width) and a speed (how quickly it catches up), with an exponential follow, so it eases without overshoot. Pointer on desktop, tilt on phones; the controls show a slow sweep while a slider is held, and hovering a layer's row shows only that layer.
-- **Download for a website**: one self-contained HTML file with the layers (WebP), the look, each layer's distance and speed, falling rain or snow if the weather has it, and reduced-motion respected. Moving life (people, birds, boats) is not in the export yet.
+- **The look** is the painting's state: season (spring, summer, autumn, winter), time of day (day, golden, dusk, night), weather (clear, rain, snow) and life (on, off). Changing one restores the finished painting and runs only the transition stages that lead to it (picked by their labels), fast-forwarded. Play runs them at their own pace and records them.
+- **Download for a website**: one self-contained HTML file with the painting in its look (WebP) and falling rain or snow if the weather has it; reduced motion is respected. Moving life (people, birds, boats) is not in the export yet.
+- Depth layers with parallax were tried and removed: cutting a painting into layers broke objects apart and the motion felt mechanical.
 
-## 8. Ideas for the director
+## 9. Ideas for the director
 
 Once the bases exist, animating any picture is a placing job, not an animating job. The director reads the masks (from scene roles, or later from photo segmentation) and the scale, then picks bases and counts from their placement rules: birds and clouds in open sky, people on paths and pavements, ripples, reflections and a moored boat on water, sway in trees, lights in windows at night. It also chooses which story fits: day to night for buildings, seasons for trees, rain for streets.

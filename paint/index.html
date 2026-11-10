@@ -19,8 +19,7 @@
 <style>
   :root{--ink:#4d4238;--muted:#6f6357;--paper:#fbf8f1}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Shantell Sans",ui-rounded,system-ui,sans-serif}
-  #c,#gc,#ink,#snow,#life,#figs,#depth{position:fixed;inset:0;width:100%;height:100%}
-  #depth{display:none;pointer-events:none}
+  #c,#gc,#ink,#snow,#life,#figs{position:fixed;inset:0;width:100%;height:100%}
   #c{background:#f5f2e9}
   /* the page under the painting matches the simulated paper's average tone (paper × .978), so no seam shows when the stage is scaled */
   body:not(.empty){background:#f5f2e9}
@@ -122,6 +121,12 @@
   .menu small{display:block;color:var(--muted);font-size:12.5px;margin-top:1px}
   /* one panel under the picture (beside it on desktop), showing only the current step */
   #panel{position:fixed;left:0;right:0;bottom:0;display:none;flex-direction:column;align-items:center;padding:8px 14px max(14px,env(safe-area-inset-bottom));z-index:2}
+  /* phone: the panel never grows past the room fitRect leaves under the picture (250px); longer content scrolls inside its own tab */
+  @media (max-width:899px){
+    #panel{background:#f5f2e9;max-height:250px;box-sizing:border-box}
+    .tabpane{max-height:172px;overflow-y:auto;justify-content:flex-start;padding-top:2px}
+    .playing #panel>section{overflow-y:auto;max-height:228px}
+  }
   .setup #panel,.painting #panel,.done #panel{display:flex}
   #panel>section{display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:520px}
   .setup #panel>[data-for=setup],.painting #panel>[data-for=painting],.done #panel>[data-for=done]{display:flex}
@@ -152,13 +157,7 @@
   .setrow .lbl{font-size:13.5px;color:var(--muted);min-width:56px}
   .setrow .seg button{padding:6px 7px;font-size:13px}
   .setrow .lbl{min-width:0}
-  #depthCtl{display:flex;flex-direction:column;gap:6px;width:100%;padding-top:8px;border-top:1px solid rgba(90,70,40,.12)}
-  #depthCtl[hidden]{display:none}
-  .dhead,.drow{display:grid;grid-template-columns:72px 1fr 1fr;gap:8px;align-items:center}
-  .dhead span{font-size:12px;color:var(--muted)}
-  .drow .lbl{font-size:13px;color:var(--ink)}
-  .drow input{width:100%;accent-color:var(--ink)}
-  .drow:hover .lbl{text-decoration:underline}
+
   .seg{display:inline-flex;border-radius:999px;box-shadow:0 0 0 1px rgba(90,70,40,.25);overflow:hidden}
   .seg button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:0;padding:7px 11px;cursor:pointer}
   .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
@@ -235,7 +234,6 @@
         <div class="setrow"><span class="lbl">Time</span><span class="seg" data-k="time" role="group" aria-label="Time of day"><button data-v="day">Day</button><button data-v="golden">Golden</button><button data-v="dusk">Dusk</button><button data-v="night">Night</button></span></div>
         <div class="setrow"><span class="lbl">Weather</span><span class="seg" data-k="weather" role="group" aria-label="Weather"><button data-v="clear">Clear</button><button data-v="rain">Rain</button><button data-v="snow">Snow</button></span></div>
         <div class="setrow"><span class="lbl">Life</span><span class="seg" data-k="life" role="group" aria-label="Life"><button data-v="on">On</button><button data-v="off">Off</button></span></div>
-        <div class="setrow"><span class="lbl">Depth</span><span class="seg" data-k="depth" role="group" aria-label="Depth layers"><button data-v="0">Flat</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></span></div>
       </div>
       <button class="btn" id="storyBtn" hidden>Play the scene's story</button>
       <button class="btn" id="exportBtn">Download for a website</button>
@@ -266,7 +264,7 @@
 <script src="motion/understand.js"></script>
 <script src="motion/director.js"></script>
 <script src="motion/weather.js"></script>
-<script src="motion/depth.js"></script>
+<script src="motion/export.js"></script>
 <!-- before the main script, so a cached photo can never start painting before the gouache painter exists -->
 <script src="gouache.js"></script>
 <script>
@@ -1056,7 +1054,7 @@ function frame(now){
   }else if(state==='done'){advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));}
   if(state!=='empty'&&Wt)show();
   if(GC()&&(state==='painting'||state==='done')&&typeof gcFrame==='function')gcFrame();
-  snowFrame(dt);spriteFrame(dt);safely('depth',()=>depthFrame(dt));
+  snowFrame(dt);spriteFrame(dt);
   if(state!=='empty'&&Wt)recordFrame(dt);
 }
 
@@ -1454,12 +1452,12 @@ $('hit').addEventListener('pointerdown',e=>{
 // ---------- animating the finished painting ----------
 // Each choice makes a real change to the painting (glazes, lifts, dabs, light), and the video shows
 // only that change: the painting itself is already done.
-// ---------- the look: the painting's season, time of day, weather, life and depth ----------
+// ---------- the look: the painting's season, time of day, weather and life ----------
 // Each is a state, not an animation. Changing one restores the finished painting and runs only the stages that
 // lead to the chosen state, fast-forwarded, so it lands there in about a second. Play runs the same stages at
 // their own pace and records them. The stages are the transitions' own (seasonEvents, nightEvents, rainEvents,
 // and gouache's gcSeasons, gcNight, gcRain), picked by their labels.
-const LOOK={season:'summer',time:'day',weather:'clear',life:true,depth:0};
+const LOOK={season:'summer',time:'day',weather:'clear',life:true};
 const SEASON_STAGES={summer:[],autumn:['Autumn'],winter:['Autumn','Winter'],spring:['Autumn','Winter','Spring']};
 const TIME_STAGES={day:[],golden:['Golden hour'],dusk:['Golden hour','Dusk'],night:['']}; // '' = every stage
 const ANIM=new Set(['life']); // kept for the scene's story and old links
@@ -1479,10 +1477,10 @@ function showAnim(){const av=animAvail();
   document.querySelectorAll('#look .seg').forEach(g=>{const k=g.dataset.k,v=k==='life'?(LOOK.life?'on':'off'):String(LOOK[k]);
     g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));});
   $('storyBtn').hidden=!av.story;$('playBtn').style.visibility='';
-  $('animDesc').textContent='Each setting changes the painting straight away. Play shows it happening and records it; Download for a website gives you the painting, its depth and its settings as one file.';}
+  $('animDesc').textContent='Each setting changes the painting straight away. Play shows it happening and records it; Download for a website gives you the painting in this look as one file.';}
 document.querySelectorAll('#look .seg button').forEach(b=>b.onclick=()=>{const k=b.parentElement.dataset.k,v=b.dataset.v;
-  if(k==='life')LOOK.life=v==='on';else if(k==='depth')LOOK.depth=+v;else LOOK[k]=v;
-  showAnim();if(k==='depth'){setDepth(LOOK.depth);return;}applyLook(k==='life'?'life':false);});
+  if(k==='life')LOOK.life=v==='on';else LOOK[k]=v;
+  showAnim();applyLook(k==='life'?'life':false);});
 // put the painting in its look: instantly (a setting changed) or played and recorded (the play button)
 function applyLook(how){
   if(!(state==='done'||(state==='painting'&&animRan)))return;
@@ -1536,7 +1534,7 @@ function saveImage(){
 };
 function sizeAll(){setupGL();Object.assign($('stage').style,{width:W+'px',height:H+'px'});const dpr=Math.min(2,devicePixelRatio||1),gcEl=$("gc");for(const id of ['gcFx','gcGlow']){$(id).width=W*dpr;$(id).height=H*dpr;}gcEl.width=inkCv.width=snowCv.width=lifeCv.width=figCv.width=figMask.width=W*dpr;gcEl.height=inkCv.height=snowCv.height=lifeCv.height=figCv.height=figMask.height=H*dpr;}
 const snowCv=$('snow'),sctx=snowCv.getContext('2d');let flakes=[];
-inkCv.after(depthCv);depthCv.after(lifeCv);lifeCv.after(figCv); // depth layers cover the painting; moving things go on top
+inkCv.after(lifeCv);lifeCv.after(figCv);
 // things placed in picture coordinates move and scale with the stage
 for(const id of ['brush','focusTag','playBtn'])$('stage').appendChild($(id));
 let fuMask=null;
