@@ -124,6 +124,9 @@
   .setup #panel,.painting #panel,.done #panel{display:flex}
   #panel>section{display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:520px}
   .setup #panel>[data-for=setup],.painting #panel>[data-for=painting],.done #panel>[data-for=done]{display:flex}
+  /* while an animation plays, its chips stay under the progress so things can be added or taken away live */
+  .playing #panel>[data-for=done]{display:flex}.playing [data-for=done] .tabs,.playing [data-for=done] .tabpane{display:none!important}.playing [data-for=done] .tabpane[data-tab=animate]{display:flex!important;min-height:0}
+  .playing #panel>section{height:auto!important}.playing [data-for=done]{border-top:1px solid rgba(90,70,40,.12);padding-top:12px;margin-top:4px}
   .desc{margin:0;font-size:14px;color:var(--muted);text-align:center;line-height:1.35;min-height:1.35em}
   .tabs{display:flex;gap:4px;justify-content:center;border-top:1px solid rgba(90,70,40,.12);padding-top:8px;width:100%}
   .tabs button{font:inherit;font-size:15px;background:none;border:0;color:var(--muted);padding:7px 16px;border-radius:999px;cursor:pointer}
@@ -984,7 +987,7 @@ let events=[],active=[],simT=0,state='empty',fast=false,chunk=300,doneAt=0,dtHol
 const $=id=>document.getElementById(id),statusEl=$('status'),brushEl=$('brush'),progEl=$('prog');
 const HINT={empty:'',setup:'',
   done:'Finished. Choose what to animate, then Play: the video shows the change itself, not the painting.'};
-function setState(s){state=s;document.body.className=s+' style-'+STYLE+(Q.has('still')?' still':'')+(lastVideo?' hasvideo':'')+(IM&&IM.scene&&IM.scene.timeline?' hastimeline':'');
+function setState(s){state=s;document.body.className=s+(s==='painting'&&animRan?' playing':'')+' style-'+STYLE+(Q.has('still')?' still':'')+(lastVideo?' hasvideo':'')+(IM&&IM.scene&&IM.scene.timeline?' hastimeline':'');
   if(s==='done'&&!animRan&&Wt&&IM)saveSnapshot();
   if(s==='done'&&!spritesOn&&sprites.length){spritesOn=true;spriteClock=0;ambBase=null;amb=null;}
   if(s==='done'&&rec)setTimeout(stopRecording,1500);
