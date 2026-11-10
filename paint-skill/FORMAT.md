@@ -112,6 +112,8 @@ Sprites always pass **in front of** the painting; they can't go behind a buildin
 
 ## 4b. People and cyclists: figures
 
+Only add people when the description asks for them. A scene described without people has none: no figures, and no standing people drawn in.
+
 Don't draw people as sprites: a picture of a person slid along a line looks like a cut-out skating. Use a **figure** instead. Paint draws it fresh every frame from a walking solver: the planted foot stays still on the ground, the heel peels off, the other leg swings through, the hips rise and dip, the arms swing opposite the legs, a coat or dress hem moves with the stride, pedals turn with the wheels. Its speed comes from its size and gait, so it can never slide. A figure is an **empty** `g`:
 
 ```xml

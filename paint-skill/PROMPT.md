@@ -21,7 +21,7 @@ You write one SVG file. The Paint tool turns it into a watercolour painted by a 
 3. **Build the subject completely before anything around it:** its shapes, light and shadow sides, windows, detail. Then look at it on its own. Is it in proportion to the scale, does it read at a glance, is the light consistent? Fix it now: a weak subject can't be rescued by its surroundings, and every later part is sized against it.
 4. **Then the surroundings,** with less detail the further they are from the focus.
 5. **Label every part** with `data-role` (see "Roles" below).
-6. **Add life** if the scene has it: one to five people as figures (walkers, runners, cyclists; Paint animates their legs and pace), and sprites for birds, a boat, an animal, smoke from a chimney. Size them from the scale and time the sprites from the table below.
+6. **Add life** if the scene has it: people (as figures: walkers, runners, cyclists; Paint animates their legs and pace) **only when the description asks for people** ("a few people crossing", "a cyclist", "a farmer"), and sprites for birds, a boat, an animal, smoke from a chimney. Size them from the scale and time the sprites from the table below.
 7. **Write the timeline** if an animation was asked for, or if the scene suggests one (a street at dusk wants lights coming on).
 8. **Check it.** Go through "What makes a scene fail" and the checklist at the end, and fix anything that fails. If you can run commands, run `python3 check-scene.py scene.svg`: it measures sprite speeds, steps, timings and labels, and says what to change. Reply with the SVG only.
 
@@ -65,6 +65,7 @@ Choose one scale (units per metre) in the plan and draw everything from it. Thin
 - **Trees and hedges:** a trunk (`trunk`) and a few main branches (`branch`) as tapering paths or strokes, then the canopy as **many overlapping leaf clusters** (ellipses about a tenth to a quarter of the canopy's width, so 12 to 40 clusters a tree) in two to four greens: lighter on the lit side and on top, darker underneath and inside (role `foliage`). Never a single smooth blob. Let some sky show between clusters near the edges.
 - **Grass and ground:** a base colour with a few soft bands of lighter and darker colour, and small tufts or flowers near the front.
 - **Water:** horizontal bands, darker and more saturated near you, with a few light streaks; reflections of the subject as broken horizontal pieces. Label it `water` and Paint adds moving ripples.
+- **People only when asked.** Don't add any people, moving or standing, unless the description mentions them (people, a person, a crowd, walkers, a cyclist, a farmer, children…). A street, a harbour or a park on its own gets no one: birds, boats, smoke, clouds and lights carry its life.
 - **People:** anyone who moves is a figure (`data-figure`), which Paint walks for you. People who stand still (someone at a café table, a shopkeeper in a doorway) are drawn as shapes with role `figure`: small, simple and in proportion (head about one seventh of their height), a body in a clear colour (red, yellow, blue clothes read beautifully), legs, sometimes a bag, umbrella or hat, and a short cast shadow.
 - **Detail density:** the focus gets the most detail (window bars, roof tiles hinted with a few lines, signage shapes, railings); the edges get the least.
 
@@ -113,6 +114,7 @@ These are the mistakes that most often spoil a painted scene. Check for each one
 - **Too much at once:** more than four things moving in view, or more than eight light numbers so the lights drag on.
 - **Timelines that drag:** over 45 seconds, captions longer than a few words, glazes above 0.85 that bury the painting (build darkness in two glazes).
 - **Colours that fight:** a sky glazed green by a yellow over blue, pure black darks, or a palette of more than six main colours.
+- **Uninvited people:** figures or standing people in a scene whose description didn't mention any.
 - **Leftovers:** objects nobody asked for that don't belong to the place. Every object should earn its place in this particular scene.
 - **Copies:** famous paintings, known characters, logos or brand names. New scenes are new.
 
@@ -128,6 +130,7 @@ These are the mistakes that most often spoil a painted scene. Check for each one
 - [ ] The parts effects need are labelled (sky, ground, roof, window, lamp, trunk, branch, foliage, water), and other parts have a role where one fits (`prop` for posts, furniture and jetties).
 - [ ] The focus has the most detail; the edges are calmer.
 - [ ] Sprites are drawn around (0, 0) (walking animals with paws on y 0), face right, are small, and their paths (and figures' paths) go through open space: they pass in front of everything. They use `data-scale-end` for depth and `data-fade-end` for smoke. Sprites and figures together are no more than 12.
+- [ ] There are people only if the description asked for them.
 - [ ] Every moving person is a `data-figure` with a height from the scale and a path along the ground; no person is a sprite.
 - [ ] Every sprite's duration comes from the speed table; walking animals have `data-step`; no two share a duration and delay; loops start and end off the canvas.
 - [ ] The timeline (if any) is valid JSON inside `<metadata id="paint-timeline">`, its targets are roles that exist in the scene, and it doesn't repeat what a preset already does (no `lights` step after `night`).
@@ -250,6 +253,8 @@ Size sprites from the scene's scale (a gull about 1 m across, a dog about 0.5 m 
 Sprites always pass **in front of** the painting; they can't go behind a building or a tree. Give them paths through open space: along a street, across the sky, over water. For a crowd or a smoke trail, use several sprites with staggered `data-delay`. Use solid fills inside sprites; for softness, use `data-fade-end`.
 
 ## 4b. People and cyclists: figures
+
+Only add people when the description asks for them. A scene described without people has none: no figures, and no standing people drawn in.
 
 Don't draw people as sprites: a picture of a person slid along a line looks like a cut-out skating. Use a **figure** instead. Paint draws it fresh every frame from a walking solver: the planted foot stays still on the ground, the heel peels off, the other leg swings through, the hips rise and dip, the arms swing opposite the legs, a coat or dress hem moves with the stride, pedals turn with the wheels. Its speed comes from its size and gait, so it can never slide. A figure is an **empty** `g`:
 
