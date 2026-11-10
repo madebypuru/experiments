@@ -1461,7 +1461,7 @@ setInterval(()=>{
   if(loopFor===sig)return;
   hideLoop();const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),v=document.createElement('video');
   v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.setAttribute('aria-hidden','true');v.id='loopVid';
-  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none',background:'#fbf8f1'});
+  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none',clipPath:`inset(${pad}px)`}); // the video's paper margin is cut off on screen, so it sits on the page's own paper
   $('stage').appendChild(v);v.play().catch(()=>{});loopVid=v;loopFor=sig;
 },300);
 
