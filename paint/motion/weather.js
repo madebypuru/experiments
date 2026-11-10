@@ -58,8 +58,14 @@ function stepRivulet(I,v,dt){const S=weatherSurfaces(I),sub=S.subject,{gw,gh}=I;
   return v.fade>0;}
 function rainFrame(g,dt){
   const I=IM,r=I.rect,sx=r.w/I.gw,sy=r.h/I.gh,md=medium(),lean=.12+.06*WORLD.wind;
-  if(rainOn&&drops.length<260)for(let k=0;k<9;k++){const x=r.x+Math.random()*(r.w+60)-30,gx=(x-r.x)/sx,L=landRow(I,gx,.55);
-    drops.push({x,y:r.y-10,v:rnd(480,680),l:rnd(9,17),stop:L?r.y+L.y*sy:r.y+r.h+20,kind:L?L.kind:'hard',ground:L?L.ground:true});}
+  // rain falls from the clouds: from under each cloud's base, drifting with it; with no cloud in view it falls from above
+  const clouds=(I.clouds||[]).filter(c=>c.x+c.w>r.x&&c.x-c.w<r.x+r.w);
+  if(rainOn&&drops.length<260)for(let k=0;k<9;k++){let x,y;
+    if(clouds.length){const c=clouds[(Math.random()*clouds.length)|0],xs=c.puffs.map(p=>p.dx),base=Math.max(...c.puffs.map(p=>p.dy+p.r*.45));
+      x=c.x+lerp(Math.min(...xs)-c.w*.05,Math.max(...xs)+c.w*.05,Math.random());y=c.y+base+rnd(-2,4);}
+    else{x=r.x+Math.random()*(r.w+60)-30;y=r.y-10;}
+    const gx=(x-r.x)/sx,L=landRow(I,gx,.55);
+    drops.push({x,y,v:rnd(480,680),l:rnd(9,17),stop:L?Math.max(y+8,r.y+L.y*sy):r.y+r.h+20,kind:L?L.kind:'hard',ground:L?L.ground:true});}
   // drips gather on the eaves and fall a short way
   const S=weatherSurfaces(I);if(rainOn&&S.eaves.length&&Math.random()<dt*14){const e=S.eaves[(Math.random()*S.eaves.length)|0];drips.push({x:r.x+e[0]*sx,y:r.y+e[1]*sy,v:0,life:rnd(.5,.9),age:0});}
   // the streaks, stopping where they land

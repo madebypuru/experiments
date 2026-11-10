@@ -9,15 +9,19 @@ const INK_LINE='rgba(46,38,52,.78)';
 
 // a gouache brushstroke along points (screen px): flat, opaque, tapering at the tail, with bristle streaks.
 // `look` is made once per stroke (strokeLook) so the stroke is identical every frame.
-function strokeLook(rng,n=6){return {w:.88+rng()*.2,jit:1+(rng()-.5)*.07,bristles:Array.from({length:n},(_,b)=>({off:(n>1?b/(n-1)-.5:0)*.8+(rng()-.5)*.12,t0:rng()*.12,t1:.55+rng()*.45,a:.25+rng()*.25,sh:1+(rng()-.5)*.22,w:.3+rng()*.35}))};}
+function strokeLook(rng,n=6){return {w:.88+rng()*.2,jit:1+(rng()-.5)*.07,capA:.45+rng()*.35,capB:.45+rng()*.35,bristles:Array.from({length:n},(_,b)=>({off:(n>1?b/(n-1)-.5:0)*.8+(rng()-.5)*.12,t0:rng()*.12,t1:.55+rng()*.45,a:.25+rng()*.25,sh:1+(rng()-.5)*.22,w:.3+rng()*.35}))};}
 function brushStroke(g,pts,width,col,look,alpha=.94){
   if(pts.length<2)return;const m=pts.length,N=[];
   for(let j=0;j<m;j++){const a=pts[Math.max(0,j-1)],b=pts[Math.min(m-1,j+1)],dx=b[0]-a[0],dy=b[1]-a[1],l=Math.hypot(dx,dy)||1;N.push([-dy/l,dx/l]);}
   const W=width*look.w,hw=t=>W/2*(t<.12?lerp(.7,1,t/.12):1-.35*smooth(.55,1,t)),c=col.map(v=>clamp(v*look.jit,0,1));
   const rgb=k=>`rgb(${c.map(v=>Math.round(clamp(v*k,0,1)*255)).join(',')})`;
+  // the body, with rounded, slightly squashed ends like a loaded brush (square ends read as bricks)
+  const cap=(j,h,sgn,sq)=>{const n=N[j],tx=-n[1]*sgn,ty=n[0]*sgn;for(let a=1;a<6;a++){const th=Math.PI*a/6,c=Math.cos(th),si=Math.sin(th);g.lineTo(pts[j][0]+n[0]*h*c*sgn+tx*h*si*sq,pts[j][1]+n[1]*h*c*sgn+ty*h*si*sq);}};
   g.globalAlpha=alpha;g.fillStyle=rgb(1);g.beginPath();
   for(let j=0;j<m;j++){const t=j/(m-1),h=hw(t);g[j?'lineTo':'moveTo'](pts[j][0]+N[j][0]*h,pts[j][1]+N[j][1]*h);}
+  cap(m-1,hw(1),1,look.capA??.6);
   for(let j=m-1;j>=0;j--){const t=j/(m-1),h=hw(t);g.lineTo(pts[j][0]-N[j][0]*h,pts[j][1]-N[j][1]*h);}
+  cap(0,hw(0),-1,look.capB??.6);
   g.closePath();g.fill();
   if(W>2.4){g.lineCap='round';
     for(const b of look.bristles){g.globalAlpha=alpha*b.a;g.strokeStyle=rgb(b.sh);g.lineWidth=Math.max(.4,W/look.bristles.length*b.w);g.beginPath();let first=true;

@@ -1467,6 +1467,7 @@ function playAnim(){
   const chosen=['story','seasons','rain','night'].filter(on),name=(chosen.length?chosen:['life']).join('-').replace('story','scene');
   // life: the scene's own moving things, or birds over the sky of a photo
   spritesOn=on('life')&&sprites.length>0;spriteClock=0;ambBase=null;amb=null;lifeOn=on('life');birds=on('life')&&!sprites.length&&!IM.photo?makeBirds():[];birdClock=0; // a read photo gets the director's cast instead
+  showAnim(); // the chips show what's playing, however it was started (a tap, the URL, the play button)
   if(GC())return gcPlay(on,name);
   beginTransition(name);
   let t=simT+1.2;const ev=[],add=list=>{if(!list||!list.length)return;ev.push(...list);t=Math.max(...list.map(e=>e.t+e.dur))+1;};

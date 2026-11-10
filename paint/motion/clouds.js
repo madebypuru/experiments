@@ -29,11 +29,21 @@ function makeClouds(){
       puffs.push({dx:u*w*.9+(Math.random()-.5)*w*.08,dy:-hump*w*.16*(.6+Math.random()*.5),r:w*(.13+.1*hump)*(.8+Math.random()*.4),ph:Math.random()*6,f:.04+Math.random()*.05});}
     // gouache: the painting's own mark, short opaque dabs laid in rows across each puff, cool violet-grey
     // underneath, cream in the body, near-white on top; made once (seeded), so only the cloud moves
-    const rng=seeded(1000+k*77),strokes=[],dw=w*.055,dl=dw*1.7;
-    for(const p of puffs)for(let yy=-p.r*.85;yy<=p.r*.7;yy+=dw*.75){const half=Math.sqrt(Math.max(0,p.r*p.r-yy*yy))*.92;
-      const u=(yy+p.r)/(1.7*p.r),col=u>.72?[.76,.75,.84]:u>.5?[.93,.91,.88]:u>.25?[.98,.96,.92]:[1,.99,.97];
-      for(let xx=-half;xx<=half-dl*.5;xx+=dl*(.7+rng()*.25)){const x0=p.dx+xx+(rng()-.5)*dw*.4,y0=p.dy+yy+(rng()-.5)*dw*.35,tilt=(rng()-.5)*dw*.3;
-        strokes.push({pts:[[x0,y0],[x0+dl*.5,y0+tilt*.5],[x0+dl,y0+tilt]],w:dw*(.85+rng()*.3),col:col.map(v=>v*(.97+rng()*.05)),look:strokeLook(rng,3)});}}
+    // gouache, as a painter shapes a cloud: broad strokes to fill each puff, then curved strokes that follow its
+    // rounded top (the light side), and a cool stroke or two along the base; made once (seeded) so only it moves
+    const rng=seeded(1000+k*77),strokes=[],arc=(cx,cy,R,a0,a1,n=5)=>Array.from({length:n},(_,q)=>{const t=a0+(a1-a0)*q/(n-1);return [cx+Math.cos(t)*R,cy+Math.sin(t)*R];});
+    const cool=[.76,.75,.84],cream=[.95,.93,.89],light=[1,.99,.97];
+    for(const p of puffs){
+      for(const [yy,col] of [[.38,cool],[.12,cream],[-.14,cream],[-.42,cream]]){const half=Math.sqrt(Math.max(0,1-yy*yy))*p.r*.86,y0=p.dy+yy*p.r+(rng()-.5)*p.r*.08;
+        strokes.push({pts:[[p.dx-half,y0],[p.dx,y0+(rng()-.5)*p.r*.1],[p.dx+half,y0]],w:p.r*.46,col:col.map(v=>v*(.97+rng()*.05)),look:strokeLook(rng,4)});}
+      // the rounded top: two or three overlapping curved strokes, a little inside the edge
+      const a0=Math.PI*(1.08+rng()*.06),a1=Math.PI*(1.92-rng()*.06),segs=2+((rng()*2)|0);
+      for(let q=0;q<segs;q++){const t0=a0+(a1-a0)*(q/segs)-.12,t1=a0+(a1-a0)*((q+1)/segs)+.12;
+        strokes.push({pts:arc(p.dx,p.dy+p.r*.04,p.r*.6,t0,t1),w:p.r*.44,col:light.map(v=>v*(.98+rng()*.03)),look:strokeLook(rng,4)});}
+    }
+    // a cool base along the bottom of the whole cloud
+    {const xs=puffs.map(p=>p.dx),base=Math.max(...puffs.map(p=>p.dy+p.r*.42)),x0=Math.min(...xs),x1=Math.max(...xs);
+      strokes.push({pts:[[x0,base],[(x0+x1)/2,base+w*.012],[x1,base]],w:w*.055,col:cool,look:strokeLook(rng,5)});}
     out.push({x:r.x+r.w*(k+.2+Math.random()*.6)/n,y,w,d,puffs,strokes,seed:k*3.1+1,speed:lerp(.6,1.2,d)});
   }
   return out;
@@ -61,6 +71,9 @@ function cloudFrame(fg,dt){
       else{gr.addColorStop(0,'rgba(176,176,198,.38)');gr.addColorStop(.6,'rgba(186,186,206,.2)');gr.addColorStop(1,'rgba(190,190,210,0)');}
       c.fillStyle=gr;c.beginPath();c.arc(x,y,rr,0,7);c.fill();}
   }
+  // rain clouds: they grey and darken while it rains, and clear again after
+  WORLD.rainAmt=clamp((WORLD.rainAmt||0)+(typeof rainOn!=='undefined'&&rainOn?dt/3:-dt/5),0,1);
+  if(WORLD.rainAmt>0){c.save();c.setTransform(1,0,0,1,0,0);c.globalCompositeOperation='source-atop';c.fillStyle=`rgba(96,100,118,${(.55*WORLD.rainAmt).toFixed(3)})`;c.fillRect(0,0,cloudCv.width,cloudCv.height);c.restore();}
   if(medium()==='gouache')grainOver(c,0,0,cloudCv.width,cloudCv.height);
   // only over open sky
   c.globalCompositeOperation='destination-in';c.imageSmoothingEnabled=true;c.drawImage(skyMaskCv,r.x,r.y,r.w,r.h);c.globalCompositeOperation='source-over';
