@@ -1253,7 +1253,8 @@ function spriteFrame(dt){
   const dpr=lifeCv.width/W,g=lifeCv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
   const fg=figCv.getContext('2d');fg.setTransform(dpr,0,0,dpr,0,0);fg.clearRect(0,0,W,H);let figs=0;
   // moving things run once the painting is done, and while a transition plays if Life is on
-  const live=IM&&IM.Fu&&(spritesOn||state==='done'||(state==='painting'&&animRan&&lifeOn)),ddt=dt*(fast?fastRate:1);
+  // moving things run only while Life is on: once the painting is done, and while an animation plays
+  const live=IM&&IM.Fu&&lifeOn&&(state==='done'||(state==='painting'&&animRan)),ddt=dt*(fast?fastRate:1);
   if(!live)return;
   worldStep(ddt); // one clock, one wind, one light for every base (motion/world.js)
   // ambient bases: they need no scene file, only where they can live
@@ -1391,7 +1392,7 @@ addEventListener('pointerdown',e=>{if(!$('newMenu').hidden&&!e.target.closest('.
 // the top bar: back (or stop), and the step's one main action
 let TAB='animate';
 function stopAnim(){events=[];active=[];fast=false;if(rec)rec.mr.onstop=null;stopRecording();
-  if(GC()){if(G)G.anim=null;gcRestore();}else if(snap)restoreSnapshot();rainOn=false;drops=[];snowOn=false;flakes=[];setState('done');}
+  if(GC()){if(G)G.anim=null;gcRestore();}else if(snap)restoreSnapshot();rainOn=false;drops=[];snowOn=false;flakes=[];resetWeather();setState('done');}
 $('topBack').onclick=()=>{if(state==='setup'){setState('empty');return;}
   if(state==='painting'&&animRan){stopAnim();return;}toSetup();};
 $('topPrimary').onclick=e=>{if(state==='setup'){goPaint();return;}
@@ -1440,10 +1441,22 @@ function animAvail(){const I=IM;if(!I)return {};const Pt=parts(),sc=I.scene;
 function showAnim(){const av=animAvail();
   document.querySelectorAll('#anim button').forEach(b=>{const k=b.dataset.a;b.hidden=!av[k];b.setAttribute('aria-pressed',!!(av[k]&&ANIM.has(k)));});
   const any=[...ANIM].some(k=>av[k]);$('playBtn').style.visibility=any?'':'hidden';
-  $('animDesc').textContent=any?'Press play on the picture. The video records only the change, never the painting.':'Pick at least one thing to animate.';}
+  $('animDesc').textContent=any?'Tap to add or take away; it changes on the picture straight away. Play runs it again from the start and records it.':'Tap something to bring the painting to life.';}
 document.querySelectorAll('#anim button').forEach(b=>b.onclick=()=>{const k=b.dataset.a;
   if(ANIM.has(k))ANIM.delete(k);else{ANIM.add(k);if(k==='story')['night','seasons','rain'].forEach(x=>ANIM.delete(x));else if(k!=='life')ANIM.delete('story');}
-  showAnim();});
+  showAnim();applyAnim(k);});
+// The chips act at once. Life shows or hides every moving thing right now, without restarting anything.
+// Rain, day to night, seasons and the scene's story restart the animation from the finished painting with
+// whatever is now chosen; when none is left, the painting goes back to how it was finished.
+function applyAnim(changed){
+  if(!(state==='done'||(state==='painting'&&animRan)))return;
+  const av=animAvail(),on=k=>ANIM.has(k)&&!!av[k];
+  lifeOn=on('life');spritesOn=lifeOn&&sprites.length>0;
+  birds=lifeOn&&!sprites.length&&!IM.photo?(birds.length?birds:makeBirds()):[];
+  if(changed==='life')return;
+  if(['story','seasons','rain','night'].some(on))playAnim();
+  else if(animRan)stopAnim();
+}
 function playAnim(){
   fast=false;fastRate=1; // a skip-ahead during painting must never carry into the animation
   resetWeather();castClock=0; // every playback starts from the beginning
