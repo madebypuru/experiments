@@ -124,8 +124,9 @@
   /* phone: the panel never grows past the room fitRect leaves under the picture (250px); longer content scrolls inside its own tab */
   @media (max-width:899px){
     #panel{background:#f5f2e9;max-height:250px;box-sizing:border-box}
-    .tabpane{max-height:172px;overflow-y:auto;justify-content:flex-start;padding-top:2px}
-    .playing #panel>section{overflow-y:auto;max-height:228px}
+    #panel .tabpane{max-height:172px;overflow-y:auto;justify-content:flex-start;padding-top:2px}
+    .playing #panel>section{overflow-y:auto;max-height:228px;justify-content:flex-start}
+    .playing [data-for=done]{margin-top:12px} /* room under Skip to the end, so the divider never clips it */
   }
   .setup #panel,.painting #panel,.done #panel{display:flex}
   #panel>section{display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:520px}
