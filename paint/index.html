@@ -867,7 +867,7 @@ function startRecording(name,opts={}){
   const c=document.createElement('canvas');c.width=ow;c.height=oh;
   const mr=new MediaRecorder(c.captureStream(30),{mimeType:type,videoBitsPerSecond:6e6}),chunks=[];
   mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-  const look=lookSig();mr.onstop=()=>{lastVideo={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name,look};document.body.classList.add('hasvideo');};
+  const look=lookSig(),loop=!!opts.loop;mr.onstop=()=>{if(!loop&&rec&&rec.loop)return;lastVideo={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name,look,loop};document.body.classList.add('hasvideo');};
   rec={c,g:c.getContext('2d'),mr,crop,ow,oh0,oh,band,caption:'',shown:'',fade:1};
   if(opts.loop)rec.loop={T:opts.loop,t:0,frames:[],started:false};else mr.start(250); // a loop starts recording after its first second
   lastVideo=null;document.body.classList.remove('hasvideo');
@@ -1320,7 +1320,9 @@ function spriteFrame(dt){
 }
 // a photo is read for its parts (motion/understand.js) while it paints; the bases pick it up when it's ready
 // (when it arrives, the director's birds replace any photo birds started before it was read)
-function readPhoto(I){if(I.scene)return;understandPhoto(I).then(p=>{if(IM!==I)return;I.photo=p;I.clouds=null;I.ripples=null;I.surfaces=null;birds=[];}).catch(e=>console.warn('Paint: could not read the photo',e));}
+function readPhoto(I){if(I.scene)return;understandPhoto(I).then(p=>{if(IM!==I)return;I.photo=p;I.clouds=null;I.ripples=null;I.surfaces=null;birds=[];
+  // seasons change leaves: once the photo is read, leaves are only what it calls trees and plants, never a green sign or door
+  if(p.source==='models'){const f=p.masks.foliage;I.leaf=f?boxBlur(f,I.gw,I.gh,1).map(v=>smooth(.2,.6,v)):new Float32Array(I.n);I.parts=null;}}).catch(e=>console.warn('Paint: could not read the photo',e));}
 // the scene's light falls on everything drawn opaque (people, clouds, smoke, glints): multiply by how much the
 // painting has darkened or cooled since it was finished, so nothing glows at night
 function lightOpaque(fg,dt){
@@ -1432,15 +1434,37 @@ $('topPrimary').onclick=e=>{if(state==='setup'){goPaint();return;}
 $('saveImg').onclick=()=>{$('saveMenu').hidden=true;saveImage();};
 $('saveVid').onclick=()=>{$('saveMenu').hidden=true;recordLook(8);}; // always the look as set in the panel, as a loop
 // a video of the painting in its look: its life, weather and light moving, without replaying any change
-function lookSig(){return JSON.stringify([LOOK.season,LOOK.time,LOOK.weather,LOOK.life,STYLE]);}
+function lookSig(){return JSON.stringify([LOOK.season,LOOK.time,LOOK.weather,LOOK.life,STYLE,IM&&(IM.uid||(IM.uid=Math.random().toString(36).slice(2))),IM&&Math.round(IM.rect.w)]);}
+// Save -> Video: the loop already showing, or (if it's still being made) wait for it
 function recordLook(sec){
-  if(state!=='done'||rec)return;const name=[LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop';
-  startRecording(name,{loop:sec});if(!rec){statusEl.textContent='This browser can\'t record video.';return;}
+  if(state!=='done')return;
+  const ready=()=>lastVideo&&lastVideo.loop&&lastVideo.look===lookSig();
+  if(ready()){saveVideo();return;}
+  if(!rec)startLoop(sec);if(!rec){statusEl.textContent='This browser can\'t record video.';return;}
   const tp=$('topPrimary'),was=tp.textContent;tp.disabled=true;
   const tick=setInterval(()=>{
     if(rec&&rec.loop){const L=rec.loop,left=Math.ceil(L.started?L.T-(L.t-L.t0):L.T+1-L.t);tp.textContent=`Recording ${Math.max(1,left)}s`;return;}
-    tp.textContent='Saving';if(!lastVideo)return;clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
+    tp.textContent='Saving';if(!ready()){if(!rec&&state==='done')startLoop(sec);return;}clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
 }
+// The preview is the video: once a look settles, its loop is recorded in the background and then plays over the
+// painting, framed exactly as the download is, so what you see is what you save. Any change drops it until the
+// new loop is ready.
+const LOOP_SEC=8;let loopVid=null,loopFor='',settled=0,lastSig='';
+function startLoop(sec){startRecording([LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop',{loop:sec||LOOP_SEC});}
+function hideLoop(){if(loopVid){loopVid.pause();loopVid.remove();URL.revokeObjectURL(loopVid.src);loopVid=null;loopFor='';}}
+setInterval(()=>{
+  const sig=state==='done'&&IM?lookSig():'';
+  if(sig!==lastSig){lastSig=sig;settled=performance.now();if(loopFor&&loopFor!==sig)hideLoop();}
+  if(!sig){hideLoop();return;}
+  const ready=lastVideo&&lastVideo.loop&&lastVideo.look===sig;
+  if(!ready){if(!rec&&performance.now()-settled>1200)startLoop();return;}
+  if(loopFor===sig)return;
+  hideLoop();const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),v=document.createElement('video');
+  v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.setAttribute('aria-hidden','true');v.id='loopVid';
+  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none',background:'#fbf8f1'});
+  $('stage').appendChild(v);v.play().catch(()=>{});loopVid=v;loopFor=sig;
+},300);
+
 addEventListener('pointerdown',e=>{if(!$('saveMenu').hidden&&!e.target.closest('.topr'))$('saveMenu').hidden=true;});
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;showTabs();});
 function showTabs(){document.body.dataset.tab=TAB;document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===TAB));}
