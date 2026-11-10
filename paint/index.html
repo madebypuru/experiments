@@ -189,7 +189,7 @@
   <button class="iconbtn" id="topBack" aria-label="Back"><svg class="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><svg class="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <div id="step"></div>
   <div class="topr"><button class="btn primary" id="topPrimary">Paint</button>
-    <div class="menu" id="saveMenu" hidden><button id="saveImg">Image<small>The painting, as a PNG</small></button><button id="saveVid">Video<small id="saveVidNote">The painting as it is now, moving (about 8 seconds)</small></button></div></div>
+    <div class="menu" id="saveMenu" hidden><button id="saveImg">Image<small>The painting, as a PNG</small></button><button id="saveVid">Video<small id="saveVidNote">A seamless loop of the painting as set, about 8 seconds</small></button></div></div>
 </header>
 <div id="focusTag">Tap the picture to choose the focus</div>
 <button id="playBtn" aria-label="Play the animation"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg></button>
@@ -859,7 +859,7 @@ function beginTransition(name){
 // recording runs from a moment before the change to a moment after.
 let rec=null,lastVideo=null;
 function captionFor(label){return /^(Night|Lifting out)/.test(label)?'Night':label.split(':')[0];}
-function startRecording(name){
+function startRecording(name,opts={}){
   if(rec||!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream)return;
   const types=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm'],type=types.find(t=>MediaRecorder.isTypeSupported(t));if(!type)return;
   const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),crop={x:r.x-pad,y:r.y-pad,w:r.w+2*pad,h:r.h+2*pad};
@@ -868,7 +868,8 @@ function startRecording(name){
   const mr=new MediaRecorder(c.captureStream(30),{mimeType:type,videoBitsPerSecond:6e6}),chunks=[];
   mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
   const look=lookSig();mr.onstop=()=>{lastVideo={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name,look};document.body.classList.add('hasvideo');};
-  rec={c,g:c.getContext('2d'),mr,crop,ow,oh0,oh,band,caption:'',shown:'',fade:1};mr.start(250);
+  rec={c,g:c.getContext('2d'),mr,crop,ow,oh0,oh,band,caption:'',shown:'',fade:1};
+  if(opts.loop)rec.loop={T:opts.loop,t:0,frames:[],started:false};else mr.start(250); // a loop starts recording after its first second
   lastVideo=null;document.body.classList.remove('hasvideo');
 }
 function recordFrame(dt){
@@ -879,6 +880,19 @@ function recordFrame(dt){
   g.globalCompositeOperation='multiply';g.drawImage(lifeCv,sx,sy,sw,sh,0,0,ow,oh0);g.drawImage(inkCv,sx,sy,sw,sh,0,0,ow,oh0);
   g.globalCompositeOperation='source-over';g.drawImage(figCv,sx,sy,sw,sh,0,0,ow,oh0);
   g.globalCompositeOperation='source-over';g.drawImage(snowCv,sx,sy,sw,sh,0,0,ow,oh0);
+  if(rec.loop)loopStep(rec,dt);
+}
+// A seamless loop: the first second is kept aside, then recording starts. Over the last second the live picture
+// fades into those kept frames, so the video's last frame is its first and it plays round without a jump.
+function loopStep(r,dt){
+  const L=r.loop;L.t+=dt;
+  if(!L.started&&L.t<=1){const c=document.createElement('canvas');c.width=r.ow;c.height=r.oh;c.getContext('2d').drawImage(r.c,0,0);L.frames.push({t:L.t,c});return;}
+  if(!L.started){L.started=true;L.t0=L.t;r.mr.start(250);return;}
+  const into=L.t-L.t0;
+  if(into>=L.T-1&&L.frames.length){const k=clamp(into-(L.T-1),0,1),e=k*k*(3-2*k),tt=k*L.frames[L.frames.length-1].t;
+    let f=L.frames[0];for(const fr of L.frames)if(fr.t<=tt)f=fr;
+    r.g.globalCompositeOperation='source-over';r.g.globalAlpha=e;r.g.drawImage(f.c,0,0);r.g.globalAlpha=1;}
+  if(into>=L.T)stopRecording();
 }
 function stopRecording(){if(rec){const r=rec;rec=null;try{r.mr.stop();}catch(e){}}}
 function saveVideo(){if(!lastVideo)return;const a=document.createElement('a');a.href=URL.createObjectURL(lastVideo.blob);
@@ -1272,7 +1286,7 @@ function spriteFrame(dt){
   const fg=figCv.getContext('2d');fg.setTransform(dpr,0,0,dpr,0,0);fg.clearRect(0,0,W,H);let figs=0;
   // moving things run once the painting is done, and while a transition plays if Life is on
   // moving things run only while Life is on: once the painting is done, and while an animation plays
-  const live=IM&&IM.Fu&&lifeOn&&(state==='done'||(state==='painting'&&animRan)),ddt=dt*(fast?fastRate:1);
+  const live=IM&&IM.Fu&&lifeOn&&(state==='done'||(state==='painting'&&animRan)),ddt=dt; // moving things always keep real time: only the painting fast-forwards
   if(!live)return;
   worldStep(ddt); // one clock, one wind, one light for every base (motion/world.js)
   // ambient bases: they need no scene file, only where they can live
@@ -1414,17 +1428,18 @@ function stopAnim(){events=[];active=[];fast=false;if(rec)rec.mr.onstop=null;sto
 $('topBack').onclick=()=>{if(state==='setup'){setState('empty');return;}
   if(state==='painting'&&animRan){stopAnim();return;}toSetup();};
 $('topPrimary').onclick=e=>{if(state==='setup'){goPaint();return;}
-  if(state==='done'){e.stopPropagation();const fresh=lastVideo&&lastVideo.look===lookSig();$('saveVidNote').textContent=fresh?'The change you just played':'The painting as it is now, moving (about 8 seconds)';$('saveMenu').hidden=!$('saveMenu').hidden;}};
+  if(state==='done'){e.stopPropagation();$('saveMenu').hidden=!$('saveMenu').hidden;}};
 $('saveImg').onclick=()=>{$('saveMenu').hidden=true;saveImage();};
-$('saveVid').onclick=()=>{$('saveMenu').hidden=true;if(lastVideo&&lastVideo.look===lookSig()){saveVideo();return;}recordLook(8);};
+$('saveVid').onclick=()=>{$('saveMenu').hidden=true;recordLook(8);}; // always the look as set in the panel, as a loop
 // a video of the painting in its look: its life, weather and light moving, without replaying any change
 function lookSig(){return JSON.stringify([LOOK.season,LOOK.time,LOOK.weather,LOOK.life,STYLE]);}
 function recordLook(sec){
-  if(state!=='done'||rec)return;const name=[LOOK.season,LOOK.time,LOOK.weather].join('-');
-  startRecording(name);if(!rec){statusEl.textContent='This browser can\'t record video.';return;}
-  const tp=$('topPrimary'),was=tp.textContent;tp.disabled=true;let left=sec;tp.textContent=`Recording ${left}s`;
-  const tick=setInterval(()=>{left--;tp.textContent=left>0?`Recording ${left}s`:'Saving';if(left>0)return;clearInterval(tick);stopRecording();
-    const wait=setInterval(()=>{if(!lastVideo)return;clearInterval(wait);tp.disabled=false;tp.textContent=was;saveVideo();},100);},1000);
+  if(state!=='done'||rec)return;const name=[LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop';
+  startRecording(name,{loop:sec});if(!rec){statusEl.textContent='This browser can\'t record video.';return;}
+  const tp=$('topPrimary'),was=tp.textContent;tp.disabled=true;
+  const tick=setInterval(()=>{
+    if(rec&&rec.loop){const L=rec.loop,left=Math.ceil(L.started?L.T-(L.t-L.t0):L.T+1-L.t);tp.textContent=`Recording ${Math.max(1,left)}s`;return;}
+    tp.textContent='Saving';if(!lastVideo)return;clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
 }
 addEventListener('pointerdown',e=>{if(!$('saveMenu').hidden&&!e.target.closest('.topr'))$('saveMenu').hidden=true;});
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{TAB=b.dataset.tab;showTabs();});

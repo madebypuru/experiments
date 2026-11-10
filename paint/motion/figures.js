@@ -32,7 +32,8 @@ function gaitPose(o,phase){
   const H=[40,hip];for(const q of f)q.k=ik(H,q.a,o.thigh,o.shin,1);
   return {hip:H,f,front:f[0].a[0]>=f[1].a[0]?0:1,bob:hip-o.rest};
 }
-const spring=(k,d)=>({x:0,v:0,step(t,dt){this.v+=(k*(t-this.x)-d*this.v)*dt;this.x+=this.v*dt;return this.x;}});
+// a damped spring; stepped in small slices so a long frame (a hiccup, a hidden tab) can never fling it round
+const spring=(k,d)=>({x:0,v:0,step(t,dt){dt=Math.min(dt,.1);const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++){const h=dt/n;this.v+=(k*(t-this.x)-d*this.v)*h;this.x+=this.v*h;}return this.x;}});
 
 function readFigure(g){
   const A=(k,d)=>g.getAttribute('data-'+k)||d,col=(k,d)=>/^#[0-9a-f]{6}$/i.test(A(k,''))?A(k,''):d;
