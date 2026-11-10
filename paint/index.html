@@ -19,7 +19,8 @@
 <style>
   :root{--ink:#4d4238;--muted:#6f6357;--paper:#fbf8f1}
   html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Shantell Sans",ui-rounded,system-ui,sans-serif}
-  #c,#gc,#ink,#snow,#life,#figs{position:fixed;inset:0;width:100%;height:100%}
+  #c,#gc,#ink,#snow,#life,#figs,#depth{position:fixed;inset:0;width:100%;height:100%}
+  #depth{display:none;pointer-events:none}
   #c{background:#f5f2e9}
   /* the page under the painting matches the simulated paper's average tone (paper × .978), so no seam shows when the stage is scaled */
   body:not(.empty){background:#f5f2e9}
@@ -146,6 +147,18 @@
     .looks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 12px}
     .look,.look img{width:118px}.look img{height:118px}
   }
+  .looks2{display:flex;flex-direction:column;gap:9px;width:100%}
+  .setrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .setrow .lbl{font-size:13.5px;color:var(--muted);min-width:56px}
+  .setrow .seg button{padding:6px 7px;font-size:13px}
+  .setrow .lbl{min-width:0}
+  #depthCtl{display:flex;flex-direction:column;gap:6px;width:100%;padding-top:8px;border-top:1px solid rgba(90,70,40,.12)}
+  #depthCtl[hidden]{display:none}
+  .dhead,.drow{display:grid;grid-template-columns:72px 1fr 1fr;gap:8px;align-items:center}
+  .dhead span{font-size:12px;color:var(--muted)}
+  .drow .lbl{font-size:13px;color:var(--ink)}
+  .drow input{width:100%;accent-color:var(--ink)}
+  .drow:hover .lbl{text-decoration:underline}
   .seg{display:inline-flex;border-radius:999px;box-shadow:0 0 0 1px rgba(90,70,40,.25);overflow:hidden}
   .seg button{font:inherit;font-size:14px;color:var(--ink);background:var(--paper);border:0;padding:7px 11px;cursor:pointer}
   .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
@@ -217,13 +230,15 @@
       <button class="btn" id="more">Add detail</button>
     </div>
     <div class="tabpane" data-tab="animate">
-      <span class="chips" id="anim" role="group" aria-label="What changes">
-        <button data-a="life" aria-pressed="true">Life</button>
-        <button data-a="night" aria-pressed="false">Day to night</button>
-        <button data-a="seasons" aria-pressed="false">Seasons</button>
-        <button data-a="rain" aria-pressed="false">Rain</button>
-        <button data-a="story" aria-pressed="false">The scene's story</button>
-      </span>
+      <div class="looks2" id="look">
+        <div class="setrow"><span class="lbl">Season</span><span class="seg" data-k="season" role="group" aria-label="Season"><button data-v="spring">Spring</button><button data-v="summer">Summer</button><button data-v="autumn">Autumn</button><button data-v="winter">Winter</button></span></div>
+        <div class="setrow"><span class="lbl">Time</span><span class="seg" data-k="time" role="group" aria-label="Time of day"><button data-v="day">Day</button><button data-v="golden">Golden</button><button data-v="dusk">Dusk</button><button data-v="night">Night</button></span></div>
+        <div class="setrow"><span class="lbl">Weather</span><span class="seg" data-k="weather" role="group" aria-label="Weather"><button data-v="clear">Clear</button><button data-v="rain">Rain</button><button data-v="snow">Snow</button></span></div>
+        <div class="setrow"><span class="lbl">Life</span><span class="seg" data-k="life" role="group" aria-label="Life"><button data-v="on">On</button><button data-v="off">Off</button></span></div>
+        <div class="setrow"><span class="lbl">Depth</span><span class="seg" data-k="depth" role="group" aria-label="Depth layers"><button data-v="0">Flat</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button></span></div>
+      </div>
+      <button class="btn" id="storyBtn" hidden>Play the scene's story</button>
+      <button class="btn" id="exportBtn">Download for a website</button>
       <p class="desc" id="animDesc">Pick what changes, then press play on the picture.</p>
     </div>
     <div class="tabpane" data-tab="style">
@@ -251,6 +266,7 @@
 <script src="motion/understand.js"></script>
 <script src="motion/director.js"></script>
 <script src="motion/weather.js"></script>
+<script src="motion/depth.js"></script>
 <!-- before the main script, so a cached photo can never start painting before the gouache painter exists -->
 <script src="gouache.js"></script>
 <script>
@@ -1040,7 +1056,7 @@ function frame(now){
   }else if(state==='done'){advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));}
   if(state!=='empty'&&Wt)show();
   if(GC()&&(state==='painting'||state==='done')&&typeof gcFrame==='function')gcFrame();
-  snowFrame(dt);spriteFrame(dt);
+  snowFrame(dt);spriteFrame(dt);safely('depth',()=>depthFrame(dt));
   if(state!=='empty'&&Wt)recordFrame(dt);
 }
 
@@ -1071,7 +1087,7 @@ function openImage(src){
     const go=()=>{
     if(Q.has('t')||Q.has('auto')||autoStart){autoStart=false;startPainting();if(IM.scene)paintSprites();}else setState('setup');
     if(Q.has('t')){fast=!Q.has('hold');const t=+Q.get('t');advance(Math.round(t*STEPS_PER_SEC));if((IW()||inkOn)&&simT>INK.start+INK.dur)drawInkUpTo(1e9);if(!events.length)setState('done');}
-    if(Q.get('play')){ANIM.clear();Q.get('play').split(',').forEach(k=>ANIM.add(k));playAnim();const at=+(Q.get('at')||8);advance(Math.round(at*STEPS_PER_SEC));fast=false;}
+    if(Q.get('play')){const ks=Q.get('play').split(',');if(ks.includes('night'))LOOK.time='night';if(ks.includes('rain'))LOOK.weather='rain';if(ks.includes('seasons'))LOOK.season='winter';LOOK.life=ks.includes('life');if(ks.includes('story'))ANIM.add('story');showAnim();playAnim();ANIM.delete('story');const at=+(Q.get('at')||8);advance(Math.round(at*STEPS_PER_SEC));fast=false;}
     if(Q.get('anim')){({night:dayToNight,seasons,scene:playTimeline})[Q.get('anim')]();const at=+(Q.get('at')||40);advance(Math.round(at*STEPS_PER_SEC));fast=false;
       if(Q.has('hold')){runInkJobs();for(let k=0;k<200;k++)snowFrame(.05);}}
     };
@@ -1438,46 +1454,63 @@ $('hit').addEventListener('pointerdown',e=>{
 // ---------- animating the finished painting ----------
 // Each choice makes a real change to the painting (glazes, lifts, dabs, light), and the video shows
 // only that change: the painting itself is already done.
-const ANIM=new Set(['life']);
+// ---------- the look: the painting's season, time of day, weather, life and depth ----------
+// Each is a state, not an animation. Changing one restores the finished painting and runs only the stages that
+// lead to the chosen state, fast-forwarded, so it lands there in about a second. Play runs the same stages at
+// their own pace and records them. The stages are the transitions' own (seasonEvents, nightEvents, rainEvents,
+// and gouache's gcSeasons, gcNight, gcRain), picked by their labels.
+const LOOK={season:'summer',time:'day',weather:'clear',life:true,depth:0};
+const SEASON_STAGES={summer:[],autumn:['Autumn'],winter:['Autumn','Winter'],spring:['Autumn','Winter','Spring']};
+const TIME_STAGES={day:[],golden:['Golden hour'],dusk:['Golden hour','Dusk'],night:['']}; // '' = every stage
+const ANIM=new Set(['life']); // kept for the scene's story and old links
 function animAvail(){const I=IM;if(!I)return {};const Pt=parts(),sc=I.scene;
-  return {night:true,seasons:Pt.leafArea>=.015,rain:true,life:!!(sc&&sc.sprites&&sc.sprites.length)||Pt.skyArea>.03,story:!!(sc&&sc.timeline)};}
-function showAnim(){const av=animAvail();
-  document.querySelectorAll('#anim button').forEach(b=>{const k=b.dataset.a;b.hidden=!av[k];b.setAttribute('aria-pressed',!!(av[k]&&ANIM.has(k)));});
-  const any=[...ANIM].some(k=>av[k]);$('playBtn').style.visibility=any?'':'hidden';
-  $('animDesc').textContent=any?'Tap to add or take away; it changes on the picture straight away. Play runs it again from the start and records it.':'Tap something to bring the painting to life.';}
-document.querySelectorAll('#anim button').forEach(b=>b.onclick=()=>{const k=b.dataset.a;
-  if(ANIM.has(k))ANIM.delete(k);else{ANIM.add(k);if(k==='story')['night','seasons','rain'].forEach(x=>ANIM.delete(x));else if(k!=='life')ANIM.delete('story');}
-  showAnim();applyAnim(k);});
-// The chips act at once. Life shows or hides every moving thing right now, without restarting anything.
-// Rain, day to night, seasons and the scene's story restart the animation from the finished painting with
-// whatever is now chosen; when none is left, the painting goes back to how it was finished.
-function applyAnim(changed){
-  if(!(state==='done'||(state==='painting'&&animRan)))return;
-  const av=animAvail(),on=k=>ANIM.has(k)&&!!av[k];
-  lifeOn=on('life');spritesOn=lifeOn&&sprites.length>0;
-  birds=lifeOn&&!sprites.length&&!IM.photo?(birds.length?birds:makeBirds()):[];
-  if(changed==='life')return;
-  if(['story','seasons','rain','night'].some(on))playAnim();
-  else if(animRan)stopAnim();
+  return {night:true,seasons:Pt.leafArea>=.015,rain:true,life:!!(sc&&sc.sprites&&sc.sprites.length)||Pt.skyArea>.03||!!(I.photo),story:!!(sc&&sc.timeline)};}
+function lookStages(t,gc){
+  const pick=(list,pre)=>!pre.length?[]:list.filter(e=>pre.some(p=>(e.label||'').startsWith(p)));
+  const S=gc?gcSeasons:seasonEvents,N=gc?gcNight:nightEvents,R=gc?gcRain:rainEvents,ev=[];
+  const add=list=>{if(!list.length)return;const t0=Math.min(...list.map(e=>e.t)),sh=t-t0;for(const e of list)e.t+=sh;ev.push(...list);t=Math.max(...list.map(e=>e.t+e.dur))+.6;};
+  if(LOOK.season!=='summer')add(pick(S(t),SEASON_STAGES[LOOK.season]));
+  if(LOOK.weather==='rain')add(R(t));
+  if(LOOK.weather==='snow'&&LOOK.season!=='winter')add(pick(S(t),gc?['Winter: snow settles']:['Winter: snow settles','Winter: a cold light']));
+  if(LOOK.time!=='day')add(pick(N(t),TIME_STAGES[LOOK.time]));
+  return ev;
 }
+function showAnim(){const av=animAvail();
+  document.querySelectorAll('#look .seg').forEach(g=>{const k=g.dataset.k,v=k==='life'?(LOOK.life?'on':'off'):String(LOOK[k]);
+    g.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));});
+  $('storyBtn').hidden=!av.story;$('playBtn').style.visibility='';
+  $('animDesc').textContent='Each setting changes the painting straight away. Play shows it happening and records it; Download for a website gives you the painting, its depth and its settings as one file.';}
+document.querySelectorAll('#look .seg button').forEach(b=>b.onclick=()=>{const k=b.parentElement.dataset.k,v=b.dataset.v;
+  if(k==='life')LOOK.life=v==='on';else if(k==='depth')LOOK.depth=+v;else LOOK[k]=v;
+  showAnim();if(k==='depth'){setDepth(LOOK.depth);return;}applyLook(k==='life'?'life':false);});
+// put the painting in its look: instantly (a setting changed) or played and recorded (the play button)
+function applyLook(how){
+  if(!(state==='done'||(state==='painting'&&animRan)))return;
+  lifeOn=LOOK.life;spritesOn=lifeOn&&sprites.length>0;birds=lifeOn&&!sprites.length&&!IM.photo?(birds.length?birds:makeBirds()):[];
+  if(how==='life')return;
+  const play=how==='play';fast=false;fastRate=1;resetWeather();castClock=0;spriteClock=0;ambBase=null;amb=null;
+  const gc=GC(),ev=lookStages(simT+(play?1.2:.1),gc);
+  const name=[LOOK.season!=='summer'&&LOOK.season,LOOK.weather!=='clear'&&LOOK.weather,LOOK.time!=='day'&&LOOK.time].filter(Boolean).join('-')||'life';
+  if(!ev.length&&!play){if(animRan)stopAnim();return;} // as painted
+  if(!ev.length)ev.push({t:simT+1.2,dur:12,label:'',make:()=>{},run(){}});else ev.push({t:Math.max(...ev.map(e=>e.t+e.dur)),dur:play?2.5:.2,label:'',make:()=>{},run(){}});
+  if(gc){if(!animRan||!gcSnapCv)gcSaveSnap();else gcRestore();animRan=true;if(play)startRecording(name);
+    G.anim=ev;const fb=$('finish');fb.disabled=false;fb.textContent='Skip to the end';passStart=simT;endT=Math.max(endT,Math.max(...ev.map(e=>e.t+e.dur))+.5);setState('painting');}
+  else{if(snap)restoreSnapshot();animRan=true;buildOrder();EVEN=1;if(play)startRecording(name);runExtra(ev);}
+  if(!play){fast=true;fastRate=60;}
+}
+// the scene's own story (a scene file's timeline) still plays as a whole
 function playAnim(){
-  fast=false;fastRate=1; // a skip-ahead during painting must never carry into the animation
-  resetWeather();castClock=0; // every playback starts from the beginning
-  const av=animAvail(),on=k=>ANIM.has(k)&&!!av[k];if(![...ANIM].some(k=>av[k]))return;
-  const chosen=['story','seasons','rain','night'].filter(on),name=(chosen.length?chosen:['life']).join('-').replace('story','scene');
-  // life: the scene's own moving things, or birds over the sky of a photo
-  spritesOn=on('life')&&sprites.length>0;spriteClock=0;ambBase=null;amb=null;lifeOn=on('life');birds=on('life')&&!sprites.length&&!IM.photo?makeBirds():[];birdClock=0; // a read photo gets the director's cast instead
-  showAnim(); // the chips show what's playing, however it was started (a tap, the URL, the play button)
-  if(GC())return gcPlay(on,name);
-  beginTransition(name);
-  let t=simT+1.2;const ev=[],add=list=>{if(!list||!list.length)return;ev.push(...list);t=Math.max(...list.map(e=>e.t+e.dur))+1;};
-  if(on('story'))add(timelineEvents(t));
-  else{if(on('seasons'))add(seasonEvents(t));if(on('rain'))add(rainEvents(t));if(on('night'))add(nightEvents(t));}
-  if(!ev.length)ev.push({t,dur:12,label:'',make:()=>{}});
-  else ev.push({t,dur:2.5,label:'',make:()=>{}}); // a moment to take in the end
+  fast=false;fastRate=1;resetWeather();castClock=0;
+  const av=animAvail(),on=k=>ANIM.has(k)&&!!av[k];
+  spritesOn=LOOK.life&&sprites.length>0;spriteClock=0;ambBase=null;amb=null;lifeOn=LOOK.life;birds=LOOK.life&&!sprites.length&&!IM.photo?makeBirds():[];birdClock=0;
+  if(!on('story'))return applyLook('play');
+  beginTransition('scene');
+  let t=simT+1.2;const ev=timelineEvents(t);ev.push({t:Math.max(t,...ev.map(e=>e.t+e.dur)),dur:2.5,label:'',make:()=>{}});
   runExtra(ev);
 }
-$('playBtn').onclick=playAnim;
+$('playBtn').onclick=()=>{ANIM.delete('story');playAnim();};
+$('storyBtn').onclick=()=>{ANIM.add('story');playAnim();ANIM.delete('story');};
+$('exportBtn').onclick=()=>exportForWeb();
 // birds for a photo with sky: a few, at different heights and speeds, flapping and gliding
 let birds=[],birdClock=0;
 function makeBirds(){const I=IM,Pt=parts();if(Pt.skyArea<.03)return [];
@@ -1503,7 +1536,7 @@ function saveImage(){
 };
 function sizeAll(){setupGL();Object.assign($('stage').style,{width:W+'px',height:H+'px'});const dpr=Math.min(2,devicePixelRatio||1),gcEl=$("gc");for(const id of ['gcFx','gcGlow']){$(id).width=W*dpr;$(id).height=H*dpr;}gcEl.width=inkCv.width=snowCv.width=lifeCv.width=figCv.width=figMask.width=W*dpr;gcEl.height=inkCv.height=snowCv.height=lifeCv.height=figCv.height=figMask.height=H*dpr;}
 const snowCv=$('snow'),sctx=snowCv.getContext('2d');let flakes=[];
-inkCv.after(lifeCv);lifeCv.after(figCv);
+inkCv.after(depthCv);depthCv.after(lifeCv);lifeCv.after(figCv); // depth layers cover the painting; moving things go on top
 // things placed in picture coordinates move and scale with the stage
 for(const id of ['brush','focusTag','playBtn'])$('stage').appendChild($(id));
 let fuMask=null;
