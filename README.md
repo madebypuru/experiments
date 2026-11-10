@@ -1,6 +1,6 @@
 # Experiments
 
-Small things made for fun.
+Small things made for fun. Live at https://madebypuru.github.io/experiments/
 
 ## meadow/
 
@@ -10,7 +10,7 @@ The paint is simulated on the GPU with WebGL2: a simplified version of Curtis et
 
 To publish it, upload the `meadow/` folder as it is. It's static files only: `index.html`, `favicon.svg`, `og.jpg` and `sounds/`. Two notes:
 
-- Change `og:image` in `meadow/index.html` to the full URL of `og.jpg` once you know it (for example `https://yoursite.com/meadow/og.jpg`). Most link previews need an absolute URL.
+- `og:image` and `og:url` in `meadow/index.html` point at the GitHub Pages address. Change both if you move it to another domain, because most link previews need an absolute URL.
 - It needs WebGL2 with float render targets, which current Chrome, Safari, Firefox and Edge all have. On an older browser it shows a short message instead.
 
 Fonts come from Google Fonts (Fredoka, Shantell Sans).
