@@ -21,8 +21,15 @@ function direct(I){
   // things standing in the photo (people, cars, posts) hide the ground behind them; the ground goes on behind,
   // so scanning each column upward, ground stays ground through anything that stands on it
   const stand=i=>Math.max(at(M.figure,i),at(M.vehicle,i),at(M.prop,i)),behind=new Float32Array(n);
-  for(let x=0;x<gw;x++){let g=stand((gh-1)*gw+x)>.5?.8:0; // someone cut off by the bottom edge is standing on ground we can't see
-    for(let y=gh-1;y>=0;y--){const i=y*gw+x,v=ground(i);if(v>.6)g=v;else if(stand(i)<.5)g=0;behind[i]=g;}}
+  // ...but only up to about a person's height above the last ground we saw, and never above the horizon:
+  // a tall boat, a wall-like prop or a crowd must not carry 'ground' up the picture and put walkers on walls
+  const hz=P.horizon;
+  for(let x=0;x<gw;x++){let g=at(M.figure,(gh-1)*gw+x)>.5?.8:0,lastY=gh-1; // a person cut off by the bottom edge stands on ground we can't see (a boat doesn't)
+    for(let y=gh-1;y>=0;y--){const i=y*gw+x,v=ground(i);
+      if(v>.6){g=v;lastY=y;}
+      else if(stand(i)<.5||y<hz+2||lastY-y>Math.max(4,P.personAt(lastY)*1.1))g=0;
+      behind[i]=g;}}
+  const seen=i=>ground(i)>.6; // ground actually visible there
   const walkAt=i=>behind[i];
   // what stands in the photo, each with the row its feet are on: nearer than a walker whose feet are higher up
   I.standing=components(Uint8Array.from({length:n},(_,i)=>stand(i)>.5?1:0),gw,gh).filter(o=>o.px.length>8);
@@ -35,7 +42,9 @@ function direct(I){
       while(x<gw&&!ok(x))x++;const x0=x;
       // a stretch of walkable ground; small gaps (a bollard, an unlabelled patch) don't break it
       let last=x;while(x<gw&&x-last<=gap){if(ok(x))last=x;x++;}x=last+1;
-      const len=x-x0;if(len>=Math.max(h*1.6,gw*.14))rows.push({y,x0,x1:x,h,len,edge:(x0<=1)+(x>=gw-1),road:at(M.road,y*gw+((x0+x)>>1))>.6});
+      // a walk needs ground you can really see along a good part of it, not only ground assumed behind things
+      let vis=0;for(let xx=x0;xx<x;xx++)if(seen(y*gw+xx))vis++;
+      const len=x-x0;if(len>=Math.max(h*1.6,gw*.14)&&vis>=len*.33)rows.push({y,x0,x1:x,h,len,edge:(x0<=1)+(x>=gw-1),road:at(M.road,y*gw+((x0+x)>>1))>.6});
       x++;}
   }
   // prefer stretches that reach an edge and mid-sized people; then spread them in depth
