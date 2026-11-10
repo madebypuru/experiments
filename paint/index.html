@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Paint</title>
+<meta name="description" content="Turn any photo into a watercolour, painted live in your browser by a simulation of water and pigment. Nothing is uploaded.">
+<meta name="theme-color" content="#fbf8f1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Paint">
+<meta property="og:description" content="Turn any photo into a watercolour, painted live in your browser.">
+<meta property="og:image" content="https://madebypuru.github.io/experiments/paint/og.jpg">
+<meta property="og:url" content="https://madebypuru.github.io/experiments/paint/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shantell+Sans:ital,wght@0,400;0,500;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#4d4238;--paper:#fbf8f1}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font-family:"Shantell Sans",ui-rounded,system-ui,sans-serif}
+  #c,#ink{position:fixed;inset:0;width:100%;height:100%}
+  #ink{mix-blend-mode:multiply;pointer-events:none}
+  #hit{position:fixed;inset:0;touch-action:none}
+  .painting #hit,.preview #hit{cursor:crosshair}
+  .title{position:fixed;left:20px;top:16px;font-size:17px;font-weight:500;pointer-events:none}
+  .title i{font-weight:400;opacity:.6;margin-left:6px}
+  #ref{position:fixed;opacity:0;pointer-events:none;transition:opacity .6s;object-fit:fill;border-radius:2px}
+  .preview #ref{opacity:.5}
+  #ring{position:fixed;width:0;height:0;pointer-events:none;opacity:0;transition:opacity .3s}
+  .preview #ring{opacity:1}
+  #ring::before{content:"";position:absolute;left:-36px;top:-36px;width:72px;height:72px;border-radius:50%;border:2px dashed rgba(77,66,56,.7);background:rgba(251,248,241,.18)}
+  #ring::after{content:"";position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
+  #thumb{position:fixed;right:18px;top:14px;max-width:120px;max-height:84px;border-radius:3px;opacity:0;transition:opacity .6s;box-shadow:0 0 0 1px rgba(90,70,40,.12)}
+  .painting #thumb,.done #thumb{opacity:.9}
+  .drop{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px}
+  .empty .drop{display:grid}
+  .drop .box{max-width:420px}
+  .drop h1{font-size:30px;font-weight:500;margin:0 0 10px}
+  .drop p{margin:0 0 22px;opacity:.75;line-height:1.5}
+  .btn{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:0;border-radius:999px;padding:9px 18px;cursor:pointer;box-shadow:0 0 0 1px rgba(90,70,40,.25)}
+  .btn.primary{background:var(--ink);color:var(--paper);box-shadow:none}
+  .btn:disabled{opacity:.4;cursor:default}
+  .dragging .drop .box{outline:2px dashed rgba(77,66,56,.5);outline-offset:24px;border-radius:12px}
+  .bar{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:none;flex-wrap:wrap;justify-content:center;gap:8px;align-items:center;max-width:calc(100vw - 24px)}
+  .preview .bar,.painting .bar,.done .bar{display:flex}
+  .bar .btn{padding:7px 14px;font-size:14px}
+  .switch[aria-pressed="true"]{background:var(--ink);color:var(--paper);box-shadow:none}
+  .status{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 52px);font-size:14px;opacity:.75;pointer-events:none;text-align:center;width:max-content;max-width:calc(100vw - 32px)}
+  .err{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px;background:var(--paper)}
+  input[type=file]{display:none}
+  .still .bar,.still .status,.still .title,.still #thumb{display:none}
+</style>
+</head>
+<body class="empty">
+<canvas id="c" aria-hidden="true"></canvas>
+<canvas id="ink" aria-hidden="true"></canvas>
+<img id="ref" alt="">
+<div id="ring"></div>
+<div id="hit" aria-label="Painting. Tap to move the focus."></div>
+<img id="thumb" alt="The photo being painted">
+<div class="title">Paint <i>photo to watercolour</i></div>
+<div class="drop"><div class="box">
+  <h1>Turn a photo into a watercolour</h1>
+  <p>It's painted live, wash by wash, by a simulation of water and pigment on paper. It paints the parts that matter and lets the rest fade to paper. Your photo stays on this device.</p>
+  <button class="btn primary" id="choose">Choose a photo</button>
+  <p style="margin-top:14px;font-size:13px">or drop or paste one here</p>
+</div></div>
+<div class="status" id="status"></div>
+<div class="bar" id="bar">
+  <button class="btn primary" id="go">Paint</button>
+  <button class="btn" id="finish">Finish now</button>
+  <button class="btn switch" id="inkBtn" aria-pressed="false">Ink</button>
+  <button class="btn" id="again">Repaint</button>
+  <button class="btn" id="save" disabled>Download</button>
+  <button class="btn" id="newPhoto">New photo</button>
+</div>
+<input type="file" id="file" accept="image/*">
+<div class="err" id="err"></div>
+<script>
+// Photo to watercolour, painted by the same small Curtis-style simulation as Meadow
+// (Curtis et al. 1997, simplified, on the GPU). Nothing here generates an image: the photo is
+// only read for colours, regions and edges, and turned into a list of washes a painter might lay.
+const cv=document.getElementById('c');
+const gl=cv.getContext('webgl2',{antialias:false,alpha:false});
+function fail(m){const e=document.getElementById('err');e.style.display='grid';e.textContent=m;throw new Error(m);}
+if(!gl)fail('This needs WebGL2, which this browser does not have.');
+if(!gl.getExtension('EXT_color_buffer_float'))fail('This browser cannot render to float textures, which the paint simulation needs.');
+const Q=new URLSearchParams(location.search);
+const rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+
+// ---------- GL plumbing ----------
+const VS=`#version 300 es
+in vec2 a;void main(){gl_Position=vec4(a,0,1);}`;
+const HEAD=`#version 300 es
+precision highp float;precision highp int;precision highp sampler2D;
+uniform ivec2 sz;
+ivec2 C(ivec2 p){return clamp(p,ivec2(0),sz-1);}
+`;
+function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
+  if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))fail(gl.getShaderInfoLog(s));return s;}
+function program(fs){
+  const p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,VS));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,HEAD+fs));
+  gl.bindAttribLocation(p,0,'a');gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))fail(gl.getProgramInfoLog(p));
+  const locs={};return {p,loc:k=>k in locs?locs[k]:(locs[k]=gl.getUniformLocation(p,k))};
+}
+const vao=gl.createVertexArray();gl.bindVertexArray(vao);
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+function tex(w,h,fl=true,data=null){
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+  if(fl)gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,w,h,0,gl.RGBA,gl.FLOAT,data);
+  else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,data);
+  for(const k of [gl.TEXTURE_MIN_FILTER,gl.TEXTURE_MAG_FILTER])gl.texParameteri(gl.TEXTURE_2D,k,gl.NEAREST);
+  for(const k of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T])gl.texParameteri(gl.TEXTURE_2D,k,gl.CLAMP_TO_EDGE);
+  return t;
+}
+const fbos=new Map();
+function fbo(outs){
+  const key=outs.map(t=>t.id).join(',');
+  if(!fbos.has(key)){const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);
+    outs.forEach((t,i)=>gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i,gl.TEXTURE_2D,t,0));
+    gl.drawBuffers(outs.map((_,i)=>gl.COLOR_ATTACHMENT0+i));fbos.set(key,f);}
+  return fbos.get(key);
+}
+let tid=0;
+function pair(w,h){const a=tex(w,h),b=tex(w,h);a.id=++tid;b.id=++tid;return {a,b,swap(){[this.a,this.b]=[this.b,this.a];}};}
+function draw(Pg,u,outs,vw,vh){
+  gl.bindFramebuffer(gl.FRAMEBUFFER,outs?fbo(outs):null);gl.viewport(0,0,vw,vh);gl.useProgram(Pg.p);
+  let unit=0;
+  for(const k in u){const l=Pg.loc(k);if(l==null)continue;const v=u[k];
+    if(v instanceof WebGLTexture){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,v);gl.uniform1i(l,unit++);}
+    else if(typeof v==='number')gl.uniform1f(l,v);
+    else if(v.i)v.i.length===1?gl.uniform1i(l,v.i[0]):gl.uniform2i(l,v.i[0],v.i[1]);
+    else if(v.length===2)gl.uniform2f(l,...v);else if(v.length===3)gl.uniform3f(l,...v);}
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
+
+// ---------- the simulation (as in Meadow) ----------
+const FLOW=program(`
+uniform sampler2D W,G,P;uniform float kw,kd,kg,kh,evap,evapEdge,front;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float w=texelFetch(W,p,0).x;vec3 g=texelFetch(G,p,0).rgb;vec4 pp=texelFetch(P,p,0);
+  float th=front*(.3+1.7*pp.b);
+  vec3 c=g/max(w,.002);
+  bool me=w>1e-4;float dw=0.,wn=0.;vec3 dg=vec3(0);
+  ivec2 O[4]=ivec2[4](ivec2(1,0),ivec2(-1,0),ivec2(0,1),ivec2(0,-1));
+  for(int i=0;i<4;i++){
+    ivec2 q=C(p+O[i]);
+    float wq=texelFetch(W,q,0).x;vec4 pq=texelFetch(P,q,0);
+    bool nq=wq>1e-4;wn+=float(nq);
+    float thq=front*(.3+1.7*pq.b);
+    bool both=me&&nq;
+    bool ok=both||(!me&&nq&&wq>th)||(me&&!nq&&w>thq);
+    if(!ok)continue;
+    vec3 gq=texelFetch(G,q,0).rgb,cq=gq/max(wq,.002);
+    float f=kw*min(pp.g,pq.g)*((wq+kh*pq.r)-(w+kh*pp.r));
+    if(!both)f*=kd;
+    f=clamp(f,-w*.24,wq*.24);
+    dw+=f;dg+=f*(f>0.?cq:c);
+    dg+=kg*min(w,wq)*(cq-c);
+  }
+  w+=dw;g=max(g+dg,0.);
+  if(w>0.)w=max(0.,w-evap-evapEdge*(1.-wn*.25));
+  oW=vec4(w,0,0,1);oG=vec4(g,1);
+}`);
+const SETTLE=program(`
+uniform sampler2D W,G,D,P;uniform float dep,gran,lift;
+layout(location=0) out vec4 oG;layout(location=1) out vec4 oD;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float w=texelFetch(W,p,0).x;vec3 g=texelFetch(G,p,0).rgb,d=texelFetch(D,p,0).rgb;float h=texelFetch(P,p,0).r;
+  float valley=(1.-h)*(1.-h);
+  float r=w<.003?1.:dep+gran*valley;
+  vec3 x=g*r;g-=x;d+=x;
+  if(w>=.003){vec3 l=d*lift*(.4+h);d-=l;g+=l;}
+  oG=vec4(g,1);oD=vec4(d,1);
+}`);
+// A wash read from the photo: per-cell pigment (rgb) and water (a), laid down a slice at a time.
+// O holds the order the brush reaches each cell (0..1); [lo,hi) is the slice laid this frame.
+const LAY=program(`
+uniform sampler2D W,G,F,O,P;uniform float lo,hi;
+layout(location=0) out vec4 oW;layout(location=1) out vec4 oG;
+void main(){
+  ivec2 p=ivec2(gl_FragCoord.xy);
+  float o=texelFetch(O,p,0).r;
+  float m=step(lo,o)*(1.-step(hi,o));
+  vec4 f=texelFetch(F,p,0);
+  m*=.9+.2*texelFetch(P,p,0).b;
+  oW=vec4(texelFetch(W,p,0).x+f.a*m,0,0,1);
+  oG=vec4(texelFetch(G,p,0).rgb+f.rgb*m,1);
+}`);
+const SHOW=program(`
+uniform sampler2D W,G,D,P;uniform vec2 scr;uniform float density,dpr;
+out vec4 o;
+float hh(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p),u=f*f*(3.-2.*f);
+  return mix(mix(hh(i),hh(i+vec2(1,0)),u.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),u.x),u.y);}
+float tooth(vec2 q){return .5*vn(q/2.4)+.3*vn(q/6.5)+.2*vn(q/18.);}
+vec4 bl(sampler2D T,vec2 s){ivec2 i=ivec2(floor(s));vec2 f=fract(s);
+  return mix(mix(texelFetch(T,C(i),0),texelFetch(T,C(i+ivec2(1,0)),0),f.x),mix(texelFetch(T,C(i+ivec2(0,1)),0),texelFetch(T,C(i+ivec2(1,1)),0),f.x),f.y);}
+void main(){
+  vec2 s=gl_FragCoord.xy/scr*vec2(sz)-.5;
+  vec2 q=gl_FragCoord.xy/dpr;
+  float h=tooth(q),rel=tooth(q+vec2(-.7,.7))-tooth(q+vec2(.7,-.7));
+  vec3 a=vec3(0);
+  for(int i=0;i<4;i++){vec2 j=vec2(i==0||i==2?-.4:.4,i<2?-.4:.4);a+=bl(D,s+j).rgb+bl(G,s+j).rgb*.85;}
+  a*=.25*density*(.8+.4*(1.-h));
+  float w=bl(W,s).x;
+  vec3 paper=vec3(.984,.969,.936)*(.978+.03*(h-.5)+.06*rel);
+  vec3 col=paper*exp(-a);
+  col*=1.-.06*smoothstep(0.,.08,w);
+  o=vec4(col,1);
+}`);
+const P={kw:.2,kd:.06,kg:.03,kh:.03,evap:.0005,evapEdge:.0012,front:.14,dep:.0004,gran:.0004,lift:.0003};
+const STEPS_PER_SEC=300,DENSITY=.6,PAPER=[.984,.969,.936];
+
+let W,H,SW,SH,S,Wt,Gt,Dt,paper,fieldTex,orderTex,fieldBuf;
+function hash(x,y,s){let h=Math.imul(x,374761393)+Math.imul(y,668265263)+Math.imul(s,982451653)|0;
+  h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296;}
+function vn(x,y,s){const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+  const a=hash(xi,yi,s),b=hash(xi+1,yi,s),c=hash(xi,yi+1,s),d=hash(xi+1,yi+1,s);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+function makePaper(){
+  const d=new Uint8Array(SW*SH*4),seed=Math.floor(Math.random()*1e6);
+  for(let y=0;y<SH;y++)for(let x=0;x<SW;x++){
+    const i=(y*SW+x)*4;
+    const h=.45*vn(x/3.2,y/3.2,seed)+.35*vn(x/8,y/8,seed+1)+.2*vn(x/22,y/22,seed+2);
+    const perm=.35+.65*(.7*vn(x/28,y/28,seed+3)+.3*vn(x/9,y/9,seed+4));
+    const res=clamp((.55*vn(x/12,y/12,seed+5)+.45*vn(x/40,y/40,seed+6)-.5)*1.7+.5,0,1);
+    d[i]=h*255;d[i+1]=perm*255;d[i+2]=res*255;d[i+3]=255;}
+  return tex(SW,SH,false,d);
+}
+function setupGL(){
+  W=innerWidth;H=innerHeight;const dpr=Math.min(2,devicePixelRatio||1);
+  cv.width=W*dpr;cv.height=H*dpr;
+  S=Math.min(1,Math.sqrt((+(Q.get('px'))||650000)/(W*H)));SW=Math.round(W*S);SH=Math.round(H*S);
+  for(const f of fbos.values())gl.deleteFramebuffer(f);fbos.clear();
+  Wt=pair(SW,SH);Gt=pair(SW,SH);Dt=pair(SW,SH);paper=makePaper();
+  fieldTex=tex(SW,SH);orderTex=tex(SW,SH);fieldBuf=new Float32Array(SW*SH*4);
+  clearAll();
+}
+function clearAll(){
+  gl.clearColor(0,0,0,0);
+  for(const p of [Wt,Gt,Dt])for(const t of [p.a,p.b]){gl.bindFramebuffer(gl.FRAMEBUFFER,fbo([t]));gl.clear(gl.COLOR_BUFFER_BIT);}
+}
+const sz=()=>({i:[SW,SH]});
+function step(){
+  draw(FLOW,{sz:sz(),W:Wt.a,G:Gt.a,P:paper,...P},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();
+  draw(SETTLE,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,...P},[Gt.b,Dt.b],SW,SH);Gt.swap();Dt.swap();
+}
+function lay(lo,hi){draw(LAY,{sz:sz(),W:Wt.a,G:Gt.a,F:fieldTex,O:orderTex,P:paper,lo,hi},[Wt.b,Gt.b],SW,SH);Wt.swap();Gt.swap();}
+function upload(t,buf){gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,SW,SH,0,gl.RGBA,gl.FLOAT,buf);}
+function show(){draw(SHOW,{sz:sz(),W:Wt.a,G:Gt.a,D:Dt.a,P:paper,scr:[cv.width,cv.height],density:DENSITY,dpr:cv.width/W},null,cv.width,cv.height);}
+
+// ---------- reading the photo ----------
+// Everything below runs on a small copy of the photo, one sample per simulation cell.
+function boxBlur(src,w,h,r){
+  r=Math.round(r);if(r<1)return Float32Array.from(src);
+  let a=Float32Array.from(src);const b=new Float32Array(src.length),inv=1/(2*r+1);
+  for(let pass=0;pass<3;pass++){
+    for(let y=0;y<h;y++){const o=y*w;let acc=0;for(let k=-r;k<=r;k++)acc+=a[o+clamp(k,0,w-1)];
+      for(let x=0;x<w;x++){b[o+x]=acc*inv;acc+=a[o+Math.min(w-1,x+r+1)]-a[o+Math.max(0,x-r)];}}
+    for(let x=0;x<w;x++){let acc=0;for(let k=-r;k<=r;k++)acc+=b[clamp(k,0,h-1)*w+x];
+      for(let y=0;y<h;y++){a[y*w+x]=acc*inv;acc+=b[Math.min(h-1,y+r+1)*w+x]-b[Math.max(0,y-r)*w+x];}}
+  }
+  return a;
+}
+function toLab(r,g,b){
+  const lin=c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
+  const R=lin(r),G=lin(g),B=lin(b);
+  const f=t=>t>.008856?Math.cbrt(t):7.787*t+16/116;
+  const fx=f((.4124*R+.3576*G+.1805*B)/.95047),fy=f(.2126*R+.7152*G+.0722*B),fz=f((.0193*R+.1192*G+.9505*B)/1.08883);
+  return [116*fy-16,500*(fx-fy),200*(fy-fz)];
+}
+function norm(a){let mn=Infinity,mx=-Infinity;for(const v of a){if(v<mn)mn=v;if(v>mx)mx=v;}const d=mx-mn||1;return a.map(v=>(v-mn)/d);}
+function quantile(a,q){const s=[];const st=Math.max(1,Math.floor(a.length/20000));for(let i=0;i<a.length;i+=st)s.push(a[i]);s.sort((x,y)=>x-y);return s[Math.floor(clamp(q,0,1)*(s.length-1))];}
+
+let IM=null; // the analysed photo
+function analyse(img){
+  // fit the photo into the page, leaving room for the title and the buttons
+  const top=58,bot=110,side=W<600?14:Math.max(24,W*.05);
+  const aw=W-side*2,ah=H-top-bot,ar=img.naturalWidth/img.naturalHeight;
+  let w=aw,h=aw/ar;if(h>ah){h=ah;w=ah*ar;}w*=.84;h*=.84;
+  const rect={x:(W-w)/2,y:top+(ah-h)/2,w,h};
+  const gx0=Math.round(rect.x*S),gy0=Math.round(rect.y*S),gw=Math.max(8,Math.round(rect.w*S)),gh=Math.max(8,Math.round(rect.h*S));
+  const c=document.createElement('canvas');c.width=gw;c.height=gh;const g=c.getContext('2d',{willReadFrequently:true});
+  g.imageSmoothingQuality='high';g.drawImage(img,0,0,gw,gh);
+  const px=g.getImageData(0,0,gw,gh).data,n=gw*gh;
+  let R=new Float32Array(n),G=new Float32Array(n),B=new Float32Array(n);
+  for(let i=0;i<n;i++){R[i]=px[i*4]/255;G[i]=px[i*4+1]/255;B[i]=px[i*4+2]/255;}
+  R=boxBlur(R,gw,gh,1);G=boxBlur(G,gw,gh,1);B=boxBlur(B,gw,gh,1);
+  for(let i=0;i<n;i++){const y=.3*R[i]+.59*G[i]+.11*B[i];R[i]=clamp(y+(R[i]-y)*1.35,0,1);G[i]=clamp(y+(G[i]-y)*1.35,0,1);B[i]=clamp(y+(B[i]-y)*1.35,0,1);}
+  const L=new Float32Array(n),La=new Float32Array(n),Lb=new Float32Array(n);
+  for(let i=0;i<n;i++){const l=toLab(R[i],G[i],B[i]);L[i]=l[0];La[i]=l[1];Lb[i]=l[2];}
+  // how much pigment each colour needs on this paper (absorbance, in simulation units)
+  const Ar=new Float32Array(n),Ag=new Float32Array(n),Ab=new Float32Array(n);
+  // dilute strong colours as a whole, so the hue survives
+  for(let i=0;i<n;i++){const r=-Math.log(clamp(R[i]/PAPER[0],.04,1))/DENSITY,g2=-Math.log(clamp(G[i]/PAPER[1],.04,1))/DENSITY,b=-Math.log(clamp(B[i]/PAPER[2],.04,1))/DENSITY;
+    const mx=Math.max(r,g2,b,1e-4),k=2.2*Math.tanh(mx/2.2)*.95/mx;Ar[i]=r*k;Ag[i]=g2*k;Ab[i]=b*k;}
+  const m=Math.min(gw,gh),rBig=Math.max(2,m*.018);
+  const Br=boxBlur(Ar,gw,gh,rBig),Bg=boxBlur(Ag,gw,gh,rBig),Bb=boxBlur(Ab,gw,gh,rBig);
+  const Lbig=boxBlur(L,gw,gh,Math.max(3,m*.04)),Lmid=boxBlur(L,gw,gh,Math.max(1,m*.012));
+  // highlights: left as bare paper
+  const HL=new Float32Array(n);{const Lh=boxBlur(L,gw,gh,1.5);for(let i=0;i<n;i++)HL[i]=smooth(88,95,Lh[i]);}
+  // colour regions: k-means in Lab
+  const K=10,cent=[];
+  for(let k=0;k<K;k++){const i=Math.floor(Math.random()*n);cent.push([L[i],La[i],Lb[i]]);}
+  const samp=[];for(let s=0;s<16000;s++)samp.push(Math.floor(Math.random()*n));
+  for(let it=0;it<10;it++){
+    const acc=cent.map(()=>[0,0,0,0]);
+    for(const i of samp){let best=0,bd=Infinity;for(let k=0;k<K;k++){const c2=cent[k],d=(L[i]-c2[0])**2+1.4*((La[i]-c2[1])**2+(Lb[i]-c2[2])**2);if(d<bd){bd=d;best=k;}}
+      const a=acc[best];a[0]+=L[i];a[1]+=La[i];a[2]+=Lb[i];a[3]++;}
+    acc.forEach((a,k)=>{if(a[3])cent[k]=[a[0]/a[3],a[1]/a[3],a[2]/a[3]];else{const i=samp[Math.floor(Math.random()*samp.length)];cent[k]=[L[i],La[i],Lb[i]];}});
+  }
+  const lab=new Uint8Array(n);
+  for(let i=0;i<n;i++){let best=0,bd=Infinity;for(let k=0;k<K;k++){const c2=cent[k],d=(L[i]-c2[0])**2+1.4*((La[i]-c2[1])**2+(Lb[i]-c2[2])**2);if(d<bd){bd=d;best=k;}}lab[i]=best;}
+  const clusters=cent.map((c2,k)=>({k,L:c2[0],A:[0,0,0],count:0}));
+  for(let i=0;i<n;i++){const cl=clusters[lab[i]];cl.A[0]+=Ar[i];cl.A[1]+=Ag[i];cl.A[2]+=Ab[i];cl.count++;}
+  for(const cl of clusters)if(cl.count)cl.A=cl.A.map(v=>v/cl.count);
+  // where the interest is: detail (edges) and colour that stands out from the whole
+  const E=new Float32Array(n),Cd=new Float32Array(n);
+  let ma=0,mb=0;for(let i=0;i<n;i++){ma+=La[i];mb+=Lb[i];}ma/=n;mb/=n;
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x,xr=Math.min(gw-1,x+1),xl=Math.max(0,x-1),yd=Math.min(gh-1,y+1),yu=Math.max(0,y-1);
+    E[i]=Math.hypot(Lmid[y*gw+xr]-Lmid[y*gw+xl],Lmid[yd*gw+x]-Lmid[yu*gw+x]);
+    Cd[i]=Math.hypot(La[i]-ma,Lb[i]-mb)+.3*Math.abs(L[i]-50);}
+  const sal=norm(boxBlur(norm(boxBlur(E,gw,gh,m*.03)).map((v,i)=>v),gw,gh,1)).map((v,i)=>v);
+  const col=norm(boxBlur(Cd,gw,gh,m*.04));
+  const S0=new Float32Array(n);for(let i=0;i<n;i++)S0[i]=.6*sal[i]+.4*col[i];
+  const Sshape=norm(boxBlur(S0,gw,gh,m*.05));
+  // a guess at the focus: the most interesting broad area, nudged toward the middle
+  const Sb=boxBlur(S0,gw,gh,m*.12);let best=0,bv=-1;
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x,dx=x/gw-.5,dy=y/gh-.5,v=Sb[i]*(1-.9*(dx*dx+dy*dy));if(v>bv){bv=v;best=i;}}
+  // ink: thin strong edges, traced into lines
+  IM={img,rect,gx0,gy0,gw,gh,n,R,G,B,L,Lbig,Lmid,Ar,Ag,Ab,Br,Bg,Bb,HL,lab,clusters,S0,Sshape,
+      focus:{x:(best%gw+.5)/gw,y:(Math.floor(best/gw)+.5)/gh},noise:Math.floor(Math.random()*1e6)};
+  IM.lines=traceInk(IM);
+  setFocus(IM.focus.x,IM.focus.y);
+}
+// The painted shape follows the subject: where the detail and colour are, pulled a little toward the
+// focus, kept as one main silhouette with a ragged edge. Outside it is bare paper.
+function keepMain(B,w,h){
+  const lab=new Int32Array(B.length).fill(-1),sizes=[];let id=0;
+  for(let s0=0;s0<B.length;s0++){if(!B[s0]||lab[s0]>=0)continue;let cnt=0;const st=[s0];lab[s0]=id;
+    while(st.length){const i=st.pop();cnt++;const x=i%w,y=(i-x)/w;
+      for(const j of [x>0?i-1:-1,x<w-1?i+1:-1,y>0?i-w:-1,y<h-1?i+w:-1])if(j>=0&&B[j]&&lab[j]<0){lab[j]=id;st.push(j);}}
+    sizes.push(cnt);id++;}
+  const big=Math.max(0,...sizes);return B.map((v,i)=>v&&sizes[lab[i]]>=big*.2?1:0);
+}
+function setFocus(fx,fy){
+  const I=IM,{gw,gh,n}=I,sd=I.noise,m=Math.min(gw,gh);I.focus={x:fx,y:fy};
+  const Fr=new Float32Array(n),fine=new Float32Array(n);
+  for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){const i=y*gw+x,u=x/gw,v=y/gh;
+    const prior=Math.exp(-(((u-fx)/.48)**2+((v-fy)/.48)**2)),edge=Math.min(u,1-u,v,1-v);
+    const wob=(vn(x/14,y/14,sd)-.5)*.5+(vn(x/40,y/40,sd+1)-.5)*.6;
+    Fr[i]=.8*I.Sshape[i]+.55*prior+.2*wob-.9*(1-smooth(0,.07,edge));
+    fine[i]=(vn(x/6,y/6,sd+2)-.5)+(vn(x/18,y/18,sd+3)-.5)*.7;}
+  const t=quantile(Fr,1-(+(Q.get('cover'))||.42));
+  const B=keepMain(Fr.map(v=>v>t?1:0),gw,gh);
+  const Bb=boxBlur(B,gw,gh,Math.max(2,m*.03)),sh=Bb.map((v,i)=>v+fine[i]*.13);
+  I.Fg=sh.map(v=>smooth(.4,.52,v));
+  // a looser, paler halo past the silhouette, so the shape dissolves instead of stopping
+  const Bw=boxBlur(B,gw,gh,Math.max(4,m*.09));
+  I.Fu=Bw.map((v,i)=>{const x=i%gw,y=(i-x)/gw,e=Math.min(x/gw,1-x/gw,y/gh,1-y/gh),n2=vn(x/30,y/30,sd+7)-.5;
+    return Math.max(I.Fg[i],smooth(.16,.3,v+fine[i]*.18+n2*.25))*smooth(0,.05+n2*.08+.03,e);});
+  I.Fa=boxBlur(I.Fg,gw,gh,Math.max(2,m*.05)).map(v=>smooth(.62,.88,v));
+  // near the edge the brush runs dry: horizontal streaks with paper showing through
+  I.dry=Bw.map((v,i)=>{const x=i%gw,y=(i-x)/gw,streak=smooth(.3,.62,vn(x/34,y/2.3,sd+5));return lerp(1,streak,1-smooth(.25,.6,v));});
+}
+function traceInk(I){
+  const {gw,gh,n,Lmid}=I,mag=new Float32Array(n),dir=new Uint8Array(n);
+  const Ls=boxBlur(I.L,gw,gh,1);
+  for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){const i=y*gw+x,
+    gx=(Ls[i-gw+1]+2*Ls[i+1]+Ls[i+gw+1])-(Ls[i-gw-1]+2*Ls[i-1]+Ls[i+gw-1]),
+    gy=(Ls[i+gw-1]+2*Ls[i+gw]+Ls[i+gw+1])-(Ls[i-gw-1]+2*Ls[i-gw]+Ls[i-gw+1]);
+    mag[i]=Math.hypot(gx,gy);const a=(Math.atan2(gy,gx)+Math.PI)%Math.PI;dir[i]=Math.round(a/(Math.PI/4))%4;}
+  const thin=new Float32Array(n),off=[[1,0],[1,1],[0,1],[-1,1]];
+  for(let y=1;y<gh-1;y++)for(let x=1;x<gw-1;x++){const i=y*gw+x,[dx,dy]=off[dir[i]];
+    if(mag[i]>=mag[i+dx+dy*gw]&&mag[i]>=mag[i-dx-dy*gw])thin[i]=mag[i];}
+  const hiT=quantile(thin.filter(v=>v>0),.9),loT=hiT*.5,keep=new Uint8Array(n),stack=[];
+  for(let i=0;i<n;i++)if(thin[i]>=hiT){keep[i]=1;stack.push(i);}
+  while(stack.length){const i=stack.pop(),x=i%gw,y=(i-x)/gw;
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const j=(y+dy)*gw+x+dx;if(j>=0&&j<n&&!keep[j]&&thin[j]>=loT){keep[j]=1;stack.push(j);}}}
+  const used=new Uint8Array(n),lines=[];
+  for(let i=0;i<n;i++){if(!keep[i]||used[i])continue;
+    const line=[];let cur=i;
+    while(cur>=0){used[cur]=1;line.push([cur%gw,Math.floor(cur/gw)]);
+      const x=cur%gw,y=Math.floor(cur/gw);let nx=-1;
+      for(let dy=-1;dy<=1&&nx<0;dy++)for(let dx=-1;dx<=1;dx++){const j=(y+dy)*gw+x+dx;if(j>=0&&j<n&&keep[j]&&!used[j]){nx=j;break;}}
+      cur=nx;}
+    if(line.length>=12)lines.push(line.filter((_,k)=>k%2===0||k===line.length-1));}
+  return lines;
+}
+
+// ---------- the painting plan ----------
+// Lightest first, like a painter: an underwash in bands, colour glazes light to dark,
+// dark accents, then (optionally) ink. Each wash is laid in brush sweeps, top to bottom.
+function buildOrder(){
+  const I=IM,b=new Float32Array(SW*SH*4),bands=Math.max(6,Math.round(I.gh/(SH*.035))),sd=I.noise+7;
+  for(let y=0;y<I.gh;y++)for(let x=0;x<I.gw;x++){
+    const wob=(vn(x/14,y/14,sd)-.5)*1.2,band=clamp(Math.floor(y/I.gh*bands+wob*.35),0,bands-1);
+    const dir=band%2?1-x/I.gw:x/I.gw;
+    b[((SH-1-(I.gy0+y))*SW+I.gx0+x)*4]=clamp((band+dir*.97+wob*.03)/bands,0,.9999);}
+  for(let i=0;i<SW*SH;i++)if(!b[i*4])b[i*4]=2; // cells outside the photo are never reached
+  upload(orderTex,b);
+}
+function fieldFrom(fn){
+  const I=IM;fieldBuf.fill(0);
+  for(let y=0;y<I.gh;y++)for(let x=0;x<I.gw;x++){const i=y*I.gw+x,v=fn(i);if(!v)continue;
+    const j=((SH-1-(I.gy0+y))*SW+I.gx0+x)*4;fieldBuf[j]=v[0];fieldBuf[j+1]=v[1];fieldBuf[j+2]=v[2];fieldBuf[j+3]=v[3];}
+  upload(fieldTex,fieldBuf);
+}
+function plan(){
+  const I=IM,ev=[];
+  // 1. underwash: a pale, broad version of the colours, very wet so neighbours run together
+  ev.push({t:.2,dur:2.4,label:'Laying a pale underwash',make:()=>fieldFrom(i=>{const m=I.Fu[i]*(1-I.HL[i])*I.dry[i];if(m<.01)return 0;
+    const k=lerp(.2,.42,I.Fg[i]),w=lerp(.32,.26,I.Fg[i]);   // past the shape: paler, wetter
+    return [k*I.Br[i]*m,k*I.Bg[i]*m,k*I.Bb[i]*m,w*m];})});
+  // 2. glazes: the colour regions, light to dark, in three goes so each can dry
+  const cl=I.clusters.filter(c=>c.count&&c.L<78).sort((a,b)=>b.L-a.L),groups=[[],[]];
+  cl.forEach((c,k)=>groups[Math.min(1,Math.floor(k/cl.length*2))].push(c.k));
+  const inGroup=g=>{const s=new Set(g),ind=new Float32Array(I.n);for(let i=0;i<I.n;i++)ind[i]=s.has(I.lab[i])?1:0;return boxBlur(ind,I.gw,I.gh,Math.max(3,Math.min(I.gw,I.gh)*.012));};
+  const names=['Glazing the middle tones','Glazing the darks'];
+  groups.forEach((g,k)=>{if(!g.length)return;
+    ev.push({t:5.5+k*3.5,dur:2.4,label:names[k],make:()=>{const M=inGroup(g),cs=I.clusters;fieldFrom(i=>{
+      const m=smooth(.05,.85,M[i])*I.Fg[i]*(1-I.HL[i])*I.dry[i];if(m<.01)return 0;const c=cs[I.lab[i]].A,f=.18+.06*k,l=.3+.06*k;
+      return [(f*c[0]+l*I.Br[i])*m,(f*c[1]+l*I.Bg[i])*m,(f*c[2]+l*I.Bb[i])*m,.15*m];});}});});
+  // 3. accents: what is darker than its surroundings, near the focus only
+  ev.push({t:14.5,dur:1.6,label:'Dropping in the darks',make:()=>fieldFrom(i=>{
+    const d=smooth(6,22,I.Lbig[i]-I.L[i])*smooth(70,40,I.L[i]),m=d*I.Fa[i];if(m<.02)return 0;
+    return [.55*I.Ar[i]*m,.55*I.Ag[i]*m,.55*I.Ab[i]*m,.09*m];})});
+  ev.push({t:16.6,dur:1.2,label:'Last touches',make:()=>fieldFrom(i=>{
+    const d=smooth(5,16,I.Lmid[i]-I.L[i])*smooth(60,25,I.L[i]),m=d*I.Fa[i];if(m<.03)return 0;
+    return [.35*I.Ar[i]*m,.35*I.Ag[i]*m,.35*I.Ab[i]*m,.05*m];})});
+  return ev;
+}
+
+// ---------- ink ----------
+const inkCv=document.getElementById('ink'),ictx=inkCv.getContext('2d');
+let inkOn=false,inkLines=[],inkDrawn=0,inkStart=null;
+function prepareInk(){
+  const I=IM,fx=I.focus.x*I.gw,fy=I.focus.y*I.gh,toCss=([x,y])=>[(I.gx0+x+.5)/S,(I.gy0+y+.5)/S];
+  const pieces=[];
+  for(const l of I.lines){let cur=[];const flush=()=>{if(cur.length>=5)pieces.push(cur);cur=[];};
+    for(const [x,y] of l){const i=y*I.gw+x;if(I.Fg[i]>.5&&I.HL[i]<.6)cur.push([x,y]);else flush();}flush();}
+  inkLines=pieces.filter(l=>{const [x,y]=l[Math.floor(l.length/2)];return I.Fa[y*I.gw+x]>.2;})
+    .map(l=>({pts:l.map(toCss),d:Math.hypot(l[0][0]-fx,l[0][1]-fy),a:rnd(.5,.85),w:rnd(.7,1.25)}))
+    .sort((a,b)=>a.d-b.d);
+  inkDrawn=0;
+}
+function drawInkUpTo(k){
+  const dpr=inkCv.width/W;ictx.setTransform(dpr,0,0,dpr,0,0);ictx.lineCap=ictx.lineJoin='round';ictx.strokeStyle='#3a2e27';
+  for(;inkDrawn<k&&inkDrawn<inkLines.length;inkDrawn++){const L=inkLines[inkDrawn];
+    ictx.globalAlpha=L.a;ictx.lineWidth=L.w;ictx.beginPath();
+    L.pts.forEach(([x,y],i)=>{const jx=x+rnd(-.35,.35),jy=y+rnd(-.35,.35);i?ictx.lineTo(jx,jy):ictx.moveTo(jx,jy);});
+    ictx.stroke();}
+}
+function clearInk(){ictx.setTransform(1,0,0,1,0,0);ictx.clearRect(0,0,inkCv.width,inkCv.height);inkDrawn=0;}
+
+// ---------- running it ----------
+let events=[],active=[],simT=0,state='empty',fast=false,chunk=300,doneAt=0;
+const $=id=>document.getElementById(id),statusEl=$('status');
+function setState(s){state=s;document.body.className=s+(Q.has('still')?' still':'');
+  $('go').style.display=s==='preview'?'':'none';$('finish').style.display=s==='painting'?'':'none';
+  $('again').style.display=s==='painting'||s==='done'?'':'none';$('save').disabled=s!=='done';
+  statusEl.textContent=s==='preview'?'Tap the photo to choose what to focus on, then paint.':s==='done'?'Done. Tap the painting to repaint around another spot.':'';}
+function startPainting(){
+  clearAll();clearInk();buildOrder();events=plan();active=[];simT=0;fast=false;doneAt=0;
+  prepareInk();inkStart=null;setState('painting');
+}
+function advance(n){
+  for(let s=0;s<n;s++){
+    while(events.length&&events[0].t<=simT){const e=events.shift();e.make();e.done=0;active.push(e);statusEl.textContent=e.label;}
+    for(const e of active){const p=clamp((simT-e.t)/e.dur,0,1);if(p>e.done){lay(e.done,p>=1?1.0001:p);e.done=p;}}
+    // fields share one texture, so only the newest wash is ever being laid
+    active=active.filter(e=>e.done<1);
+    step();simT+=1/STEPS_PER_SEC;
+  }
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  if(!frame.prev)frame.prev=now;const dt=Math.min(.05,(now-frame.prev)/1000);frame.prev=now;
+  if(state==='painting'&&Q.has('hold')){}else if(state==='painting'){
+    if(fast){advance(chunk);chunk=dt>.03?Math.max(60,chunk*.7):Math.min(1500,chunk*1.25);}
+    else advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));
+    const lastT=19;
+    if(inkOn&&simT>lastT){if(inkStart===null)inkStart=simT;statusEl.textContent='Drawing in ink';
+      drawInkUpTo(fast?inkLines.length:Math.ceil(inkLines.length*clamp((simT-inkStart)/4,0,1)));}
+    if(!events.length&&!active.length&&simT>lastT+(inkOn?4.2:0)){setState('done');}
+  }else if(state==='done'){advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));}
+  if(state!=='empty')show();
+}
+
+// ---------- page ----------
+const refImg=$('ref'),ring=$('ring');
+function placeRef(){if(!IM)return;const r=IM.rect;Object.assign(refImg.style,{left:r.x+'px',top:r.y+'px',width:r.w+'px',height:r.h+'px'});
+  ring.style.left=(r.x+IM.focus.x*r.w)+'px';ring.style.top=(r.y+IM.focus.y*r.h)+'px';}
+function openImage(src){
+  const img=new Image();img.onload=()=>{
+    refImg.src=src;$('thumb').src=src;
+    clearAll();clearInk();analyse(img);placeRef();
+    if(Q.has('auto'))startPainting();else setState('preview');
+    if(Q.has('t')){fast=!Q.has('hold');const t=+Q.get('t');advance(Math.round(t*STEPS_PER_SEC));if(inkOn&&simT>19)drawInkUpTo(1e9);if(!events.length)setState('done');}
+  };
+  img.onerror=()=>{statusEl.textContent="That file couldn't be read as an image. Try a JPEG or PNG.";};
+  img.src=src;
+}
+function openFile(f){if(!f||!f.type.startsWith('image/'))return;openImage(URL.createObjectURL(f));}
+$('choose').onclick=$('newPhoto').onclick=()=>$('file').click();
+$('file').onchange=e=>openFile(e.target.files[0]);
+addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('dragging');});
+addEventListener('dragleave',()=>document.body.classList.remove('dragging'));
+addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('dragging');openFile(e.dataTransfer.files[0]);});
+addEventListener('paste',e=>{for(const it of e.clipboardData.items)if(it.type.startsWith('image/')){openFile(it.getAsFile());break;}});
+$('go').onclick=startPainting;
+$('again').onclick=startPainting;
+$('finish').onclick=()=>{fast=true;};
+$('inkBtn').onclick=function(){inkOn=!inkOn;this.setAttribute('aria-pressed',inkOn);
+  if(state==='done'){if(inkOn){prepareInk();drawInkUpTo(1e9);}else clearInk();}else if(!inkOn)clearInk();};
+$('hit').addEventListener('pointerdown',e=>{
+  if(!IM||state==='empty')return;const r=IM.rect,x=(e.clientX-r.x)/r.w,y=(e.clientY-r.y)/r.h;
+  if(x<0||x>1||y<0||y>1)return;setFocus(clamp(x,.05,.95),clamp(y,.05,.95));placeRef();
+  if(state!=='preview')startPainting();});
+$('save').onclick=()=>{
+  show(); // read the canvas in the same task it was drawn
+  const r=IM.rect,pad=28,dpr=cv.width/W,x=Math.max(0,r.x-pad),y=Math.max(0,r.y-pad),w=Math.min(W-x,r.w+pad*2),h=Math.min(H-y,r.h+pad*2);
+  const o=document.createElement('canvas');o.width=Math.round(w*dpr);o.height=Math.round(h*dpr);const g=o.getContext('2d');
+  g.drawImage(cv,x*dpr,y*dpr,w*dpr,h*dpr,0,0,o.width,o.height);
+  g.globalCompositeOperation='multiply';g.drawImage(inkCv,x*dpr,y*dpr,w*dpr,h*dpr,0,0,o.width,o.height);
+  o.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='watercolour.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png');
+};
+function sizeAll(){setupGL();const dpr=Math.min(2,devicePixelRatio||1);inkCv.width=W*dpr;inkCv.height=H*dpr;}
+let rT;addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{sizeAll();if(IM){analyse(IM.img);placeRef();if(state==='painting'||state==='done')startPainting();}},250);});
+sizeAll();setState('empty');
+const still=Q.has('still'); // for the share image
+if(Q.has('ink')){inkOn=true;$('inkBtn').setAttribute('aria-pressed','true');}
+if(Q.get('img'))openImage(Q.get('img'));
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

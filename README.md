@@ -15,4 +15,14 @@ To publish it, upload the `meadow/` folder as it is. It's static files only: `in
 
 Fonts come from Google Fonts (Fredoka, Shantell Sans).
 
+## paint/
+
+Upload any photo and it gets painted as a watercolour, live, by the same simulation as Meadow. No image is generated: the photo is only read for its colours, regions and edges, and turned into the washes a painter might lay down:
+
+1. Find colour regions (k-means in Lab), highlights to leave as bare paper, and where the detail and colour are.
+2. Choose a subject-shaped area to paint. It's fullest around the focus, loosens into a pale halo with dry-brush streaks, and the rest stays paper. Tap the photo before painting to move the focus.
+3. Paint it lightest first: a wet underwash in horizontal brush sweeps, then middle-tone and dark glazes, then dark accents near the focus. With **Ink** on, loose pen lines traced from the strongest edges go in last.
+
+It takes about 20 seconds to watch; **Finish now** fast-forwards it. **Download** saves a PNG. Photos never leave the browser.
+
 `_drafts/` has earlier versions: the standalone paint test, and the first Canvas 2D attempt. `_source/` has the original sound recordings.
