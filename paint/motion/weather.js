@@ -112,6 +112,19 @@ function snowFrame2(g,dt){
   if(snowCapFor===I){g.save();g.imageSmoothingEnabled=true;
     g.filter=md==='watercolour'?'blur(.8px)':'none';g.globalAlpha=(md==='gouache'?1:.95)*(snowOn?1:clamp(snowCover*3,0,1));g.drawImage(snowCapCv,r.x,r.y,r.w,r.h);g.restore();} // melting: it fades as the cover goes
 }
+// A look that is set (not played) starts with its snow already settled: flakes all the way down the sky and snow
+// lying where about half a minute of snowfall would have put it. Otherwise the loop recorded of the look shows a
+// snowfall just starting: a few flakes at the top and bare hills.
+function weatherSettle(){
+  const I=IM;if(!I||!I.Fu||!snowOn)return;const r=I.rect,sx=r.w/I.gw,sy=r.h/I.gh;
+  if(snowCapFor!==I){snowCapFor=I;snowCapCv.width=I.gw;snowCapCv.height=I.gh;}
+  const cap=snowCapCv.getContext('2d');cap.fillStyle='rgba(255,255,255,.9)';
+  for(let k=0;k<300;k++){const gx=Math.random()*I.gw,L=landRow(I,gx,.75,.15);if(!L||L.kind==='water')continue;
+    const s=rnd(.8,2.2);cap.beginPath();cap.ellipse(gx,L.y+.8,2.4+s*1.2,1.4,0,0,7);cap.fill();}
+  snowCover=1;WORLD.snowCover=1;flakes=[];
+  for(let k=0;k<170;k++){const x=r.x+Math.random()*r.w,L=landRow(I,(x-r.x)/sx,.75,.15),stop=L?r.y+L.y*sy:r.y+r.h;
+    flakes.push({x,y:r.y-4+Math.random()*(stop-r.y),v:rnd(16,34),s:rnd(.8,2.2),ph:Math.random()*6,stop,kind:L?L.kind:'hard'});}
+}
 // the weather's whole frame, on the weather layer
 function weatherFrame(g,dt){
   if(!IM||!IM.Fu)return;dt=clamp(dt,0,.05); // never backwards: a negative step would give a splash a negative size

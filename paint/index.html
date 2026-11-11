@@ -867,9 +867,16 @@ function startRecording(name,opts={}){
   const c=document.createElement('canvas');c.width=ow;c.height=oh;
   const mr=new MediaRecorder(c.captureStream(30),{mimeType:type,videoBitsPerSecond:6e6}),chunks=[];
   mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-  const look=lookSig(),loop=!!opts.loop;mr.onstop=()=>{if(!loop&&rec&&rec.loop)return;lastVideo={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name,look,loop};document.body.classList.add('hasvideo');};
+  const look=lookSig(),loop=!!opts.loop;let me=null;
+  mr.onstop=()=>{if(!loop&&rec&&rec.loop)return;const v={blob:new Blob(chunks,{type:type.split(';')[0]}),ext:type.includes('mp4')?'mp4':'webm',name,look,loop};
+    const ref=me&&me.loop&&me.loop.ref;if(!ref){lastVideo=v;document.body.classList.add('hasvideo');return;}
+    verifying=true;videoMean(v.blob,1.5).then(m=>{verifying=false;
+      if(m&&m.some((x,i)=>x-ref[i]>6)){SQUEEZE=true;return;}  // came out too bright: squeeze and record it again
+      if(m&&m.every((x,i)=>ref[i]-x>6)){SQUEEZE=false;return;} // squeezed but the encoder was fine this time: undo it
+      lastVideo=v;document.body.classList.add('hasvideo');});};
   rec={c,g:c.getContext('2d'),mr,crop,ow,oh0,oh,band,caption:'',shown:'',fade:1};
   if(opts.loop)rec.loop={T:opts.loop,t:0,frames:[],started:false};else mr.start(250); // a loop starts recording after its first second
+  me=rec;
   lastVideo=null;document.body.classList.remove('hasvideo');
 }
 function recordFrame(dt){
@@ -881,7 +888,20 @@ function recordFrame(dt){
   g.globalCompositeOperation='source-over';g.drawImage(figCv,sx,sy,sw,sh,0,0,ow,oh0);
   g.globalCompositeOperation='source-over';g.drawImage(snowCv,sx,sy,sw,sh,0,0,ow,oh0);
   if(rec.loop)loopStep(rec,dt);
+  if(SQUEEZE)squeeze(g,ow,oh);
 }
+// Chrome's H.264 encoder sometimes writes a recording brighter than what was drawn (seen on the first loop after a
+// page loads: 16-235 read back as 0-255, so the paper goes white and washes fade). Each loop is checked against the
+// picture it was made from, about 1.5 s in; if it came out bright, frames are pre-squeezed (v -> 16 + v*219/255) so
+// they come out right, and it is recorded again.
+let verifying=false,SQUEEZE=false;
+function squeeze(g,w,h){g.save();g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;g.globalCompositeOperation='multiply';g.fillStyle='rgb(219,219,219)';g.fillRect(0,0,w,h);
+  g.globalCompositeOperation='lighter';g.fillStyle='rgb(16,16,16)';g.fillRect(0,0,w,h);g.restore();}
+function meanOf(src){const c=document.createElement('canvas');c.width=16;c.height=12;const g=c.getContext('2d',{willReadFrequently:true});g.drawImage(src,0,0,16,12);
+  const d=g.getImageData(0,0,16,12).data,m=[0,0,0];for(let i=0;i<d.length;i+=4){m[0]+=d[i];m[1]+=d[i+1];m[2]+=d[i+2];}return m.map(x=>x/192);}
+function videoMean(blob,t){return new Promise(res=>{const v=document.createElement('video'),url=URL.createObjectURL(blob);v.muted=true;v.src=url;
+  const done=m=>{URL.revokeObjectURL(url);res(m);};setTimeout(()=>done(null),5000);
+  v.onloadeddata=()=>{v.currentTime=Math.min(t,(v.duration||t)*.5);};v.onseeked=()=>done(meanOf(v));v.onerror=()=>done(null);});}
 // A seamless loop: the first second is kept aside, then recording starts. Over the last second the live picture
 // fades into those kept frames, so the video's last frame is its first and it plays round without a jump.
 function loopStep(r,dt){
@@ -889,6 +909,7 @@ function loopStep(r,dt){
   if(!L.started&&L.t<=1){const c=document.createElement('canvas');c.width=r.ow;c.height=r.oh;c.getContext('2d').drawImage(r.c,0,0);L.frames.push({t:L.t,c});return;}
   if(!L.started){L.started=true;L.t0=L.t;r.mr.start(250);return;}
   const into=L.t-L.t0;
+  if(!L.ref&&into>=1.5)L.ref=meanOf(r.c);
   if(into>=L.T-1&&L.frames.length){const k=clamp(into-(L.T-1),0,1),e=k*k*(3-2*k),tt=k*L.frames[L.frames.length-1].t;
     let f=L.frames[0];for(const fr of L.frames)if(fr.t<=tt)f=fr;
     r.g.globalCompositeOperation='source-over';r.g.globalAlpha=e;r.g.drawImage(f.c,0,0);r.g.globalAlpha=1;}
@@ -1065,7 +1086,7 @@ function frame(now){
     else brushEl.classList.remove('on');
     runInkJobs();
     progEl.style.width=Math.round(clamp((simT-passStart)/(total-passStart),0,1)*100)+'%';
-    if(!events.length&&!active.length&&simT>total){fast=false;fastRate=1;setState('done');} // skipping ahead ends with the painting
+    if(!events.length&&!active.length&&simT>total){const set=fast&&animRan;fast=false;fastRate=1;setState('done');if(set&&typeof weatherSettle==='function')weatherSettle();} // skipping ahead ends with the painting
   }else if(state==='done'){advance(Math.max(1,Math.round(dt*STEPS_PER_SEC)));}
   if(state!=='empty'&&Wt)show();
   if(GC()&&(state==='painting'||state==='done')&&typeof gcFrame==='function')gcFrame();
@@ -1445,15 +1466,14 @@ function recordLook(sec){
   const tp=$('topPrimary'),was=tp.textContent;tp.disabled=true;
   const tick=setInterval(()=>{
     if(rec&&rec.loop){const L=rec.loop,left=Math.ceil(L.started?L.T-(L.t-L.t0):L.T+1-L.t);tp.textContent=`Recording ${Math.max(1,left)}s`;return;}
-    tp.textContent=rec||loopStarting?'Recording':'Saving';if(!ready()){if(!rec&&state==='done')startLoop(sec);return;}clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
+    tp.textContent=rec||verifying?'Recording':'Saving';if(!ready()){if(!rec&&state==='done')startLoop(sec);return;}clearInterval(tick);tp.disabled=false;tp.textContent=was;saveVideo();},150);
 }
 // The preview is the video: once a look settles, its loop is recorded in the background and then plays over the
 // painting, framed exactly as the download is, so what you see is what you save. Any change drops it until the
 // new loop is ready.
 const LOOP_SEC=8;let loopVid=null,loopFor='',settled=0,lastSig='';
-let loopStarting=false;
-function startLoop(sec){if(state==='done'&&!rec)startRecording([LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop',{loop:sec||LOOP_SEC});}
-function hideLoop(){if(loopVid){loopVid.pause();loopVid.remove();URL.revokeObjectURL(loopVid.src);loopVid=null;loopFor='';}}
+function startLoop(sec){if(state==='done'&&!rec&&!verifying)startRecording([LOOK.season,LOOK.time,LOOK.weather].join('-')+'-loop',{loop:sec||LOOP_SEC});}
+function hideLoop(){if(loopVid){const v=loopVid.vid;v.pause();URL.revokeObjectURL(v.src);v.removeAttribute('src');v.load();cancelAnimationFrame(loopVid.raf);loopVid.remove();loopVid=null;loopFor='';}}
 setInterval(()=>{
   const sig=state==='done'&&IM?lookSig():'';
   if(sig!==lastSig){lastSig=sig;settled=performance.now();if(loopFor&&loopFor!==sig)hideLoop();}
@@ -1461,15 +1481,20 @@ setInterval(()=>{
   const ready=lastVideo&&lastVideo.loop&&lastVideo.look===sig;
   if(!ready){if(!rec&&performance.now()-settled>1200)startLoop();return;}
   if(loopFor===sig)return;
-  hideLoop();const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),v=document.createElement('video');
-  v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.setAttribute('aria-hidden','true');v.id='loopVid';
-  v.src=URL.createObjectURL(lastVideo.blob);Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none'});
+  // Shown through a CPU canvas, not as a <video>: Chrome's GPU video path shows this MP4 brighter than its real pixels
+  // (it misreads the full-range colour tag), washing the sky out and turning the paper white. Copied through a CPU
+  // canvas, the frames come out exactly as recorded, as other players show the downloaded file.
+  hideLoop();const r=IM.rect,pad=GC()?0:Math.round(Math.max(r.w,r.h)*.02),vid=document.createElement('video'),v=document.createElement('canvas');
+  vid.muted=true;vid.loop=true;vid.playsInline=true;vid.autoplay=true;vid.src=URL.createObjectURL(lastVideo.blob);
+  v.setAttribute('aria-hidden','true');v.id='loopVid';v.vid=vid;const vg=v.getContext('2d',{willReadFrequently:true}); // the CPU path decodes the colours right; the GPU path is what brightens them
+  const paintV=()=>{if(vid.readyState>=2&&vid.videoWidth){if(v.width!==vid.videoWidth){v.width=vid.videoWidth;v.height=vid.videoHeight;}vg.drawImage(vid,0,0);}v.raf=requestAnimationFrame(paintV);};
+  Object.assign(v.style,{position:'absolute',left:(r.x-pad)+'px',top:(r.y-pad)+'px',width:(r.w+2*pad)+'px',height:(r.h+2*pad)+'px',zIndex:1,pointerEvents:'none'});
   // on screen the video shows only where the painting is (its soft painted shape): around it, the page's own paper
   {const m=document.createElement('canvas');m.width=IM.gw;m.height=IM.gh;const mg=m.getContext('2d'),id=mg.createImageData(IM.gw,IM.gh);
     for(let i=0;i<IM.n;i++)id.data[i*4+3]=Math.round(255*smooth(.3,.75,IM.Fu[i]));mg.putImageData(id,0,0);
     const url=`url(${m.toDataURL()})`,sz=`${r.w}px ${r.h}px`,pos=`${pad}px ${pad}px`;
     for(const pre of ['','-webkit-']){v.style.setProperty(pre+'mask-image',url);v.style.setProperty(pre+'mask-size',sz);v.style.setProperty(pre+'mask-position',pos);v.style.setProperty(pre+'mask-repeat','no-repeat');}}
-  $('stage').appendChild(v);v.play().catch(()=>{});loopVid=v;loopFor=sig;
+  $('stage').appendChild(v);vid.play().catch(()=>{});paintV();loopVid=v;loopFor=sig;
 },300);
 
 addEventListener('pointerdown',e=>{if(!$('saveMenu').hidden&&!e.target.closest('.topr'))$('saveMenu').hidden=true;});
