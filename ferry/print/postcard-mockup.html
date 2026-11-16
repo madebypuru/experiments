@@ -1,0 +1,58 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Postcard Mockup</title>
+<style>html,body{margin:0;background:#111}svg{display:block}</style>
+<script src="knife.js"></script>
+</head><body>
+<div id="st"></div>
+<script>
+// Postcard 01, front and back, presented at 4:5 on the Swiss grid (study/SWISS_GRID.md):
+// 1080 x 1350, 140 px modules, 20 px gutters, sides 70, top 110, bottom 140. ?grid shows the fields.
+// The ground is the front's own painting, faded back and laid into the whole grid area with the knife edge
+// (knife.js): a painting fills its fields and stops there; it is never cropped by the page. The two sides are laid down in a step:
+// the front on columns 1 to 5 from the grid's top edge; the back on columns 2 to 6, down to the grid's bottom edge.
+// A 3:2 card can't fill whole square fields, so each is anchored to an outer grid edge instead.
+// Card renders come from postcard-01.html (tools: see the render line in study/PRINT_POSTCARDS.md);
+// they hold a Pinterest-derived study, so they live in the ignored paint/.test folder.
+const Q=new URLSearchParams(location.search);
+const W=1080,H=1350,ML=70,MT=110,MOD=140,G=20,C=x=>ML+x*(MOD+G),R=y=>MT+y*(MOD+G);
+const PAINT='../assets/refs/rowboats-gouache.png',PW=1835,PH=1144;
+const FRONT='../assets/mock/postcard-01-front.jpg',BACK='../assets/mock/postcard-01-back.jpg';
+const CW=5*MOD+4*G, CH=CW*2/3;                        // a card spans five columns: 780 x 520
+const cards=[{src:FRONT,x:C(0),y:R(0)},{src:BACK,x:C(1),y:R(7)-G-CH}];
+let grid='';
+if(Q.has('grid')){for(let i=0;i<6;i++)for(let j=0;j<7;j++)grid+=`<rect x="${C(i)}" y="${R(j)}" width="${MOD}" height="${MOD}" fill="rgba(210,96,44,.12)" stroke="rgba(210,96,44,.6)"/>`;}
+document.getElementById('st').innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<defs>
+  <!-- the ground: the painting, washed back so the cards lead -->
+  <filter id="fade" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feGaussianBlur stdDeviation="1.6"/><feColorMatrix type="saturate" values=".22"/>
+  </filter>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="4"/>
+    <feColorMatrix values="0 0 0 0 .3  0 0 0 0 .26  0 0 0 0 .2  0 0 0 .07 0"/>
+  </filter>
+  <!-- loose cards on a surface, light from the top left (memory: quiet shadows, the shEnv reference in stamp-01.html) -->
+  <filter id="shCard" x="-10%" y="-10%" width="125%" height="125%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="1.4" result="c"/><feOffset in="c" dx="1.2" dy="1.6" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="22" result="a"/><feOffset in="a" dx="10" dy="15" result="ao"/>
+    <feComponentTransfer in="ao" result="amb"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feFlood flood-color="#1A1C14"/><feComposite in2="amb" operator="in" result="ambC"/>
+    <feFlood flood-color="#1A1C14"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feOffset in="SourceAlpha" dx="1.6" dy="2" result="sh"/><feComposite in="SourceAlpha" in2="sh" operator="out" result="rim"/>
+    <feGaussianBlur in="rim" stdDeviation="0.7" result="rimS"/>
+    <feFlood flood-color="#FFFDF7" flood-opacity=".65"/><feComposite in2="rimS" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="ambC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+  </filter>
+</defs>
+<rect width="${W}" height="${H}" fill="#EEE8DD"/>
+${FerryKnife.paintOn(PAINT,PW,PH,{x:ML,y:MT,w:6*MOD+5*G,h:7*MOD+6*G},{seed:3,filter:"fade",ridge:.45,
+  inner:`<rect x="0" y="0" width="${W}" height="${H}" fill="#F0E8DA" opacity=".56"/>`})}
+<rect width="${W}" height="${H}" filter="url(#grain)"/>
+${cards.map(c=>`<g filter="url(#shCard)"><image href="${c.src}" x="${c.x}" y="${c.y}" width="${CW}" height="${CH}" preserveAspectRatio="none"/></g>`).join('')}
+${grid}
+</svg>`;
+Promise.all([...document.images].map(i=>i.decode?i.decode().catch(()=>{}):0)).then(()=>{document.title='ready'});
+</script>
+</body></html>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Stamp 01</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Monsieur+La+Doulaise&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;--mute:#5E6A6E}
+html,body{margin:0;height:100%;background:var(--harbour);overflow:hidden}
+svg#poster{display:block;width:100vw;height:100vh;height:100dvh}
+body{overflow:hidden}
+</style></head><body>
+<svg id="poster" viewBox="0 0 1600 2000" preserveAspectRatio="xMidYMid meet" aria-label="Ferry stamp 01, the Arrival Light. Click the water."></svg>
+<script src="stamp.js"></script>
+<script src="lighthouse-live.js"></script>
+<script>
+// Ferry stamp 01, live. The window is the lighthouse study running (day to night, the ferry guided in by the beam,
+// moored overnight, gone by dawn). Click the water for a ripple; at night the searchlight swings to it.
+// The postmark is the arrival: it isn't there while the ferry crosses, and strikes with the real time the moment it moors.
+const S=0.74, ox=(1600-SW*S)/2-40, oy=300, Q=new URLSearchParams(location.search);
+const svg=document.getElementById('poster');
+// the envelope: on screens taller than the poster it reaches past the top and bottom too, so the close-up holds
+// (and on screens wider than it, past the sides), so the close-up holds at any shape of window
+const AR=innerHeight/innerWidth, TALL=AR>1.4, WIDE=AR<1.1;
+const ENV=TALL?'M 150 -700 L 1450 -700 L 1462 2400 L 140 2400 Z'
+        :WIDE?'M -900 210 L 2500 180 L 2500 1500 L -900 1530 Z'
+        :'M 150 210 L 1450 196 L 1462 1500 L 140 1512 Z';
+svg.style.overflow='visible';
+svg.innerHTML=`
+  <defs>
+  <filter id="shStamp" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="0.9" result="c"/><feOffset in="c" dx="0.7" dy="1" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="l"/><feOffset in="l" dx="2" dy="3" result="lo"/>
+    <feComponentTransfer in="lo" result="lift"><feFuncA type="linear" slope=".05"/></feComponentTransfer>
+    <feFlood flood-color="#0B1A1E"/><feComposite in2="lift" operator="in" result="liftC"/>
+    <feFlood flood-color="#0B1A1E"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feOffset in="SourceAlpha" dx="1.4" dy="1.8" result="sh"/><feComposite in="SourceAlpha" in2="sh" operator="out" result="rim"/>
+    <feGaussianBlur in="rim" stdDeviation="0.6" result="rimS"/>
+    <feFlood flood-color="#FFFDF7" flood-opacity=".75"/><feComposite in2="rimS" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="liftC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+  </filter>
+  <filter id="shEnv" x="-10%" y="-10%" width="125%" height="125%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="c"/><feOffset in="c" dx="2" dy="2.5" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="26" result="a"/><feOffset in="a" dx="12" dy="18" result="ao"/>
+    <feComponentTransfer in="ao" result="amb"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feFlood flood-color="#050E10"/><feComposite in2="amb" operator="in" result="ambC"/>
+    <feFlood flood-color="#050E10"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feOffset in="SourceAlpha" dx="2" dy="2.5" result="sh"/><feComposite in="SourceAlpha" in2="sh" operator="out" result="rim"/>
+    <feGaussianBlur in="rim" stdDeviation="0.8" result="rimS"/>
+    <feFlood flood-color="#FFFDF7" flood-opacity=".6"/><feComposite in2="rimS" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="ambC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+  </filter>
+  <filter id="tear" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="18"/></filter>
+  <filter id="ep"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="12"/><feColorMatrix values="0 0 0 0 .4  0 0 0 0 .34  0 0 0 0 .25  0 0 0 .1 0"/></filter>
+  <filter id="gr"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0"/></filter>
+  <radialGradient id="light" cx="22%" cy="14%" r="95%"><stop offset="0" stop-color="#FFF6E6" stop-opacity=".16"/><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#05110F" stop-opacity=".42"/></radialGradient>
+  </defs>
+  <rect x="-1000" y="-1600" width="3600" height="5200" fill="var(--harbour)"/>
+  <rect x="-1000" y="-1600" width="3600" height="5200" filter="url(#gr)"/>
+  <g transform="translate(800 1000) scale(1.36) translate(-800 -1000) translate(0 146)">
+    <g transform="rotate(-3 800 1000)" filter="url(#shEnv)" pointer-events="none">
+      <g filter="url(#tear)"><path id="envp" d="${ENV}" fill="#ECE5D5"/></g>
+      <clipPath id="envc"><path id="envcp" d="${ENV}"/></clipPath>
+      <rect x="-900" y="-900" width="3400" height="3500" filter="url(#ep)" opacity=".9" clip-path="url(#envc)"/>
+    </g>
+    <g transform="translate(${ox} ${oy}) rotate(1.2 ${SW*S/2} ${SH*S/2}) scale(${S})" filter="url(#shStamp)">${stampSVG('a',{live:'lh'})}</g>
+    <g id="pm" transform="translate(${ox+SW*S-140} ${oy+150}) rotate(-11) scale(.95)" pointer-events="none" opacity="0"></g>
+  </g>
+  <rect x="-1000" y="-1600" width="3600" height="5200" fill="url(#light)" pointer-events="none"/>`;
+// the overlaid type on the painting must not catch clicks meant for the water
+svg.querySelectorAll('text').forEach(t=>t.setAttribute('pointer-events','none'));
+
+// ---- the postmark strikes when the ferry moors, with the time it actually arrived ----
+const pm=document.getElementById('pm'), MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const two=n=>String(n).padStart(2,'0');
+let struck=false;
+function strike(){
+  const d=new Date();
+  pm.innerHTML=`<g class="ink">${postmark('p',{date:`${d.getDate()} ${MON[d.getMonth()]}`,year:String(d.getFullYear()),time:`${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`})}</g>`;
+  pm.setAttribute('opacity','1');
+  // a hand stamp: comes down a touch large, lands. Only the inner group moves; #pm keeps its place on the stamp.
+  const ink=pm.querySelector('.ink');ink.style.transformBox='view-box';ink.style.transformOrigin='0px 0px';
+  ink.animate([{transform:'scale(1.08)',opacity:0},{transform:'scale(.995)',opacity:1,offset:.6},{transform:'scale(1)',opacity:1}],{duration:260,easing:'cubic-bezier(.2,.7,.2,1)'});
+  struck=true;
+}
+function lift(){pm.animate([{opacity:1},{opacity:0}],{duration:900,easing:'ease-in'}).onfinish=()=>pm.setAttribute('opacity','0');struck=false;}
+
+// ---- the live window ----
+const cv=document.getElementById('lh'), fo=document.getElementById('afo'), valueG=document.getElementById('avalue');
+function toCanvas(e){
+  // client point to the foreignObject's own coordinates (the stamp is scaled and turned 1.2°), then to plate pixels
+  const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const u=p.matrixTransform(fo.getScreenCTM().inverse());
+  const x=+fo.getAttribute('x'),y=+fo.getAttribute('y'),w=+fo.getAttribute('width'),h=+fo.getAttribute('height');
+  return [(u.x-x)/w*952,(u.y-y)/h*1428];
+}
+const AT=Q.has('t')?+Q.get('t'):null;      // ?t=17 freezes one moment (for screenshots)
+lighthouseLive(cv,'../assets/lighthouse/',{
+  start:+(Q.get('start')||0), at:AT, toCanvas,
+  onFrame(t,near,n){
+    // the printed value and issuer turn from ink to paper white as the sky darkens, so they stay readable
+    const k=Math.min(1,Math.max(0,(n-.35)/.4)), mix=(a,b)=>Math.round(a+(b-a)*k);
+    valueG.setAttribute('fill',`rgb(${mix(27,246)},${mix(38,242)},${mix(43,232)})`);
+    const moored=near&&near.e>=1&&t>=16&&t<23.4;   // tied up at the pier, through the night until the new day
+    if(moored&&!struck)strike();
+    if(!moored&&struck&&t>=23.4)lift();
+  },
+  onReady(){document.fonts.ready.then(()=>{document.title='ready';});}
+});
+</script>
+</body></html>

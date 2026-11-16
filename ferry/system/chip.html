@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Transfer Ticket</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+.page{width:1440px;height:2040px;position:relative}
+h2{position:absolute;left:100px;margin:0;font:700 15px/20px 'Ferry Sans'}
+.frame-wrap{position:absolute;left:100px;top:880px;width:1240px;height:697.5px;overflow:hidden}
+.frame{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transform:scale(.64583333);overflow:hidden}
+.frame img{position:absolute;left:0;top:-160px;width:1920px;height:1401px}
+.lockup{position:absolute;left:90px;top:960px;height:40px;width:127px;background:var(--paper);
+  -webkit-mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 0/contain;mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 0/contain}
+</style></head><body>
+<div class="page" id="page">
+  <h2 style="top:100px">Transfer ticket</h2>
+  <h2 style="top:820px">On a painting</h2>
+  <h2 style="top:1700px">Held at port</h2>
+  <div class="frame-wrap"><div class="frame" id="frame">
+    <img src="../assets/refs/ferry-arrival-gouache.png" alt="">
+    <div class="lockup"></div>
+  </div></div>
+</div>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script>
+Ticket.ready.then(()=>{
+  const page=document.getElementById('page'),frame=document.getElementById('frame');
+  const T={departs:'12:04',arrives:'12:04:41',elapsed:'23s',since:'12:06'};
+  const N={SOL:'Solana',ETH:'Ethereum',BASE:'Base',ARB:'Arbitrum'};
+  // section 1: 12 columns of 85 + 20 gutters, margin 100; rows every 120 px on a 10 px baseline
+  const col=k=>100+k*105;
+  [['pier','SOL','ETH'],['departed','ETH','ARB'],['crossing','SOL','ETH'],['arrived','BASE','SOL',{elapsed:'41s'}],['held','ETH','BASE']]
+  .forEach(([state,from,to,x],i)=>{const y=160+i*120,o={...T,...x,state,from,to,fromName:N[from],toName:N[to],seed:i+1};
+    Ticket.draw(page,{...o,size:84,x:col(3),y});
+    if(state!=='held')Ticket.draw(page,{...o,size:40,x:col(7),y:y+20});   // one Held ticket per view: Signal once
+  });
+  // section 2: 1920 x 1080; 11 columns of 140 + 20 gutters, margins 90 / 60 / 80; the ticket spans columns 8-11 from row 2, in the sky right of the mast
+  Ticket.draw(frame,{...T,departs:'12:04:00',elapsed:'41s',state:'arrived',from:'SOL',to:'ETH',fromName:'Solana',toName:'Ethereum',size:120,ground:'painting',seed:7,
+    x:90+7*160,y:60+160,scale:620/Ticket.width(120)});
+  // section 3: the display ticket held at port, its own view
+  Ticket.draw(page,{...T,state:'held',from:'ETH',to:'BASE',fromName:'Ethereum',toName:'Base',arrives:'',size:120,seed:9,x:col(3),y:1780});
+  document.title='ready';
+});
+</script>
+</body></html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry. Safe passage between chains.</title>
+<meta name="description" content="Ferry moves money between chains and shows you every crossing.">
+<link rel="preload" href="../type/fonts/FerrySans-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700;font-style:normal}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-BoldItalic.woff2) format('woff2');font-weight:700;font-style:italic}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--sea:#283c41;--fg:var(--paper);--m:80px}
+:root[data-light=light]{--fg:var(--ink)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--sea);color:var(--fg);font-family:'Ferry Sans',system-ui,sans-serif}
+body{overflow-x:hidden}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* the top bar: the lockup, three plain links, one ask. Paper on the painting, ink once morning comes */
+.bar{position:fixed;z-index:20;left:0;right:0;top:0;height:80px;padding:0 var(--m);display:flex;align-items:center;gap:40px;pointer-events:none}
+.bar>*{pointer-events:auto}
+.lockup{display:block;width:107px;height:34px;background:var(--fg);
+  -webkit-mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain;mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain}
+.bar nav{display:flex;gap:30px;margin-left:auto;align-items:center}
+.bar a{color:var(--fg);text-decoration:none;font:400 15px/20px 'Ferry Sans'}
+.bar a:hover{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px}
+.bar a.ask{background:var(--fg);color:var(--ink);padding:10px 18px;border-radius:3px;margin-left:10px}
+:root[data-light=light] .bar a.ask{color:var(--paper)}
+.bar a.ask:hover{text-decoration:none}
+.bar a:focus-visible{outline:2px solid var(--fg);outline-offset:4px}
+
+/* sections: each a mount the shell drives. Heights set the scroll each beat owns */
+main{position:relative;z-index:1;pointer-events:none}
+main>section{position:relative}
+main>section>*{pointer-events:auto}
+#pier{height:260vh}
+#crossing{height:400vh}
+#ask{height:120vh}
+#footer{height:100vh}
+
+/* beat 1 */
+.pier-stage{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.pier-gl{position:absolute;left:0;top:0;display:block;pointer-events:auto;touch-action:pan-y}
+.pier-type{position:absolute;pointer-events:none;will-change:transform,opacity}
+.pier-head{margin:0;line-height:0}
+.pier-head svg{overflow:visible;display:block}
+.pier-sub{position:absolute;margin:0;color:var(--paper);font-weight:400}
+.pier-ticket{position:absolute;inset:0;pointer-events:none}
+.pier-ticket .part{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.pier-ticket .part svg{position:absolute!important}
+
+@media (max-width:799px){
+  :root{--m:20px}
+  .bar{height:64px;gap:16px}
+  .bar nav a:not(.ask){display:none}
+  .lockup{width:88px;height:28px}
+  .bar a.ask{padding:9px 14px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <a class="lockup" href="./" aria-label="Ferry home"></a>
+  <nav aria-label="Main">
+    <a href="#crossing">How it works</a>
+    <a href="#">Docs</a>
+    <a href="#">Security</a>
+    <a class="ask" href="#ask">Request access</a>
+  </nav>
+</header>
+<main>
+  <section id="pier" aria-label="At the pier"></section>
+  <!-- beat 3, the crossing: mount point, pinned event, night at its middle -->
+  <section id="crossing" aria-label="The crossing" data-beat="3"></section>
+  <!-- beat 7, the ask: mount point -->
+  <section id="ask" aria-label="Request access" data-beat="7"></section>
+  <!-- the existing footer (web/footer-v2.html): mount point, morning at the far dock -->
+  <section id="footer" aria-label="Footer" data-beat="footer"></section>
+</main>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script>window.Ticket = Ticket;</script>
+<script type="module">
+import { start } from './js/shell.js';
+import { mountPier } from './js/pier.js';
+mountPier(document.getElementById('pier')).then(() => { start(); document.documentElement.dataset.ready = '1'; })
+  .catch(e => { console.error(e); document.documentElement.dataset.error = String(e); });
+</script>
+</body></html>

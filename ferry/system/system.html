@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Palette</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;--mute:#5E6A6E}
+*{box-sizing:border-box;margin:0}
+html{background:var(--paper)}
+body{color:var(--ink);font:400 16px/1.5 'Ferry Sans',"Helvetica Neue",Arial,sans-serif}
+.caps{font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+/* opening: the mark on Harbour */
+.open{background:var(--harbour);color:var(--paper);min-height:min(78vh,720px);padding:48px 64px 56px;display:flex;flex-direction:column;justify-content:space-between}
+.open .top{display:flex;justify-content:space-between;color:var(--mist)}
+.open img{width:min(420px,70vw);display:block}
+.open h1{font:700 clamp(40px,6vw,84px)/1 'Ferry Sans';letter-spacing:-.035em;max-width:12ch;margin-top:40px}
+.open p{color:var(--mist);max-width:44ch;margin-top:20px}
+/* the eight, painted */
+.chips{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));background:var(--paper)}
+.chip .pt{aspect-ratio:1/2.4;background-size:cover;background-position:center}
+.chip .nm{padding:16px 16px 28px}
+.chip b{display:block;font-size:17px;letter-spacing:-.01em}
+.chip span{display:block;color:var(--mute);font-size:13px;margin-top:2px}
+.chip .caps{margin-top:12px;color:var(--ink)}
+/* together */
+.sec{padding:96px 64px}
+.sec h2{font:700 32px/1.1 'Ferry Sans';letter-spacing:-.025em;margin-bottom:28px}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.comp{aspect-ratio:4/5;border-radius:4px;padding:32px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;position:relative}
+.comp .big{font:700 34px/1.05 'Ferry Sans';letter-spacing:-.03em;max-width:11ch}
+.comp .sm{font-size:14px;max-width:30ch}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.comp img{width:72%}
+.under{color:var(--mute);font-size:13px;margin-top:10px}
+/* rules */
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;border-top:1px solid #d9d4c8;padding-top:32px}
+.rules .n{font:700 48px/1 'Ferry Sans';color:var(--seaglass)}
+.rules p{margin-top:12px;font-size:18px;line-height:1.35;max-width:24ch}
+.foot{padding:0 64px 64px;color:var(--mute);font-size:13px}
+@media (max-width:860px){
+ .open{padding:24px 16px 32px;min-height:min(70vh,560px)}.sec{padding:64px 16px}.foot{padding:0 16px 40px}
+ .chips{grid-template-columns:repeat(2,minmax(0,1fr))}.chip .pt{aspect-ratio:1/1.1}
+ .trio{grid-template-columns:minmax(0,1fr)}.comp{aspect-ratio:4/3}
+ .rules{grid-template-columns:minmax(0,1fr);gap:28px}}
+</style></head><body>
+
+<section class="open">
+ <div class="top caps"><span>Ferry · palette</span><span>Nov 2026</span></div>
+ <div>
+  <img src="../export/ferry-lockup-white.png" alt="Ferry">
+  <h1>Colour taken from the water.</h1>
+  <p>Eight colours, sampled from the gouache studies and painted with the same engine as everything else. Paintings can be any colour. Everything around them uses only these.</p>
+ </div>
+</section>
+
+<section class="chips" aria-label="The eight colours">
+ <div class="chip"><div class="pt" style="background-image:url(swatches/paper.jpg)"></div><div class="nm"><b>Paper</b><span>The light field</span><div class="caps">#F2EEE6</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/mist.jpg)"></div><div class="nm"><b>Mist</b><span>Pale sky</span><div class="caps">#C9CDBD</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/stone.jpg)"></div><div class="nm"><b>Stone</b><span>Warm stone, timber</span><div class="caps">#D2A57F</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/seagrass.jpg)"></div><div class="nm"><b>Sea grass</b><span>Quiet green</span><div class="caps">#7D8F69</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/seaglass.jpg)"></div><div class="nm"><b>Sea glass</b><span>Mid water, sky</span><div class="caps">#6B8A94</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/harbour.jpg)"></div><div class="nm"><b>Harbour</b><span>Deep water, the mark's home</span><div class="caps">#2C454B</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/ink.jpg)"></div><div class="nm"><b>Ink</b><span>The one text colour</span><div class="caps">#1B262B</div></div></div>
+ <div class="chip"><div class="pt" style="background-image:url(swatches/signal.jpg)"></div><div class="nm"><b>Signal</b><span>Life-ring orange</span><div class="caps">#D2602C</div></div></div>
+</section>
+
+<section class="sec">
+ <h2>How they sit together</h2>
+ <div class="trio">
+  <div>
+   <div class="comp" style="background:var(--harbour);color:var(--paper)">
+    <div class="caps" style="color:var(--mist)">Departs 12:04</div>
+    <img src="../export/ferry-lockup-white.png" alt="Ferry">
+    <div class="sm" style="color:var(--mist)">Safe passage between chains.</div>
+   </div>
+   <p class="under">Harbour and Paper. The mark at home.</p>
+  </div>
+  <div>
+   <div class="comp" style="background:#fbf9f4;box-shadow:inset 0 0 0 1px #d9d4c8">
+    <div class="caps" style="color:var(--mute)">From Ethereum · to Solana</div>
+    <div class="big">Arrived. 41 seconds.</div>
+    <div class="sm"><span class="dot" style="background:var(--seagrass)"></span>1,000 USDC sent. 1,000 USDC arrived.</div>
+   </div>
+   <p class="under">Paper and Ink, a Sea grass dot for the state.</p>
+  </div>
+  <div>
+   <div class="comp" style="background:var(--mist)">
+    <div class="caps">Harbour notice</div>
+    <div class="big">Paused in port.</div>
+    <div class="sm"><span class="dot" style="background:var(--signal)"></span>Your funds are safe. Next departure when the weather clears.</div>
+   </div>
+   <p class="under">Mist and Ink, with Signal used once.</p>
+  </div>
+ </div>
+</section>
+
+<section class="sec" style="padding-top:0">
+ <div class="rules">
+  <div><div class="n">1</div><p>Paintings can be any colour. Everything around them uses only these eight.</p></div>
+  <div><div class="n">2</div><p>Text is Ink on the light colours, or Paper on Harbour and Ink.</p></div>
+  <div><div class="n">3</div><p>Signal appears once. One button, one dot, one life ring.</p></div>
+ </div>
+</section>
+<p class="foot">Grid, formats and use cases come later, one touchpoint at a time.</p>
+</body></html>

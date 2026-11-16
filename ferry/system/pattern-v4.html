@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ferry pattern</title>
+<style>
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Bold.woff2) format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Regular.woff2) format('woff2'); font-weight: 400; }
+:root { --paper: #F2EEE6; --ink: #1B262B; --harbour: #2C454B; }
+html, body { margin: 0; background: var(--paper); }
+body { width: 1440px; padding-bottom: 80px; }
+.row { display: flex; gap: 40px; padding: 80px 80px 0; }
+.cell { width: 290px; }
+.cell > .c { width: 290px; height: 290px; }
+.tile { width: 400px; height: 500px; }
+.name { font: 700 11px/1 'Ferry Sans', sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--harbour); margin-top: 16px; }
+.frame { position: relative; width: 1440px; height: 810px; margin-top: 80px; overflow: hidden; background: var(--paper); }
+.frame > .c { position: absolute; inset: 0; }
+.hl { position: absolute; font: 700 64px/1 'Ferry Sans', sans-serif; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+.panel { position: absolute; background: var(--paper); box-sizing: border-box; padding: 40px; }
+.panel h2 { font: 700 56px/1.02 'Ferry Sans', sans-serif; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+.panel p { font: 400 20px/1.4 'Ferry Sans', sans-serif; color: var(--ink); margin: 24px 0 0; }
+</style>
+</head>
+<body>
+<!-- 1. Breakdown: bar, pair, rows, field -->
+<div class="row">
+  <div class="cell"><div class="c" id="b0"></div><div class="name">Bar</div></div>
+  <div class="cell"><div class="c" id="b1"></div><div class="name">Pair</div></div>
+  <div class="cell"><div class="c" id="b2"></div><div class="name">Rows</div></div>
+  <div class="cell"><div class="c" id="b3"></div><div class="name">Field</div></div>
+</div>
+<!-- 2. The pattern alone: Arrive, Tide, Swap -->
+<div class="row">
+  <div class="tile" id="p0"></div><div class="tile" id="p1"></div><div class="tile" id="p2"></div>
+</div>
+<!-- 3. With other elements. Grid: 8 columns of 140 px, 20 px gutters, from x 90; 4 rows from y 95. -->
+<div class="frame" id="fA"><div class="c" id="cA"></div><h1 class="hl" id="hA">Arrived.<br>Every time.</h1></div>
+<div class="frame" id="fB"><div class="c" id="cB"></div>
+  <div class="panel" id="pB"><h2>Safe passage<br>between chains.</h2><p>Every transfer is a crossing you can see, from the first shore to the last.</p></div></div>
+<div class="frame" id="fC"><img class="c" id="iC" src="../assets/refs/ferry-arrival-gouache.png" alt="" style="width:100%;height:100%;object-fit:cover"><div class="c" id="cC"></div></div>
+<script src="pattern.js"></script>
+<script>
+const P = { paper: '#F2EEE6', ink: '#1B262B', harbour: '#2C454B', sea: '#6B8A94', mist: '#C9CDBD', stone: '#D2A57F', grass: '#7D8F69' };
+const IMG = n => '../assets/refs/' + n;
+const col = i => 90 + 160 * i, rowT = j => 95 + 160 * j, rowB = j => rowT(j) + 140;
+const $ = id => document.getElementById(id);
+const HP = { figure: P.harbour, ground: P.paper };
+
+// 1. Breakdown at one scale and one strait position, so each step adds to the last.
+const one = { scale: 14, straits: 1, margin: 1, rhythm: 'mark', colours: HP };
+Pattern.play($('b0'), { ...one, part: 'bar', originY: 140 });
+Pattern.play($('b1'), { ...one, part: 'pair', originY: 140 });
+Pattern.play($('b2'), { ...one, rows: 6, walk: [[0, 0, 0, 1, 1, 1]], originY: 62 });
+Pattern.play($('b3'), { scale: 6, colours: HP, seed: 2 });
+
+// 2. Three motions, three pairings; one in scale bands, one turned 90 degrees.
+Pattern.play($('p0'), { scale: 10, motion: 'arrive', colours: { figure: P.ink, ground: P.paper }, seed: 3 });
+Pattern.play($('p1'), { scale: 8, bands: [1, 1.5, 2], motion: 'tide', colours: { figure: P.mist, ground: P.harbour }, seed: 4 });
+Pattern.play($('p2'), { scale: 14, rotate: 90, motion: 'swap', colours: { figure: P.harbour, ground: P.stone }, seed: 5 });
+
+// 3A. One mark, four rows tall, its right edge on the last column; the painting drifts under it.
+const MH = rowB(3) - rowT(0), s = MH / Pattern.MARK.height, MW = Pattern.MARK.width * s, MX = col(7) + 140 - MW;
+Pattern.play($('cA'), { layout: 'mark', scale: s, originX: MX, originY: rowT(0), colours: { figure: P.harbour, ground: P.paper },
+  mask: IMG('ferry-arrival-gouache.png'), maskBox: { x: MX - 60, y: rowT(0) - 40, w: MW + 120, h: MH + 80 }, drift: 0.03 });
+Object.assign($('hA').style, { left: col(0) + 'px', bottom: (810 - rowB(3) - 10) + 'px' });
+
+// 3B. The field as the full ground in three scale bands, Tide slowly; a Paper panel bleeding off left and bottom.
+const panelR = col(3) + 140, panelT = rowT(2);
+Pattern.play($('cB'), { scale: 9, bands: [2, 1, 1.5], straits: 'auto', motion: 'tide', duration: 24, colours: HP, seed: 6 });
+Object.assign($('pB').style, { left: 0, top: panelT + 'px', width: panelR + 'px', bottom: 0, paddingLeft: col(0) + 'px' });
+
+// 3C. The painting full bleed; the field in Paper across the bottom band, its straits opening onto the water.
+Pattern.play($('cC'), { scale: 16, straits: 2, rowGap: 0.2, area: { x: 0, y: 620, w: 1440, h: 190 }, motion: 'tide', duration: 20,
+  colours: { figure: P.paper, ground: 'transparent' }, seed: 8 });
+</script>
+<script>
+const P = { paper: '#F2EEE6', ink: '#1B262B', harbour: '#2C454B', sea: '#6B8A94', mist: '#C9CDBD', stone: '#D2A57F', grass: '#7D8F69' };
+const IMG = n => '../assets/refs/' + n;
+const col = i => 90 + 160 * i, rowT = j => 95 + 160 * j, rowB = j => rowT(j) + 140;
+const $ = id => document.getElementById(id);
+const HP = { figure: P.harbour, ground: P.paper };
+
+// 1. Breakdown: the same mark position and scale throughout, so each step adds to the last.
+const one = { scale: 26, columns: 1, rows: 1, colours: HP };
+Pattern.play($('b0'), { ...one, part: 'bar' });
+Pattern.play($('b1'), { ...one, part: 'pair' });
+Pattern.play($('b2'), { ...one, part: 'mark' });
+Pattern.play($('b3'), { scale: 7, colours: HP, seed: 2 });
+
+// 2. Three motions, three pairings.
+Pattern.play($('p0'), { scale: 11, motion: 'arrive', colours: { figure: P.ink, ground: P.paper }, seed: 3 });
+Pattern.play($('p1'), { scale: 11, motion: 'tide', colours: { figure: P.mist, ground: P.harbour }, seed: 4 });
+Pattern.play($('p2'), { scale: 11, motion: 'swap', colours: { figure: P.harbour, ground: P.stone }, seed: 5 });
+
+// 3A. One mark, four rows tall, its right edge on the last column; the painting drifts under it.
+const MH = rowB(3) - rowT(0), s = MH / Pattern.MARK.height, MW = Pattern.MARK.width * s, MX = col(7) + 140 - MW;
+Pattern.play($('cA'), { scale: s, columns: 1, rows: 1, originX: MX, originY: rowT(0), colours: { figure: P.harbour, ground: P.paper },
+  mask: IMG('ferry-arrival-gouache.png'), maskBox: { x: MX - 60, y: rowT(0) - 40, w: MW + 120, h: MH + 80 }, drift: 0.03 });
+Object.assign($('hA').style, { left: col(0) + 'px', bottom: (810 - rowB(3) - 10) + 'px' });
+
+// 3B. Pattern as the full ground, Tide slowly; a Paper panel on columns 1-4, rows 3-4.
+// The panel bleeds off the left and bottom edges; its right and top edges fall in the pattern's gaps, so no mark is cut by it.
+const sB = 15, cgB = 3.5, mgB = 2.2, pxB = (Pattern.MARK.width + cgB) * sB, pyB = (Pattern.MARK.height + mgB) * sB;
+const panelR = col(3) + 140, panelT = rowT(2);
+Pattern.play($('cB'), { scale: sB, columnGap: cgB, markGap: mgB, offset: 0, motion: 'tide', duration: 20, colours: HP, seed: 6,
+  originX: panelR + cgB / 2 * sB - 3 * pxB, originY: panelT + mgB / 2 * sB - 2 * pyB });
+Object.assign($('pB').style, { left: 0, top: panelT + 'px', width: panelR + 'px', bottom: 0, paddingLeft: col(0) + 'px' });
+
+// 3C. The painting seen through the bars; the lighthouse assembles as the bars arrive.
+Pattern.play($('cC'), { scale: 22, motion: 'arrive', colours: { figure: P.harbour, ground: P.paper }, seed: 7,
+  mask: IMG('lighthouse-gouache-hi.png'), maskBox: { x: 0, y: 57, w: 1440, h: 1500 } }); // the tower and lamp, not the pier
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ferry Lines</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1B262B; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-hidden="true"></canvas>
+<script src="lines.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var canvas = document.getElementById('c');
+  var stop = null;
+  function opts() {
+    var s = Math.floor(Math.min(innerWidth, innerHeight));
+    var o = { w: s, h: s };
+    if (q.get('edge') !== null) o.edge = parseFloat(q.get('edge'));
+    if (q.get('boost') === '1') o.ink = '#F2EEE6';
+    if (q.get('seed') !== null) o.seed = parseInt(q.get('seed'), 10);
+    if (q.get('t') !== null) o.t = parseFloat(q.get('t'));
+    return o;
+  }
+  function run() {
+    if (stop) { stop(); stop = null; }
+    var o = opts();
+    if (q.get('t') !== null) Lines.draw(canvas, o);
+    else stop = Lines.play(canvas, o);
+  }
+  var rt = 0;
+  addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(run, 120); });
+  run();
+})();
+</script>
+</body>
+</html>

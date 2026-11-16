@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ferry pattern</title>
+<style>
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Bold.woff2) format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Regular.woff2) format('woff2'); font-weight: 400; }
+:root { --paper: #F2EEE6; --ink: #1B262B; --harbour: #2C454B; }
+html, body { margin: 0; background: var(--paper); }
+body { width: 1440px; padding-bottom: 80px; }
+.row { display: flex; gap: 40px; padding: 80px 80px 0; }
+.cell { width: 400px; }
+svg { display: block; }
+.name { font: 700 11px/1 'Ferry Sans', sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--harbour); margin-top: 16px; }
+.frame { position: relative; width: 1440px; height: 810px; margin-top: 80px; overflow: hidden; }
+.frame > .ticket { position: absolute; }
+</style>
+</head>
+<body>
+<div class="row" id="r1"></div>
+<div class="row" id="r2"></div>
+<div class="frame" id="fA"></div>
+<div class="frame" id="fB"></div>
+<div class="frame" id="fC"><div class="ticket" id="ticket"></div></div>
+<script src="pattern-v2.js"></script>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script>
+{ // block scope: stamp.js declares globals such as SH and IMG
+const F = window.FerryPattern;
+const C = { paper: '#F2EEE6', ink: '#1B262B', harbour: '#2C454B' };
+const IMG = n => '../assets/refs/' + n;
+const PAINT = { ferry: [IMG('ferry-arrival-gouache.png'), 1827, 1333], light: [IMG('lighthouse-gouache-hi.png'), 1430, 2299], boats: [IMG('rowboats-gouache.png'), 1835, 1144] };
+const W = 400, H = 500, FW = 1440, FH = 810;
+const col = i => 90 + 160 * i, rowT = j => 95 + 160 * j, rowB = j => rowT(j) + 140; // 140 px modules, 20 px gutters
+const svg = (w, h, inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
+// a painting covering a box, 6 percent oversize so it can drift 3 percent each way under fixed windows
+const cover = ([src, iw, ih], x, y, w, h, t, drift = true) => {
+  const k = Math.max(w / iw, h / ih) * (drift ? 1.06 : 1), dw = iw * k, dh = ih * k;
+  const dx = drift ? F.drift(t, w) : 0;
+  return `<image href="${src}" x="${(x + (w - dw) / 2 + dx).toFixed(1)}" y="${(y + (h - dh) / 2).toFixed(1)}" width="${dw.toFixed(1)}" height="${dh.toFixed(1)}"/>`;
+};
+const scenes = [];
+const scene = (el, fn) => scenes.push([el, fn]);
+const area = { x: 0, y: 0, w: W, h: H };
+
+/* Row 1: the three patterns, Harbour on Paper. */
+const SH = { s: 10, seed: 4 }, CR = { s: 10, mode: 'fill', seed: 5, density: 0.9 };
+document.getElementById('r1').innerHTML = ['Shoreline', 'Crossings', 'Wake'].map((n, i) => `<div class="cell"><div id="s${i}"></div><div class="name">${n}</div></div>`).join('');
+scene('s0', t => svg(W, H, `<rect width="${W}" height="${H}" fill="${C.paper}"/>${F.svg(F.shoreline(SH, area, t), { color: C.harbour })}`));
+scene('s1', t => svg(W, H, `<rect width="${W}" height="${H}" fill="${C.paper}"/>${F.svg(F.crossings(CR, area, t), { color: C.harbour })}`));
+scene('s2', t => svg(W, H, `<rect width="${W}" height="${H}" fill="${C.paper}"/>${F.svg(F.wake({ s: 9, x: 360, y: 230, dir: 'left', len: 45, speed: 2, n: 5, seed: 2 }, t), { color: C.harbour })}`));
+
+/* Row 2: each pattern as windows a painting shows through; the painting drifts under them. */
+document.getElementById('r2').innerHTML = [0, 1, 2].map(i => `<div class="cell" id="m${i}"></div>`).join('');
+const masked = (id, shapes, paint, t, over = '') => svg(W, H, `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#000"/>${shapes}</mask></defs><rect width="${W}" height="${H}" fill="${C.paper}"/><g mask="url(#${id})">${cover(paint, 0, 0, W, H, t)}</g>${over}`);
+scene('m0', t => masked('k0', F.svg(F.shoreline({ s: 13, seed: 4 }, area, t), { color: '#fff' }), PAINT.boats, t));
+scene('m1', t => { const g = F.crossings({ s: 14, mode: 'fill', seed: 5, density: 0.9 }, area, t);
+  return masked('k1', F.svg({ fills: g.fills }, { color: '#fff' }), PAINT.ferry, t, F.svg({ routes: g.routes }, { color: C.harbour })); });
+scene('m2', t => masked('k2', F.svg(F.wake({ s: 10, x: 380, y: 150, dir: 'left', len: 45, speed: 2, n: 4, seed: 7, wMul: 6, ang: [20, 31] }, t), { color: '#fff' }), PAINT.light, t));
+
+/* Frame A, hero and no-logo test: the painting is seen only through the mark's two halves; routes cross the channel between them. */
+const MX = col(3), MY = rowT(0), MH = rowB(3) - rowT(0); // the mark spans the four rows from column 4
+scene('fA', t => svg(FW, FH, `<defs><mask id="kA" maskUnits="userSpaceOnUse" x="0" y="0" width="${FW}" height="${FH}"><rect width="${FW}" height="${FH}" fill="#000"/><g fill="#fff">${F.halves(MX, MY, MH)}</g></mask></defs>
+  <rect width="${FW}" height="${FH}" fill="${C.paper}"/>
+  <g mask="url(#kA)">${cover(PAINT.ferry, MX - 120, MY - 40, 900, MH + 80, t)}</g>
+  ${F.svg({ routes: F.markRoutes(MX, MY, MH, t, [[5, 22, 0], [26, 31, 3.4, 1], [63, 63, 6.2], [101, 117, 1.6, 1], [134, 139, 4.9]]) }, { color: C.harbour })}
+  <text font-family="Ferry Sans" font-weight="700" font-size="64" letter-spacing="-1.3" fill="${C.ink}"><tspan x="${col(0)}" y="${rowB(3) - 64}">Arrived.</tspan><tspan x="${col(0)}" y="${rowB(3)}">Every time.</tspan></text>`));
+
+/* Frame B, layer: the wake spreads from the ferry's bow toward the viewer, Paper at reduced opacity, off the bottom of the frame. */
+scene('fB', t => svg(FW, FH, `${cover(PAINT.ferry, 0, 0, FW, FH, t, false)}<g opacity=".8">${F.svg(F.wake({ s: 14, x: 712, y: 588, dir: 'down', len: 16, speed: 0.55, n: 6, seed: 3, ang: [72, 79], wMul: 1.2 }, t), { color: C.paper })}</g>`));
+
+/* Frame C, texture field: Shoreline fills the frame as the stage; one Arrived ticket sits on it. */
+scene('fC', t => svg(FW, FH, `<rect width="${FW}" height="${FH}" fill="${C.paper}"/>${F.svg(F.shoreline({ s: 14, W: 64, seed: 4, oy: -30 }, { x: 0, y: 0, w: FW, h: FH }, t), { color: C.harbour })}`));
+
+/* Motion: calm and linear; pauses when hidden; still under reduced motion; ?t=<seconds> freezes a frame. */
+const q = new URLSearchParams(location.search);
+const fixed = q.has('t') ? +q.get('t') : null;
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const holders = {};
+for (const [id] of scenes) { const el = document.getElementById(id); const h = document.createElement('div'); el.prepend(h); holders[id] = h; }
+const render = t => { for (const [id, fn] of scenes) holders[id].innerHTML = fn(t); };
+if (fixed !== null || still) render(fixed ?? 4);
+else {
+  let t = 0, last = null, skip = 0;
+  const tick = now => {
+    if (last !== null && !document.hidden) t += Math.min(0.1, (now - last) / 1000);
+    last = now;
+    if (!document.hidden && (skip++ & 1) === 0) render(t);
+    requestAnimationFrame(tick);
+  };
+  document.addEventListener('visibilitychange', () => { last = null; });
+  requestAnimationFrame(tick);
+}
+
+/* The ticket, from the brand's ticket engine (not edited here). */
+Ticket.ready.then(() => {
+  const el = document.getElementById('ticket');
+  el.style.left = col(1) + 'px'; el.style.top = rowT(2) + 'px';
+  Ticket.draw(el, { from: 'SOL', to: 'BASE', fromName: 'Solana', toName: 'Base', state: 'arrived', departs: '12:04', arrives: '12:04', elapsed: '41s', size: 120, seed: 3 });
+});
+}
+</script>
+</body>
+</html>

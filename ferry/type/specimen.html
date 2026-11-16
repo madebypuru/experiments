@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Sans</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400;font-style:normal}
+@font-face{font-family:'Ferry Sans';src:url(fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:'Ferry Sans';src:url(fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700;font-style:normal}
+@font-face{font-family:'Ferry Sans';src:url(fonts/FerrySans-BoldItalic.woff2) format('woff2');font-weight:700;font-style:italic}
+@font-face{font-family:'Heros';src:url(source/texgyreheros-bold.otf)}
+:root{--paper:#F2EEE6;--ground:#C9CDBD;--ink:#1B262B;--mute:#2C454B;--line:#D2CCBF;--signal:#D2602C}
+*{box-sizing:border-box;margin:0}
+body{background:var(--ground);color:var(--ink);font:400 16px/1.5 'Ferry Sans',sans-serif;padding:40px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:14px}
+.card{background:var(--paper);border-radius:20px;padding:36px;position:relative;min-width:0;overflow:hidden}
+.label{font:700 11px/1 'Ferry Sans';letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.muted{color:var(--mute)}
+.hero{padding:56px 36px 40px}
+.hero h1{font:700 clamp(84px,15vw,220px)/.9 'Ferry Sans';letter-spacing:-.05em;margin:18px 0 0;padding-bottom:.24em}
+.hero p{max-width:520px;color:var(--mute)}
+.rule{width:36px;height:4px;border-radius:2px;background:var(--signal);margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.big{font-size:clamp(150px,22vw,320px);line-height:.95;font-weight:700;letter-spacing:-.02em;margin-top:10px}
+.cap{margin-top:12px;font-size:13px;color:var(--mute);max-width:420px}
+.style .aa{font-size:76px;line-height:1;margin:16px 0 10px;letter-spacing:-.03em}
+.style .ln{font-size:15px;color:var(--mute)}
+.set{font-size:40px;line-height:1.25;letter-spacing:.01em;word-break:break-all;margin-top:14px}
+.set.r{font-weight:400}.set.b{font-weight:700}
+.roles{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px}
+.roles .body{font-size:17px;line-height:1.55;max-width:44ch;margin-top:14px}
+.ticket{margin-top:14px;display:grid;gap:10px}
+.ticket .row{display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--line);padding-top:10px}
+.ticket .k{font:700 10.5px/1.2 'Ferry Sans';letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+.ticket .v{font-weight:700;font-size:15px}
+.num{font:700 92px/1 'Ferry Sans';letter-spacing:-.04em;margin-top:14px;font-variant-numeric:tabular-nums}
+.num small{font-size:28px;letter-spacing:0}
+.k-under{font:700 10.5px/1.2 'Ferry Sans';letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.wm svg{width:min(760px,100%);height:auto;display:block;margin-top:18px;color:var(--ink)}
+.wm .grid2{gap:40px}
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.rules h3{font:700 22px/1.2 'Ferry Sans';letter-spacing:-.02em;margin:12px 0 6px}
+.rules p{font-size:14px;color:var(--mute)}
+code{font:400 13px/1.4 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:5px}
+@media (max-width:900px){body{padding:16px}.grid2,.roles,.rules{grid-template-columns:minmax(0,1fr)}.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:24px}.set{font-size:28px}.style .aa{font-size:60px}.num{font-size:68px}}
+</style></head><body>
+<div class="wrap">
+
+<section class="card hero">
+  <div class="rule"></div><div class="label">Typeface · 4 styles · 1,084 glyphs</div>
+  <h1>Ferry Sans</h1>
+  <p>The sans that explains things for Ferry: body copy, interface, ticket labels and numbers. It is the wordmark grown into a full typeface, a Helvetica-style grotesk with every outer corner softened by the same radius as the logo.</p>
+</section>
+
+<section class="grid2">
+  <div class="card"><div class="label">Before · TeX Gyre Heros Bold</div><div class="big" style="font-family:Heros">fr4</div><p class="cap">Sharp, machined corners.</p></div>
+  <div class="card"><div class="label">After · Ferry Sans Bold</div><div class="big">fr4</div><p class="cap">Every convex corner rounded at 1.89% of the ascender height, half the butterfly's corner radius. Curves, spacing and kerning are untouched, so text sets exactly as before.</p></div>
+</section>
+
+<section class="grid4">
+  <div class="card style"><div class="label">Regular 400</div><div class="aa">Aa Rr</div><div class="ln">Arrives on the other shore in 41 seconds.</div></div>
+  <div class="card style"><div class="label">Italic 400</div><div class="aa" style="font-style:italic">Aa Rr</div><div class="ln" style="font-style:italic">Arrives on the other shore in 41 seconds.</div></div>
+  <div class="card style"><div class="label">Bold 700</div><div class="aa" style="font-weight:700">Aa Rr</div><div class="ln" style="font-weight:700">Arrives on the other shore in 41 seconds.</div></div>
+  <div class="card style"><div class="label">Bold Italic 700</div><div class="aa" style="font-weight:700;font-style:italic">Aa Rr</div><div class="ln" style="font-weight:700;font-style:italic">Arrives on the other shore in 41 seconds.</div></div>
+</section>
+
+<section class="card">
+  <div class="label">Character set · Latin, figures, punctuation</div>
+  <div class="set b">ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789</div>
+  <div class="set r">$€£¥%&amp;@#?!.,:;'"()[]{}/\-+=×÷*&lt;&gt;«»→← ÅÆØßñçéüåøł</div>
+</section>
+
+<section class="roles">
+  <div class="card">
+    <div class="label">To explain · 17 / 26</div>
+    <p class="body">Ferry moves value between chains the way a ferry moves people between shores. You choose where it goes, it leaves on time, and it arrives whole. Every transfer gets a ticket you can check at any point of the crossing.</p>
+  </div>
+  <div class="card">
+    <div class="label">Labels · caps, +16% tracking</div>
+    <div class="ticket">
+      <div class="row"><span class="k">From</span><span class="v">Solana</span></div>
+      <div class="row"><span class="k">To</span><span class="v">Ethereum</span></div>
+      <div class="row"><span class="k">Departed</span><span class="v">12:04:17</span></div>
+      <div class="row"><span class="k">Arrived</span><span class="v">12:04:58</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">Numbers · tabular figures</div>
+    <div class="num">2,400<small>.00</small></div><div class="k-under">USDC sent</div>
+    <div class="num" style="font-size:56px;margin-top:18px">41<small> s</small></div><div class="k-under">Crossing time</div>
+  </div>
+</section>
+
+<section class="card wm">
+  <div class="label">The wordmark · Ferry Sans Bold</div>
+  <svg id="wm-fs" aria-label="Ferry"></svg>
+  <p class="cap">Set to the devx construction and hand-spaced: 35, 33, 6 and 1 units between f, e, r, r and y. The logo and the typeface are one family, and Ferry owns both outright.</p>
+</section>
+
+<section class="rules">
+  <div class="card"><div class="label">01</div><h3>Body and interface</h3><p>Regular at 14 to 18 px, tracking 0, line height 1.5. Bold for values the reader is looking for, never for emphasis. Emphasis switches to italic.</p></div>
+  <div class="card"><div class="label">02</div><h3>Labels</h3><p>Bold caps at 10 to 12 px with +14% to +16% tracking, in the muted colour. The functional layer, like the print on a ticket.</p></div>
+  <div class="card"><div class="label">03</div><h3>Large</h3><p>Bold at −5% tracking, the wordmark's setting. Display headlines stay serif; large sans is for numbers and the wordmark. The watercolour bleed is for display sizes only, never text.</p></div>
+</section>
+
+</div>
+<script src="../src/glyphs.js"></script>
+<script>
+const MARK=['M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z','M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z'];
+const MW=165,MH=142.93,K={h:142.93/87.8,above:31/87.8,gap:65/87.8};
+const markG=MARK.map(d=>`<path d="${d}" fill="currentColor"/>`).join('');
+// lockup in font units, baseline at y=0; ink = [xMin, yMin, xMax, yMax] (y up), A = ascender height of d
+function lockup(svg,A,ink,wordSVG){
+  const H=K.h*A,s=H/MH,W=MW*s,mx=ink[0]-K.gap*A-W,my=-(A+K.above*A),p=A*.08;
+  const x0=mx-p,y0=my-p,x1=ink[2]+p,y1=Math.max(my+H,-ink[1])+p;
+  svg.setAttribute('viewBox',`${x0} ${y0} ${x1-x0} ${y1-y0}`);
+  svg.innerHTML=wordSVG+`<g transform="translate(${mx} ${my}) scale(${s})">${markG}</g>`;
+}
+document.fonts.ready.then(async()=>{
+  await document.fonts.load("700 100px 'Ferry Sans'");
+  const w=G.bold; lockup(document.getElementById('wm-fs'),w.A,w.tightBounds,`<path d="${w.tight}" fill="currentColor"/>`);
+  document.title='Ferry Sans · ready';
+});
+</script>
+</body></html>

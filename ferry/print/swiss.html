@@ -1,0 +1,217 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Swiss Grid</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-BoldItalic.woff2) format('woff2');font-weight:700;font-style:italic}
+html,body{margin:0;background:#111}
+svg{display:block}
+</style></head><body>
+<div id="stage"></div>
+<script src="stamp.js"></script>
+<script>
+// Ferry's Swiss grid (see study/SWISS_GRID.md).
+//   baseline   b = 10 px. 1080, 1350 and 1920 are all whole multiples, so every format shares one rhythm.
+//   modules    square, 140 x 140 px, gutter 20 px (2b). One module size for every format.
+//   4:5   social        1080 x 1350   6 columns x 7 rows   margins: sides 70, top 110, bottom 140
+//   16:9  presentation  1920 x 1080  11 columns x 6 rows   margins: sides 90, top 60, bottom 80
+//   The bottom margin is always the larger one.
+//   type       size / leading, every leading a whole number of baselines:
+//              T1 260/240  T2 150/140  T3 96/90  T4 64/60  T5 40/40  T6 24/30  T7 15/20 (caps, +18% tracking)
+//   rules      flush left, ragged right. Text baselines sit on the baseline grid. Images fill whole fields.
+//              Bleeds run to the page edge from a field edge. Asymmetry over symmetry; empty fields are part of the layout.
+// ?l=1..6 picks the layout, ?f=4x5 or 16x9, ?grid shows the grid.
+const Q=new URLSearchParams(location.search), L=+(Q.get('l')||1), F=Q.get('f')||'4x5', SHOWGRID=Q.has('grid');
+const wide=F==='16x9', W=wide?1920:1080, H=wide?1080:1350;
+const b=10, CW=140, GW=20, STEP=CW+GW, COLS=wide?11:6, ROWS=wide?6:7, SM=wide?90:70, TOP=wide?60:110, BOT=H-TOP-ROWS*STEP+GW;
+const INK='#1B262B', PAPER='#F2EEE6', MUTE='#5E6A6E', HARB='#2C454B', SIGNAL='#D2602C';
+// fields: columns c0..c1 (end exclusive), rows r0..r1. Negative rows count from the bottom.
+const rr=r=>r<0?ROWS+r:r;
+function cell(c0,r0,c1,r1){r0=rr(r0);r1=r1<=0?ROWS+r1:r1;return {x:SM+c0*STEP,y:TOP+r0*STEP,w:(c1-c0)*STEP-GW,h:(r1-r0)*STEP-GW};}
+const colX=c=>SM+c*STEP, rowY=r=>TOP+rr(r)*STEP;
+const snap=y=>Math.round(y/b)*b;
+// type scale
+const T={1:[260,240],2:[150,140],3:[96,90],4:[64,60],5:[40,40],6:[24,30],7:[15,20]};
+const CAP=.72;   // Ferry Sans cap height (and ascender of lowercase l), fraction of the size
+// first baseline so the cap height sits on a field's top edge, then snapped to the baseline grid
+const firstBase=(top,s)=>snap(top+T[s][0]*CAP);
+// images (gouache studies, kept in the git-ignored folder)
+const IM={lighthouse:['../assets/refs/lighthouse-gouache.png',953,1542],rowboats:['../assets/refs/rowboats-gouache.png',1835,1144],
+  arrival:['../assets/refs/ferry-arrival-gouache.png',1827,1333],fire:['../assets/refs/harbour-fire-gouache.png',1827,1501],
+  cabin:['../assets/refs/cabin-windows-gouache.png',1827,1125]};
+let uid=0;
+function img(name,r,fx=.5,fy=.5){const [href,iw,ih]=IM[name],id='c'+(uid++),s=Math.max(r.w/iw,r.h/ih),dw=iw*s,dh=ih*s;
+  return `<defs><clipPath id="${id}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/></clipPath></defs>
+  <image href="${href}" clip-path="url(#${id})" x="${r.x+(r.w-dw)*fx}" y="${r.y+(r.h-dh)*fy}" width="${dw}" height="${dh}" preserveAspectRatio="none"/>`;}
+
+// ---------- paintings laid on the paper with a palette knife ----------
+// The painting stops inside its fields with a knife edge. The edge mask is painted on a canvas: flat knife strokes laid
+// along each side, each one a band of fine streaks (the knife's drag), the outermost streaks breaking up and stopping
+// early where the knife lifted. Strokes reach between about one gutter inside and one gutter outside the field line, so
+// the painting still sits on the grid. The mask's own relief, lit from the top left, gives the paint a faint ridge.
+function rng(seed){let a=(seed*7919+13)%2147483647;return()=>{a=(a*48271)%2147483647;return a/2147483647;};}
+let pid=0;
+function knifeMask(r,er,seed){const k=2, R=rng(seed), cv=document.createElement('canvas');cv.width=Math.ceil(er.w*k);cv.height=Math.ceil(er.h*k);
+  const g=cv.getContext('2d'), ox=r.x-er.x, oy=r.y-er.y;
+  g.scale(k,k);g.fillStyle=g.strokeStyle='#fff';
+  // 1. the edge itself: the field line, wandering a few px in and out (smooth swell + fine tooth), never far
+  const ph=[R()*6.28,R()*6.28,R()*6.28], per=2*(r.w+r.h), n=t=>3.2*Math.sin(t/97+ph[0])+2.2*Math.sin(t/41+ph[1])+1.2*Math.sin(t/17+ph[2])+(R()-.5)*1.6;
+  const at=t=>{if(t<r.w)return[[ox+t,oy],[0,-1]];t-=r.w;if(t<r.h)return[[ox+r.w,oy+t],[1,0]];t-=r.h;if(t<r.w)return[[ox+r.w-t,oy+r.h],[0,1]];t-=r.w;return[[ox,oy+r.h-t],[-1,0]];};
+  g.beginPath();for(let t=0;t<per;t+=2.5){const [[x,y],[nx,ny]]=at(t),o=n(t)-1.5;t?g.lineTo(x+nx*o,y+ny*o):g.moveTo(x+nx*o,y+ny*o);}g.closePath();g.fill();
+  // 2. knife tongues: now and then the knife pushed paint a little past the line and lifted, leaving a tapering dry smear
+  const sides=[[[1,0],[0,-1],[ox,oy],r.w],[[0,1],[1,0],[ox+r.w,oy],r.h],[[-1,0],[0,1],[ox+r.w,oy+r.h],r.w],[[0,-1],[-1,0],[ox,oy+r.h],r.h]];
+  for(const [U,V,O,len] of sides){let u=20+R()*120;
+    while(u<len-60){const L=Math.min(40+R()*90,len-20-u), P=3+R()*6;
+      g.save();g.setTransform(k*U[0],k*U[1],k*V[0],k*V[1],k*O[0],k*O[1]);
+      for(let v=-10;v<P;v+=.9){const q=Math.max(0,v/P); if(q>.35&&R()<q*.9)continue;
+        const ll=L*(1-q)**1.3*(.55+R()*.45), s0=u+R()*L*.35*q;
+        g.globalAlpha=q>.5?.25+R()*.4:.7+R()*.3;g.lineWidth=.8+R()*.9;
+        g.beginPath();g.moveTo(s0,v);g.lineTo(s0+ll,v+(R()-.5)*.8);g.stroke();}
+      g.restore();u+=L+60+R()*220;}}
+  // 3. dry edge: where the paint ran thin just inside the line, short streaks of paper show through
+  g.globalCompositeOperation='destination-out';
+  for(const [U,V,O,len] of sides){g.save();g.setTransform(k*U[0],k*U[1],k*V[0],k*V[1],k*O[0],k*O[1]);
+    for(let i=0;i<len/16;i++){const u=R()*len, v=-2-R()*8, L=6+R()*30;g.globalAlpha=.1+R()*.3;g.lineWidth=.8+R()*1.2;
+      g.beginPath();g.moveTo(u,v);g.lineTo(u+L,v+(R()-.5));g.stroke();}
+    g.restore();}
+  return cv.toDataURL();}
+function paintOn(name,r,fx=.5,fy=.5,seed=1){const [href,iw,ih]=IM[name], id='pk'+(pid++);
+  const ex=24, er={x:r.x-ex,y:r.y-ex,w:r.w+2*ex,h:r.h+2*ex}, s=Math.max(er.w/iw,er.h/ih), dw=iw*s, dh=ih*s;
+  const mk=knifeMask(r,er,seed), mi=`href="${mk}" x="${er.x}" y="${er.y}" width="${er.w}" height="${er.h}" preserveAspectRatio="none"`;
+  const ridge=`<filter id="${id}r" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+     <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="b"/>
+     <feDiffuseLighting in="b" surfaceScale="2.5" diffuseConstant="1.1" lighting-color="#fff" result="l"><feDistantLight azimuth="225" elevation="55"/></feDiffuseLighting>
+     <feComposite in="l" in2="SourceAlpha" operator="in"/></filter>`;
+  return `<defs>${ridge}<mask id="${id}" maskUnits="userSpaceOnUse" x="${er.x}" y="${er.y}" width="${er.w}" height="${er.h}"><image ${mi}/></mask></defs>
+  <g mask="url(#${id})"><image href="${href}" x="${er.x+(er.w-dw)*fx}" y="${er.y+(er.h-dh)*fy}" width="${dw}" height="${dh}" preserveAspectRatio="none"/></g>
+  <image ${mi} filter="url(#${id}r)" style="mix-blend-mode:soft-light" opacity=".6"/>`;}
+// extend a field to the page edges it touches ('l','r','t','b')
+function bleed(r,sides){const o={...r};if(sides.includes('l')){o.w+=o.x;o.x=0;}if(sides.includes('r'))o.w=W-o.x;if(sides.includes('t')){o.h+=o.y;o.y=0;}if(sides.includes('b'))o.h=H-o.y;return o;}
+// watercolour bleed for display type (64 px and up) and the mark, from src/bleed.html, ink mode
+let fid=0;
+function wc(u,color,seed=2){const id='wc'+(fid++);return {id,def:`<filter id="${id}" x="-12%" y="-25%" width="124%" height="150%" color-interpolation-filters="sRGB">
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.05/u).toFixed(5)}" numOctaves="2" seed="${seed}" result="n"/>
+   <feDisplacementMap in="SourceAlpha" in2="n" scale="${1.3*u}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+   <feGaussianBlur in="d" stdDeviation="${1.1*u}" result="bl"/>
+   <feComponentTransfer in="bl" result="shape"><feFuncA type="linear" slope="6" intercept="-2.6"/></feComponentTransfer>
+   <feMorphology in="shape" operator="erode" radius="${0.5*u}" result="inner"/><feGaussianBlur in="inner" stdDeviation="${0.8*u}" result="innerS"/>
+   <feComposite in="shape" in2="innerS" operator="out" result="rim"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.018/u).toFixed(5)}" numOctaves="3" seed="${seed+5}" result="g"/>
+   <feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.3 1.12" result="gA"/>
+   <feComposite in="shape" in2="gA" operator="arithmetic" k1="1" result="bodyA"/>
+   <feFlood flood-color="${color}"/><feComposite in2="bodyA" operator="in" result="body"/>
+   <feFlood flood-color="${color}" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="rimC"/>
+   <feMerge><feMergeNode in="body"/><feMergeNode in="rimC"/></feMerge></filter>`};}
+// a line of display type, Ferry Sans Bold at the wordmark's -5%, with the bleed
+function disp(x,base,s,txt,color=INK,opt={}){const [sz]=T[s],f=wc(sz*.0072,color,opt.seed||3);
+  return `<defs>${f.def}</defs><text x="${x}" y="${base}" fill="#000" filter="url(#${f.id})" ${opt.anchor?`text-anchor="${opt.anchor}"`:''} style="font:${opt.italic?'italic ':''}700 ${sz}px 'Ferry Sans';letter-spacing:-${sz*.05}px">${txt}</text>`;}
+// body and captions: clean Ferry Sans
+const body=(x,base,txt,color=INK,s=6)=>`<text x="${x}" y="${base}" fill="${color}" style="font:400 ${T[s][0]}px 'Ferry Sans'">${txt}</text>`;
+const cap=(x,base,txt,color=MUTE,anchor='')=>`<text x="${x}" y="${base}" fill="${color}" ${anchor?`text-anchor="${anchor}"`:''} style="font:700 ${T[7][0]}px 'Ferry Sans';letter-spacing:${T[7][0]*.18}px">${txt}</text>`;
+const rule=(x,y,w,color=INK,t=2)=>`<rect x="${x}" y="${y}" width="${w}" height="${t}" fill="${color}"/>`;
+let MARK='';const MW=165,MH=142.93;
+// the lockup (butterfly mark + Ferry Sans wordmark), bottom edge on y
+let LOCK='';const LVX=-1953.4,LVY=-1030.1,LVW=4046.8,LVH=1274.2, LKH=40, LKW=LKH*LVW/LVH;
+const lockup=(x,bottom,h=LKH,color=INK)=>{const k=h/LVH;return `<g fill="${color}" transform="translate(${x-LVX*k} ${bottom-h-LVY*k}) scale(${k})">${LOCK}</g>`;};
+const SIGN=()=>lockup(colX(0),H-BOT); // the sign-off: column 1, on the last field line
+
+// ---------- the layouts (each one taken from a pattern on the board, rebuilt on the grid) ----------
+const LAYOUTS={
+// 1. The mark as a window (Empee's letter-as-window). The whole mark, flush right in the top fields; headline on column 1, bottom fields.
+1(){const f=wide?cell(5,0,11,6):cell(0,0,6,4), mh=Math.min(f.h,f.w*MH/MW), mw=mh*MW/MH, mx=f.x+f.w-mw, ms=mw/MW, id='m'+(uid++);
+  const hb=firstBase(rowY(-2),3);
+  return `<defs><clipPath id="${id}">${MARK.replace(/<path /g,`<path transform="translate(${mx} ${f.y}) scale(${ms})" `)}</clipPath></defs>
+  <g clip-path="url(#${id})">${img('rowboats',{x:mx,y:f.y,w:mw,h:mh},.4,.5).replace(/clip-path="url\(#c\d+\)" /,'')}</g>
+  ${disp(colX(0),hb,3,'Safe <tspan style="font-style:italic">passage</tspan>')}${disp(colX(0),hb+T[3][1],3,'between chains.')}
+  ${body(colX(0),hb+T[3][1]+60,'Every transfer arrives, on time, intact.')}
+  ${SIGN()}`;},
+// 2. The big number (Kitsune's 46c, the stamp's value): the crossing time as the image. The painting bleeds off the page.
+2(){const nb=firstBase(rowY(0),1), r=wide?cell(5,0,11,6):cell(2,3,6,0);
+  const ic=wide?0:4, iy=wide?firstBase(rowY(2),7):firstBase(rowY(0),7), ay=wide?rowY(-2):rowY(3);
+  return `${disp(colX(0)-8,nb,1,'41<tspan style="font-size:150px;letter-spacing:-7px">s</tspan>')}
+  ${cap(colX(ic),iy,'CROSSING TIME')}
+  ${body(colX(ic),iy+30,'Departed 12:04:00')}${body(colX(ic),iy+60,'Arrived 12:04:41')}
+  ${paintOn('arrival',r,.45,.5,2)}
+  ${disp(colX(0),firstBase(ay,5),5,'Arrived.')}
+  ${body(colX(0),firstBase(ay,5)+50,'Every time.',MUTE)}
+  ${SIGN()}`;},
+// 3. Data columns (Morocco's footer, a Swiss timetable): painting bleeds off three sides; the crossing in three columns under a rule.
+3(){const r=cell(0,0,COLS,wide?4:5), y0=rowY(wide?4:5)+20, hb=firstBase(y0+20,4), cs=wide?[0,4,8]:[0,2,4];
+  const col=(c,a,t)=>`${disp(colX(c),hb,4,a)}${body(colX(c),hb+50,t,MUTE)}`;
+  return `${paintOn('fire',r,.5,.45,3)}${rule(colX(0),y0,cell(0,0,COLS,1).w)}
+  ${col(cs[0],'Departs.','12:04:00')}${col(cs[1],'Crosses.','41 seconds')}${col(cs[2],'Arrives.','12:04:41')}
+  ${SIGN()}${cap(colX(wide?4:2),H-BOT,'SAFE PASSAGE BETWEEN CHAINS')}`;},
+// 4. A typographic sequence (the board's repeated word, the Café ribbon): the crossing told in type, the last line in full ink.
+4(){const lines=['Departed.','Crossing.','Crossing.','Arrived.'], s=2, base0=firstBase(rowY(0),s), lead=T[s][1];
+  const op=[.22,.35,.55,1];
+  const t=lines.map((l,i)=>`<g opacity="${op[i]}">${disp(colX(0),base0+i*lead,s,l,INK,{seed:3+i})}</g>`).join('');
+  const im=wide?cell(7,0,11,6):cell(3,4,6,0), by=wide?firstBase(rowY(-1),6):firstBase(rowY(-2),6);
+  return `${t}${paintOn('cabin',im,.5,.5,4)}
+  ${body(colX(0),by,'Every transfer, start to end,')}${body(colX(0),by+30,'in 41 seconds.')}
+  ${SIGN()}`;},
+// 5. A painting with a type field (Flowwow, You-nique). The painting's own empty sky is the field: no box over the subject.
+// 4:5: the lighthouse fills the page, top-aligned so its cap, houses and pier stay whole; the words sit in the empty sky
+// on columns 1 to 3, the lockup top-right on the same field line. 16:9: the lighthouse bleeds from column 6; words on the left.
+5(){if(!wide){const hb=firstBase(rowY(0),4);
+    return `${paintOn('lighthouse',{x:30,y:30,w:W-60,h:H-60},.5,0,5)}
+    ${disp(colX(0),hb,4,'Your transfer')}${disp(colX(0),hb+T[4][1],4,'has <tspan style="font-style:italic">departed.</tspan>')}
+    ${body(colX(0),hb+T[4][1]+50,'Arrives in 40 seconds.')}
+    ${lockup(W-SM-LKW,TOP+LKH)}`;}
+  const hb=firstBase(rowY(0),3);
+  return `${paintOn('lighthouse',cell(5,0,11,6),.5,.12,5)}
+  ${disp(colX(0),hb,3,'Your transfer')}${disp(colX(0),hb+T[3][1],3,'has <tspan style="font-style:italic">departed.</tspan>')}
+  ${body(colX(0),hb+T[3][1]+60,'Arrives in 40 seconds.')}
+  ${SIGN()}`;},
+// 6. The postmarked card (Fieldman, Lanzarote): headline on the axis, the card filling its fields, the arrival stamped on.
+6(){const hb=firstBase(rowY(0),3), c=wide?cell(5,1,11,5):cell(0,2,6,6), cx=c.x+c.w/2, cy=c.y+c.h/2, bd=c.w*.032;
+  return `${disp(colX(0),hb,3,'Arrived.')}${disp(colX(0),hb+T[3][1],3,'<tspan style="font-style:italic">Every time.</tspan>')}
+  ${wide?body(colX(0),hb+T[3][1]+70,'Every transfer, stamped on arrival.'):''}
+  <g transform="rotate(-2 ${cx} ${cy})"><g filter="url(#shCard)"><rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="#F7F4EE"/></g>
+  ${paintOn('arrival',{x:c.x+bd*1.9,y:c.y+bd*1.9,w:c.w-3.8*bd,h:c.h-3.8*bd},.5,.5,6)}</g>
+  <g transform="translate(${c.x+c.w-150} ${c.y+20}) rotate(-12) scale(${130/150})">${postmark('pm')}</g>
+  ${SIGN()}`;},
+};
+
+const DEFS=`<filter id="shCard" x="-10%" y="-10%" width="125%" height="125%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="c"/><feOffset in="c" dx="2" dy="2.5" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="26" result="a"/><feOffset in="a" dx="12" dy="18" result="ao"/>
+    <feComponentTransfer in="ao" result="amb"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feFlood flood-color="#050E10"/><feComposite in2="amb" operator="in" result="ambC"/>
+    <feFlood flood-color="#050E10"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feMerge><feMergeNode in="ambC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="gr"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 .3  0 0 0 0 .27  0 0 0 0 .22  0 0 0 .06 0"/></filter>
+  <!-- paper: broad uneven tone, fibres running across the sheet, fine speckle. Laid over everything with multiply, so paintings read as printed on it -->
+  <filter id="paper" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.004 0.006" numOctaves="3" seed="7" result="m"/>
+    <feColorMatrix in="m" values="0 0 0 0 .92  0 0 0 0 .87  0 0 0 0 .78  0 0 0 -.7 .42" result="mott"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="5" result="f"/>
+    <feColorMatrix in="f" values="0 0 0 0 .86  0 0 0 0 .81  0 0 0 0 .72  0 0 0 -.6 .33" result="fib"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="2" result="s"/>
+    <feColorMatrix in="s" values="0 0 0 0 .58  0 0 0 0 .53  0 0 0 0 .46  0 0 0 -1.8 .62" result="spk"/>
+    <feMerge><feMergeNode in="mott"/><feMergeNode in="fib"/><feMergeNode in="spk"/></feMerge></filter>
+  <filter id="tear" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="16"/></filter>
+  <filter id="shPaper" x="-10%" y="-10%" width="125%" height="125%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="1.6" result="c"/><feOffset in="c" dx="1.5" dy="-1.5" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".22"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="14" result="a"/><feOffset in="a" dx="6" dy="-4" result="ao"/>
+    <feComponentTransfer in="ao" result="amb"><feFuncA type="linear" slope=".12"/></feComponentTransfer>
+    <feFlood flood-color="#050E10"/><feComposite in2="amb" operator="in" result="ambC"/>
+    <feFlood flood-color="#050E10"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feMerge><feMergeNode in="ambC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+
+function gridOverlay(){let g='';
+  for(let y=0;y<=H;y+=b)g+=`<rect x="0" y="${y}" width="${W}" height="1" fill="#00B4FF" opacity=".18"/>`;
+  for(let c=0;c<COLS;c++)for(let r=0;r<ROWS;r++){const f=cell(c,r,c+1,r+1);g+=`<rect x="${f.x}" y="${f.y}" width="${f.w}" height="${f.h}" fill="none" stroke="#FF2D9B" stroke-opacity=".75" stroke-width="1.5"/>`;}
+  return g;}
+
+fetch('../export/ferry-lockup-clean.svg').then(r=>r.text()).then(t=>{LOCK=t.replace(/^[\s\S]*?<svg[^>]*>/,'').replace(/<\/svg>\s*$/,'');return fetch('../export/ferry-mark-clean.svg');}).then(r=>r.text()).then(t=>{
+  MARK=(t.match(/<path[^>]*\/>/g)||[]).join('');
+  document.getElementById('stage').innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>${DEFS}</defs>
+   <rect width="${W}" height="${H}" fill="#FAF8F3"/>${LAYOUTS[L]()}<rect width="${W}" height="${H}" filter="url(#paper)" style="mix-blend-mode:multiply"/>${SHOWGRID?gridOverlay():''}</svg>`;
+  return document.fonts.ready;
+}).then(()=>{document.title='ready'});
+</script>
+</body></html>

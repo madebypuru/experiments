@@ -1,0 +1,126 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Mark in Print</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;1,6..96,500&family=Monsieur+La+Doulaise&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--signal:#D2602C;--mute:#5E6A6E;--pen:#22304A}
+html,body{margin:0;background:#2C454B;font-family:'Ferry Sans'}
+.wrap{width:1680px;padding:40px}
+h2{color:#E9E4D8;font:700 15px 'Ferry Sans';letter-spacing:4px;margin:30px 0 14px}
+.row{display:grid;gap:16px}
+.r4{grid-template-columns:repeat(4,1fr)}.r3{grid-template-columns:repeat(3,1fr)}
+.tile{position:relative;aspect-ratio:420/360;border-radius:4px;overflow:hidden}
+.tile svg{position:absolute;inset:0;width:100%;height:100%}
+.lab{position:absolute;left:16px;bottom:12px;font:700 11px 'Ferry Sans';letter-spacing:2.5px;color:#5E6A6E;text-transform:uppercase}
+.lab.l{color:#C9CDBD}
+</style></head><body><div class="wrap" id="w"></div>
+<script>
+const MARK=['M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z','M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z'];
+const MW=165, MH=142.93, VW=420, VH=360;
+let uid=0;
+const mk=(extra='')=>MARK.map(d=>`<path d="${d}" ${extra}/>`).join('');
+// place the mark centred in the tile at width w
+const at=(w,cx=VW/2,cy=VH/2-14)=>`translate(${cx-w/2} ${cy-w*MH/MW/2}) scale(${w/MW})`;
+const paperDefs=id=>`<filter id="${id}" x="0" y="0" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="6" result="n"/><feColorMatrix in="n" values="0 0 0 0 .32 0 0 0 0 .28 0 0 0 0 .22 0 0 0 .12 0" result="s"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2" seed="3" result="t"/><feColorMatrix in="t" values="0 0 0 0 .5 0 0 0 0 .4 0 0 0 0 .28 0 0 0 .08 0" result="o"/>
+  <feMerge><feMergeNode in="o"/><feMergeNode in="s"/></feMerge></filter>`;
+function tile(inner,label,dark=false,bg='var(--paper)'){
+  const id='t'+(uid++);
+  return `<div class="tile"><svg viewBox="0 0 ${VW} ${VH}" preserveAspectRatio="xMidYMid slice"><defs>${paperDefs(id+'p')}</defs>
+  <rect width="${VW}" height="${VH}" fill="${bg}"/>${inner(id)}<rect width="${VW}" height="${VH}" filter="url(#${id}p)" opacity=".9"/></svg><div class="lab${dark?' l':''}">${label}</div></div>`;
+}
+
+// ---------- 1. physical in print ----------
+const emboss=id=>`<defs>
+  <filter id="${id}hi" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.1"/></filter></defs>
+  <g transform="${at(150)}">
+    <g transform="translate(1.6 1.9)" fill="#9C9284" opacity=".55" filter="url(#${id}hi)">${mk()}</g>
+    <g transform="translate(-1.4 -1.4)" fill="#FFFFFF" opacity=".95" filter="url(#${id}hi)">${mk()}</g>
+    <g fill="#EEEAE1">${mk()}</g>
+  </g>`;
+const rubber=id=>`<defs>
+  <filter id="${id}r" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.03 0.05" numOctaves="2" seed="17" result="b"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="g"/>
+    <feComposite in="b" in2="g" operator="arithmetic" k2=".7" k3=".5" k4="-.18" result="m"/>
+    <feColorMatrix in="m" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.4 -0.38" result="a"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.4" numOctaves="1" seed="2" result="d"/>
+    <feDisplacementMap in="SourceGraphic" in2="d" scale="2.4" result="s"/>
+    <feComposite in="s" in2="a" operator="in"/>
+  </filter><path id="${id}arc" d="M ${VW/2-88} ${VH/2-14} a 88 88 0 1 1 176 0 a 88 88 0 1 1 -176 0"/></defs>
+  <g filter="url(#${id}r)" fill="#2C454B" opacity=".9" transform="rotate(-7 ${VW/2} ${VH/2-14})">
+    <circle cx="${VW/2}" cy="${VH/2-14}" r="112" fill="none" stroke="#2C454B" stroke-width="5"/>
+    <circle cx="${VW/2}" cy="${VH/2-14}" r="72" fill="none" stroke="#2C454B" stroke-width="2.5"/>
+    <text style="font:700 15px 'Ferry Sans';letter-spacing:5px"><textPath href="#${id}arc">FERRY POST  ·  SAFE PASSAGE  ·  PORT 02  ·</textPath></text>
+    <g transform="${at(84)}">${mk()}</g></g>`;
+const wax=id=>{const cx=VW/2,cy=VH/2-12;return `<defs>
+  <filter id="${id}w" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="22"/></filter>
+  <radialGradient id="${id}g" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#B8442B"/><stop offset=".6" stop-color="#8E2F1E"/><stop offset="1" stop-color="#5E1C12"/></radialGradient>
+  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="1.6" result="b"/>
+    <feSpecularLighting in="b" surfaceScale="-3" specularConstant=".7" specularExponent="18" lighting-color="#FFD9C7" result="s"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting>
+    <feComposite in="s" in2="SourceAlpha" operator="in" result="hl"/>
+    <feFlood flood-color="#4A150D" flood-opacity=".75"/><feComposite in2="SourceAlpha" operator="in" result="dk"/>
+    <feMerge><feMergeNode in="dk"/><feMergeNode in="hl"/></feMerge></filter>
+  <filter id="${id}s" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dx="3" dy="7"/><feComponentTransfer><feFuncA type="linear" slope=".35"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <g filter="url(#${id}s)"><g filter="url(#${id}w)"><circle cx="${cx}" cy="${cy}" r="112" fill="url(#${id}g)"/></g>
+  <circle cx="${cx}" cy="${cy}" r="82" fill="none" stroke="#6E2216" stroke-width="3" opacity=".55"/>
+  <g transform="${at(96,cx,cy)}">
+    <g transform="translate(-1.2 -1.2)" fill="#3E0F09" opacity=".8">${mk()}</g>
+    <g transform="translate(1.3 1.5)" fill="#D9654A" opacity=".75">${mk()}</g>
+    <g fill="#82291A">${mk()}</g></g></g>`;};
+const engraved=id=>{let lines='';for(let y=-4;y<MH+4;y+=3.4)lines+=`<line x1="-4" x2="${MW+4}" y1="${y}" y2="${y+(y%2?0.4:-0.4)}" stroke="#2C454B" stroke-width="${1.15+0.5*Math.sin(y/9)}"/>`;
+  return `<defs><clipPath id="${id}c">${mk()}</clipPath></defs>
+  <g transform="${at(150)}"><g clip-path="url(#${id}c)">${lines}</g>${mk('fill="none" stroke="#2C454B" stroke-width="1.6"')}</g>`;};
+
+// ---------- 2. out of print ----------
+const cleanBack=id=>`<line x1="${VW/2}" x2="${VW/2}" y1="40" y2="${VH-70}" stroke="#2C454B" stroke-width="2.4"/>
+  <text x="${VW/2+24}" y="64" style="font:700 22px 'Ferry Sans';letter-spacing:6px" fill="#2C454B">POSTCARD</text>
+  ${[150,200,250].map(y=>`<line x1="${VW/2+24}" x2="${VW-30}" y1="${y}" y2="${y}" stroke="#2C454B" stroke-width="1.6"/>`).join('')}
+  <text x="30" y="${VH-40}" style="font:400 13px 'Ferry Sans'" fill="#2C454B">Published by Ferry Post</text>`;
+const product=id=>`<rect x="40" y="80" width="120" height="120" rx="28" fill="#2C454B"/>
+  <g transform="translate(${100-36} ${140-36*MH/MW}) scale(${72/MW})" fill="#F2EEE6">${mk()}</g>
+  <rect x="190" y="98" width="200" height="84" rx="14" fill="#fff" stroke="#D9D4C8"/>
+  <g transform="translate(206 ${140-11}) scale(${26/MW})" fill="#1B262B">${mk()}</g>
+  <text x="240" y="146" style="font:700 22px 'Ferry Sans';letter-spacing:-1px" fill="#1B262B">ferry</text>
+  <text x="300" y="146" style="font:400 13px 'Ferry Sans'" fill="#5E6A6E">· app</text>`;
+
+// ---------- 3. redrawn ----------
+const brush=id=>{const u=0.88;return `<defs><filter id="${id}b" x="-12%" y="-25%" width="124%" height="150%" color-interpolation-filters="sRGB">
+   <feTurbulence type="fractalNoise" baseFrequency="${0.05/u}" numOctaves="2" seed="2" result="n"/>
+   <feDisplacementMap in="SourceAlpha" in2="n" scale="${1.3*u}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+   <feGaussianBlur in="d" stdDeviation="${1.1*u}" result="b"/>
+   <feComponentTransfer in="b" result="shape"><feFuncA type="linear" slope="6" intercept="-2.6"/></feComponentTransfer>
+   <feMorphology in="shape" operator="erode" radius="${0.5*u}" result="inner"/><feGaussianBlur in="inner" stdDeviation="${0.8*u}" result="innerS"/>
+   <feComposite in="shape" in2="innerS" operator="out" result="rim"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${0.018/u}" numOctaves="3" seed="7" result="g"/>
+   <feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.55 1.2" result="gA"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${0.45/u}" numOctaves="1" seed="11" result="f"/>
+   <feColorMatrix in="f" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.12 1.04" result="fA"/>
+   <feComposite in="gA" in2="fA" operator="arithmetic" k1="1" result="tex"/>
+   <feComposite in="shape" in2="tex" operator="arithmetic" k1="1" result="bodyA"/>
+   <feFlood flood-color="#2C454B" flood-opacity=".93"/><feComposite in2="bodyA" operator="in" result="body"/>
+   <feFlood flood-color="#2C454B" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="rimC"/>
+   <feMerge><feMergeNode in="body"/><feMergeNode in="rimC"/></feMerge></filter></defs>
+  <g transform="${at(150)}" fill="#000" filter="url(#${id}b)">${mk()}</g>`;};
+const pen=id=>`<defs><filter id="${id}p2" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="21" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/></filter>
+  <clipPath id="${id}c">${mk()}</clipPath></defs>
+  <g transform="${at(150)}" filter="url(#${id}p2)">
+    <g clip-path="url(#${id}c)">${Array.from({length:40},(_,i)=>`<line x1="${-60+i*7}" y1="${MH+10}" x2="${i*7+60}" y2="-10" stroke="#22304A" stroke-width=".9" opacity=".75"/>`).join('')}</g>
+    ${mk('fill="none" stroke="#22304A" stroke-width="2.1" stroke-linejoin="round"')}</g>`;
+const soft=id=>`<defs><filter id="${id}s2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="5.5" result="b"/><feComponentTransfer in="b" result="a"><feFuncA type="linear" slope="9" intercept="-4.1"/></feComponentTransfer><feFlood flood-color="#2C454B"/><feComposite in2="a" operator="in"/></filter></defs>
+  <g transform="${at(150)}" fill="#000" filter="url(#${id}s2)">${mk()}</g>`;
+
+document.getElementById('w').innerHTML=`
+<h2>1  ·  PHYSICAL IN PRINT: THE SAME SHAPE, AN ANALOG MATERIAL</h2>
+<div class="row r4">${tile(emboss,'Blind emboss')}${tile(rubber,'Rubber stamp, one ink')}${tile(wax,'Wax seal')}${tile(engraved,'Engraved line')}</div>
+<h2>2  ·  OUT OF PRINT: THE MARK LIVES ONLY IN THE PRODUCT</h2>
+<div class="row r3">${tile(cleanBack,'Print: no mark, the wordmark at most')}${tile(product,'Product: app icon and header',false,'#ECEAE4')}${tile(id=>`<g transform="${at(150)}" fill="#F2EEE6">${mk()}</g>`,'The mark stays crisp and digital',true,'#2C454B')}</div>
+<h2>3  ·  REDRAWN: THE TWO HALVES IN THE SAME HAND AS EVERYTHING ELSE</h2>
+<div class="row r3">${tile(brush,'Watercolour bleed (the locked logo treatment)')}${tile(pen,'Pen and hatching')}${tile(soft,'Softened steps')}</div>`;
+document.fonts.ready.then(()=>document.title='ready');
+</script></body></html>

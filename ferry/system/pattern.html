@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ferry pattern</title>
+<style>
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Bold.woff2) format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Regular.woff2) format('woff2'); font-weight: 400; }
+:root { --paper: #F2EEE6; --ink: #1B262B; --harbour: #2C454B; }
+html, body { margin: 0; background: var(--paper); }
+body { width: 1440px; padding-bottom: 80px; }
+.row { display: flex; gap: 40px; padding: 80px 80px 0; }
+.kit { gap: 20px; }
+.kit .cell { width: 196px; }
+.tiles .cell { width: 400px; }
+svg { display: block; }
+.name { font: 700 11px/1 'Ferry Sans', sans-serif; letter-spacing: .22em; text-transform: uppercase; color: var(--harbour); margin-top: 16px; }
+.frame { position: relative; width: 1440px; height: 810px; margin-top: 80px; overflow: hidden; }
+</style>
+</head>
+<body>
+<div class="row kit" id="kit"></div>
+<div class="row tiles" id="tiles"></div>
+<div class="frame" id="fA"></div>
+<div class="frame" id="fB"></div>
+<div class="frame" id="fC"></div>
+<script src="pattern.js"></script>
+<script>
+{
+const P = window.Pattern, M = P.M;
+const C = { paper: '#F2EEE6', ink: '#1B262B', harbour: '#2C454B', glass: '#6B8A94', mist: '#C9CDBD' };
+const IMG = n => '../assets/refs/' + n;
+const PAINT = { ferry: [IMG('ferry-arrival-gouache.png'), 1827, 1333], light: [IMG('lighthouse-gouache-hi.png'), 1430, 2299] };
+const FW = 1440, FH = 810;
+const BL = new URLSearchParams(location.search).get('bleed') !== '0'; // ?bleed=0 compares crisp edges
+const col = i => 90 + 160 * i, rowT = j => 95 + 160 * j, rowB = j => rowT(j) + 140; // 140 px modules, 20 px gutters
+const svg = (w, h, inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${inner}</svg>`;
+// a painting covering a box with room to drift; (fx, fy) is the source point placed at the box centre
+const cover = ([src, iw, ih], x, y, w, h, t, over = 1.06, fx = 0.5, fy = 0.5) => {
+  const k = Math.max(w / iw, h / ih) * over, dw = iw * k, dh = ih * k;
+  const px = Math.min(x, Math.max(x + w - dw, x + w / 2 - fx * dw)), py = Math.min(y, Math.max(y + h - dh, y + h / 2 - fy * dh));
+  return `<image href="${src}" x="${(px + P.drift(t, w)).toFixed(1)}" y="${py.toFixed(1)}" width="${dw.toFixed(1)}" height="${dh.toFixed(1)}"/>`;
+};
+const scenes = [];
+const scene = (id, fn) => scenes.push([document.getElementById(id), fn]);
+
+/* Row 1: the kit. BACK, STEP, NOSE at true proportions; a SHORE stacked from them; a PAIR across one channel; the FIELD. */
+const back = 7 - 0.5 - M.depth; // a block's body behind its reach, in c (half the 14c channel pitch, less the open water)
+const kit = document.getElementById('kit');
+kit.innerHTML = ['Back', 'Step', 'Nose', 'Shore', 'Pair', 'Field'].map((n, i) => `<div class="cell"><div id="k${i}"></div><div class="name">${n}</div></div>`).join('');
+const KW = 196, KH = 260;
+[[0, M.b2], [1, M.a2], [2, M.nose]].forEach(([l, h], i) => {
+  const s = 20, w = (back + P.REACH[l]) * s, x0 = (KW - (back + M.depth) * s) / 2, y0 = (KH - h * s) / 2;
+  document.getElementById('k' + i).innerHTML = svg(KW, KH, `<path d="${P.block(x0, x0 + w, y0, y0 + h * s, M.r * s)}" fill="${C.harbour}"/>`);
+});
+const seq = P.shoreSeq(1, 0), ks = 8, tot = seq.reduce((a, [, h]) => a + h, 0) * ks;
+const stack = (xb, dir) => { let y = (KH - tot) / 2; const bl = []; for (const [l, h] of seq) { bl.push([y, y + h * ks, (back + P.REACH[l]) * ks]); y += h * ks; } return P.shore(xb, dir, bl, M.r * ks); };
+document.getElementById('k3').innerHTML = svg(KW, KH, `<path d="${stack(KW / 2 - (back + M.depth + 0.5) * ks, 1)}" fill="${C.harbour}"/>`);
+document.getElementById('k4').innerHTML = svg(KW, KH, `<path d="${stack(KW / 2 - 7 * ks, 1) + stack(KW / 2 + 7 * ks, -1)}" fill="${C.harbour}"/>`);
+document.getElementById('k5').innerHTML = svg(KW, KH, P.draw({ w: KW, h: KH, s: 4, seed: 1, ox: KW / 2, fig: C.harbour, ground: C.paper, bleed: false }, 0));
+
+/* Row 2: the pattern alone, one tile per motion. */
+document.getElementById('tiles').innerHTML = [0, 1, 2].map(i => `<div class="cell" id="t${i}"></div>`).join('');
+scene('t0', t => svg(400, 400, P.draw({ w: 400, h: 400, s: 9, seed: 2, ox: 20, motion: 'arrive', fig: C.harbour, ground: C.paper, bleed: BL }, t)));
+scene('t1', t => svg(400, 400, P.draw({ w: 400, h: 400, s: 7, seed: 3, ox: 10, motion: 'tide', fig: C.ink, ground: C.mist, bleed: BL,
+  bands: [{ y: 0, h: 118, scale: 1 }, { y: 125, h: 120, scale: 1.5 }, { y: 252, h: 148, scale: 2 }] }, t)));
+scene('t2', t => svg(400, 400, P.draw({ w: 400, h: 400, s: 9, seed: 5, ox: 20, motion: 'swap', rotate: 90, fig: C.paper, ground: C.glass, bleed: BL }, t)));
+
+/* Frame A, hero and no-logo test: the painting is seen only through the mark's two halves, beside the line. */
+const MX = col(3), MY = rowT(0), MH = rowB(3) - rowT(0);
+scene('fA', t => svg(FW, FH, `<defs><mask id="kA" maskUnits="userSpaceOnUse" x="0" y="0" width="${FW}" height="${FH}"><rect width="${FW}" height="${FH}" fill="#000"/><g fill="#fff"${BL ? ' filter="url(#bA)"' : ''}>${P.halves(MX, MY, MH)}</g></mask>${BL ? P.bleedDef('bA', 0.878 * MH / 142.93, '#fff', 4) : ''}</defs>
+  <rect width="${FW}" height="${FH}" fill="${C.paper}"/>
+  <g mask="url(#kA)">${cover(PAINT.ferry, MX - 120, MY - 40, 900, MH + 80, t)}</g>
+  <text font-family="Ferry Sans" font-weight="700" font-size="64" letter-spacing="-1.3" fill="${C.ink}"><tspan x="${col(0)}" y="${rowB(3) - 64}">Arrived.</tspan><tspan x="${col(0)}" y="${rowB(3)}">Every time.</tspan></text>`));
+
+/* Frame B, poster: the field as the whole ground, Tide playing slowly; a Paper panel on the grid holds the type.
+   At 160/14 px per c one channel pitch (14c) is one module plus gutter, so channels sit on the gutter centres. */
+scene('fB', t => svg(FW, FH, P.draw({ w: FW, h: FH, s: 160 / 14, seed: 4, ox: 80, motion: 'tide', speed: 0.8, fig: C.harbour, ground: C.paper, bleed: BL }, t) + `
+  <rect x="${col(0)}" y="${rowT(2)}" width="${4 * 160 - 20}" height="${2 * 160 - 20}" fill="${C.paper}"/>
+  <text font-family="Ferry Sans" font-weight="700" font-size="50" letter-spacing="-1" fill="${C.ink}"><tspan x="${col(0) + 40}" y="${rowT(2) + 80}">Safe passage</tspan><tspan x="${col(0) + 40}" y="${rowT(2) + 136}">between chains.</tspan></text>
+  <text font-family="Ferry Sans" font-weight="400" font-size="20" fill="${C.ink}" x="${col(0) + 40}" y="${rowB(3) - 40}">Every transfer arrives, on time, intact.</text>`));
+
+/* Frame C, painting through the pattern: three large shores (14c pitch at 40 px per c, the ferry on the middle one) as windows on Paper, Arrive playing. */
+scene('fC', t => svg(FW, FH, `<defs><mask id="kC" maskUnits="userSpaceOnUse" x="0" y="0" width="${FW}" height="${FH}"><rect width="${FW}" height="${FH}" fill="#000"/>${P.draw({ w: FW, h: FH, s: 40, seed: 2, ox: 440, oy: -60, motion: 'arrive', maskOnly: true, fig: '#fff', bleed: BL }, t)}</mask></defs>
+  <rect width="${FW}" height="${FH}" fill="${C.paper}"/><g mask="url(#kC)">${cover(PAINT.ferry, 0, 0, FW, FH, t, 1.08, 0.5, 0.55)}</g>`));
+
+const render = t => { for (const [el, fn] of scenes) { const s = fn(t); if (el._s !== s) el.innerHTML = el._s = s; } }; // unchanged frames keep their rasterised bleed
+P.play(render);
+}
+</script>
+</body>
+</html>

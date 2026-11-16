@@ -1,0 +1,150 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Postcard 02</title>
+<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&family=La+Belle+Aurore&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F4F1EA;--ink:#1B262B;--harbour:#2C454B;--pen:#22304A}
+html,body{margin:0;background:#111}
+svg{display:block;width:100vw;height:auto;max-width:1600px}
+</style></head><body>
+<svg id="v" viewBox="0 0 1600 2000"></svg>
+<script src="emboss.js"></script>
+<script>
+// Postcard 02: the back of a plain card (POSTCARD from a place, the message, FROM and TO) and its front,
+// a painting with Ferry's stepped-notch edge like an oversized stamp, both laid over a close crop of the same painting.
+// 4:5 at 1600 x 2000. Light from the top left; shadows only seat the paper.
+const PAINT='../assets/refs/ferry-arrival-gouache.png', PW=1827, PH=1333;   // placeholder: a study of a reference photo
+const PLACE='the Golden Strait';
+const T=(x,y,t,st,ex='')=>`<text x="${x}" y="${y}" style="${st}" ${ex}>${t}</text>`;
+const CAPS=(px,ls,w=700)=>`font:${w} ${px}px 'Ferry Sans';letter-spacing:${ls}px`;
+
+// ---- the back: 6 x 4 in, drawn at 1320 x 880 ----
+const BW=1320, BH=880;
+// Ferry's stepped notch, the stamp's edge, reused for the printed stamp box and the front's perforation
+function notchPts(cx,cy,ang,nw,nd){
+  const w1=nw,w2=nw*.66,w3=nw*.34,d1=nd*.38,d2=nd*.72,d3=nd;
+  const p=[[-w1/2,-40],[-w1/2,d1],[-w2/2,d1],[-w2/2,d2],[-w3/2,d2],[-w3/2,d3],[w3/2,d3],[w3/2,d2],[w2/2,d2],[w2/2,d1],[w1/2,d1],[w1/2,-40]];
+  const c=Math.cos(ang),s=Math.sin(ang);return p.map(([x,y])=>[cx+x*c-y*s,cy+x*s+y*c]);
+}
+function notches(w,h,pitch,nd){const nw=pitch/2,out=[];
+  for(let x=0;x<=w+.1;x+=pitch){out.push(notchPts(x,0,0,nw,nd));out.push(notchPts(x,h,Math.PI,nw,nd));}
+  for(let y=pitch;y<h-.1;y+=pitch){out.push(notchPts(0,y,-Math.PI/2,nw,nd));out.push(notchPts(w,y,Math.PI/2,nw,nd));}
+  return out.map(p=>`<polygon points="${p.map(q=>q.map(v=>v.toFixed(1)).join(',')).join(' ')}"/>`).join('');}
+function back(){
+  const INK='var(--harbour)', DIV=640;
+  const hand=(x,y,lines,px,lh)=>lines.map((l,i)=>T(x+(i%2?5:0),y+i*lh,l,`font:400 ${px}px 'La Belle Aurore'`,`fill="var(--pen)" transform="rotate(-1.6 ${x} ${y+i*lh})"`)).join('');
+  // the stamp box, printed: a stepped-notch stamp shape in hairline, 150 x 186, pitch 18.6
+  const sw=150, sh=186, sp=sw/8, snd=6.5;
+  const box=`<g transform="translate(${BW-70-sw} 64)">
+      <mask id="sbm" maskUnits="userSpaceOnUse" x="-20" y="-20" width="${sw+40}" height="${sh+40}"><rect width="${sw}" height="${sh}" fill="#fff"/><g fill="#000">${notches(sw,sh,sh/10,snd)}</g></mask>
+      <clipPath id="sbc"><rect width="${sw}" height="${sh}"/></clipPath>
+      <g clip-path="url(#sbc)">
+        <g mask="url(#sbm)"><rect width="${sw}" height="${sh}" fill="none" stroke="${INK}" stroke-width="4.4"/></g>
+        <g fill="none" stroke="${INK}" stroke-width="2.2">${notches(sw,sh,sh/10,snd).replace(/<polygon/g,'<polygon fill="none"')}</g>
+      </g>
+      <rect x="14" y="14" width="${sw-28}" height="${sh-28}" fill="none" stroke="${INK}" stroke-width="1.6"/>
+    </g>`;
+  // a printed postmark beside it: ring, date ring and the waves running into the box, line only, like a pen drawing
+  const pm=`<g transform="translate(${BW-70-sw-118} 150)" fill="none" stroke="${INK}" stroke-linecap="round">
+      <circle r="58" stroke-width="3"/><circle r="40" stroke-width="1.6"/>
+      ${[0,1,2,3].map(i=>`<path d="M 66 ${-30+i*20} q 22 -8 44 0 t 44 0 t 44 0" stroke-width="2.6"/>`).join('')}
+      <g stroke="none" fill="${INK}">${T(0,-6,'FERRY',CAPS(12,2.4),'text-anchor="middle"')}${T(0,14,'POST',CAPS(12,2.4),'text-anchor="middle"')}</g>
+    </g>`;
+  const lines=[300,384,468,552,636];
+  return `<rect width="${BW}" height="${BH}" fill="var(--paper)"/>
+  <rect width="${BW}" height="${BH}" filter="url(#grain)"/>
+  <g fill="${INK}" stroke="${INK}" filter="url(#inkf)">
+    ${T(BW/2-60,92,'FERRY POST',CAPS(17,7),'text-anchor="middle" stroke="none"')}
+    <line x1="${DIV}" x2="${DIV}" y1="250" y2="${BH-120}" stroke-width="2"/>
+    <g stroke="none">
+      ${T(72,368,'POSTCARD',CAPS(60,13))}
+      ${T(76,452,'FROM',CAPS(15,4))}
+    </g>
+    <g stroke="none">${T(152,470,PLACE,"font:400 78px 'Monsieur La Doulaise'")}</g>
+    <g stroke="none">${T(76,BH-196,'FROM',CAPS(15,4))}${T(76,BH-128,'TO',CAPS(15,4))}</g>
+    <g stroke-width="1.6">
+      <line x1="170" x2="${DIV-60}" y1="${BH-192}" y2="${BH-192}"/><line x1="170" x2="${DIV-60}" y1="${BH-124}" y2="${BH-124}"/>
+      ${lines.map(y=>`<line x1="${DIV+44}" x2="${BW-70}" y1="${y}" y2="${y}"/>`).join('')}
+    </g>
+    ${box}${pm}
+  </g>
+  ${hand(DIV+52,288,['Crossed in forty one seconds.','The light went gold halfway over','and nothing was lost on the way.','Wish you were on deck,'],40,84)}
+  ${T(BW-180,636,'Mira',"font:400 44px 'La Belle Aurore'",'fill="var(--pen)" transform="rotate(-1.6 '+(BW-180)+' 636)"')}
+  ${hand(186,BH-200,['Port of Ethereum'],34,0)}${hand(186,BH-132,['Port of Solana'],34,0)}
+  <g id="blind"><image id="blindMul" style="mix-blend-mode:multiply"/><image id="blindScr" style="mix-blend-mode:screen"/></g>`;
+}
+
+// ---- the front: the painting, its edges bleeding into the paper, inside Ferry's stepped-notch edge ----
+const FW=1200, FH=800, FP=40;   // 30 x 20 notches: one lands on every corner
+function front(){
+  const m=58, iw=FW-2*m, ih=FH-2*m, s=Math.max(iw/PW,ih/PH);
+  return `<mask id="fm" maskUnits="userSpaceOnUse" x="-60" y="-60" width="${FW+120}" height="${FH+120}">
+      <g filter="url(#rag)"><rect width="${FW}" height="${FH}" fill="#fff"/><g fill="#000">${notches(FW,FH,FP,13)}</g></g></mask>
+    <mask id="wash" maskUnits="userSpaceOnUse" x="0" y="0" width="${FW}" height="${FH}">
+      <rect x="${m+14}" y="${m+14}" width="${iw-28}" height="${ih-28}" fill="#fff" filter="url(#bleed)"/></mask>
+    <g mask="url(#fm)">
+      <rect width="${FW}" height="${FH}" fill="var(--paper)"/>
+      <g mask="url(#wash)"><image href="${PAINT}" x="${m+(iw-PW*s)/2}" y="${m+(ih-PH*s)/2}" width="${PW*s}" height="${PH*s}" preserveAspectRatio="none"/></g>
+      <rect width="${FW}" height="${FH}" filter="url(#grain)"/>
+    </g>`;
+}
+
+const S=1600, H=2000;
+const defs=`<defs>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="6" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 .32  0 0 0 0 .28  0 0 0 0 .22  0 0 0 .11 0" result="speck"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2" seed="3" result="t"/>
+    <feColorMatrix in="t" values="0 0 0 0 .5  0 0 0 0 .4  0 0 0 0 .28  0 0 0 .06 0" result="tone"/>
+    <feMerge><feMergeNode in="tone"/><feMergeNode in="speck"/></feMerge>
+  </filter>
+  <filter id="inkf" x="-2%" y="-2%" width="104%" height="104%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="11" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.9 1.2" result="a"/>
+    <feComposite in="SourceGraphic" in2="a" operator="in"/>
+  </filter>
+  <filter id="rag" x="-5%" y="-5%" width="110%" height="110%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/>
+  </filter>
+  <!-- the wash edge: the paint stops unevenly, soaking into the paper the way a watercolour edge does -->
+  <filter id="bleed" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="4" seed="9" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="20" result="d"/>
+    <feGaussianBlur in="d" stdDeviation="5.5"/>
+  </filter>
+  <filter id="soft"><feGaussianBlur stdDeviation="5"/></filter>
+  <!-- paper lying flat on paper: the gap is a fraction of a millimetre, so the shadow is soft but stays tight to the edge -->
+  <filter id="lay" x="-3%" y="-3%" width="106%" height="108%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="b"/><feOffset in="b" dx="2" dy="3" result="o"/>
+    <feColorMatrix in="o" values="0 0 0 0 .04  0 0 0 0 .05  0 0 0 0 .05  0 0 0 .2 0" result="s"/>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="1" result="c"/><feOffset in="c" dx=".5" dy="1" result="co"/>
+    <feColorMatrix in="co" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0" result="cs"/>
+    <feMerge><feMergeNode in="s"/><feMergeNode in="cs"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <radialGradient id="light" cx="22%" cy="12%" r="100%"><stop offset="0" stop-color="#FFF4DE" stop-opacity=".14"/><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#120A04" stop-opacity=".38"/></radialGradient>
+</defs>`;
+
+// the world: the same painting, close, so the brushwork fills the frame behind the cards
+const ws=H*1.18/PH, wx=-(PW*ws-S)/2-120;
+const scene=`${defs}
+  <image href="${PAINT}" x="${wx}" y="${-H*.12}" width="${PW*ws}" height="${PH*ws}" preserveAspectRatio="none" filter="url(#soft)"/>
+  <g filter="url(#lay)" transform="translate(150 170) rotate(-3.2 ${BW/2} ${BH/2})">${back()}
+    <!-- the lit edge: the card's thickness catching the light along its top and left -->
+    <path d="M0,${BH} V0 H${BW}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2"/></g>
+  <g filter="url(#lay)" transform="translate(240 1000) rotate(1.4 ${FW/2} ${FH/2})">${front()}</g>
+  <rect width="${S}" height="${H}" fill="url(#light)"/>`;
+document.getElementById('v').innerHTML=scene;
+
+async function fillBlindMark(){   // the blind emboss: the mark raised in the lower right corner of the back, no ink
+  const r=await FerryEmboss.render('assets/mark-mask.png',FerryEmboss.settings());
+  // emboss.js renders at 300 dpi; this card is 1320 px for 6 in, 220 px per inch
+  const k=BW/6/300,g=document.getElementById('blind');g.setAttribute('transform',`translate(${BW-108-r.w*k/2} ${BH-176-r.h*k/2}) scale(${k})`);
+  for(const [id,c] of [['blindMul',r.mul],['blindScr',r.scr]]){const el=document.getElementById(id);
+    el.setAttribute('href',c.toDataURL());el.setAttribute('width',r.w);el.setAttribute('height',r.h);}
+}
+Promise.all([document.fonts.ready,fillBlindMark()]).then(()=>{document.title='ready'});
+</script>
+</body></html>

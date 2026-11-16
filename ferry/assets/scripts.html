@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Mrs+Saint+Delafield&family=Monsieur+La+Doulaise&family=Herr+Von+Muellerhoff&family=Meddon&family=La+Belle+Aurore&family=Italianno&family=Corinthia:wght@400;700&family=Imperial+Script&family=Ephesis&family=Rouge+Script&family=Mea+Culpa&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+body{margin:0;background:#2C454B;font-family:'Ferry Sans';padding:32px;width:1536px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+
+.c{overflow:hidden;background:#F2EEE6;border-radius:6px;padding:26px 24px 20px;text-align:center;color:#1B262B;position:relative}
+.n{position:absolute;left:12px;top:10px;font:700 11px 'Ferry Sans';letter-spacing:2px;color:#5E6A6E;text-transform:uppercase}
+.big{font-size:64px;line-height:1.15;margin-top:10px;white-space:nowrap}
+.cap{font:700 11px 'Ferry Sans';letter-spacing:2.6px;margin-top:6px}
+.small{font-size:34px;margin-top:14px;color:#1B262B}
+</style></head><body><div class="grid" id="g"></div>
+<script>
+const F=[['Pinyon Script','current'],['Mrs Saint Delafield',''],['Monsieur La Doulaise',''],['Herr Von Muellerhoff',''],['Meddon',''],['La Belle Aurore',''],['Italianno',''],['Corinthia',''],['Imperial Script',''],['Ephesis',''],['Rouge Script',''],['Mea Culpa','']];
+document.getElementById('g').innerHTML=F.map(([f,t])=>`<div class="c"><div class="n">${f}${t?' · '+t:''}</div>
+<div class="big" style="font-family:'${f}'">the Arrival Light</div>
+<div class="cap">PORT OF CALL 01 · DEPARTS 12:04 · ARRIVES 12:04:41</div>
+<div class="small" style="font-family:'${f}'">Port of Solana · 28px test</div></div>`).join('');
+document.fonts.ready.then(()=>document.title='ready');
+</script></body></html>

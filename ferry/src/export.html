@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}body{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.wash{position:absolute;inset:0;width:100%;height:100%}#o{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%}#o svg{width:var(--w);height:auto}</style></head><body><div id="o"></div>
+<script src="glyphs.js"></script><script>
+const MARK=['M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z','M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z'];
+const MW=165, MH=142.93, K={h:142.93/87.8, above:31/87.8, gap:65/87.8};
+let fid=0;
+// Watercolour bleed. u = 1% of the ascender height in the drawing's own units, so the effect is the same at any scale.
+// mode 'ink': pigment on paper (rim darker, grainy body, faint feathered halo). mode 'reserve': white paper left bare, wash pools at its edge.
+function bleed(u,mode,color,seed=2){
+  const id='bl'+(fid++);
+  const core=`<feTurbulence type="fractalNoise" baseFrequency="${(0.05/u).toFixed(5)}" numOctaves="2" seed="${seed}" result="n"/>
+   <feDisplacementMap in="SourceAlpha" in2="n" scale="${1.3*u}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+   <feGaussianBlur in="d" stdDeviation="${1.1*u}" result="b"/>
+   <feComponentTransfer in="b" result="shape"><feFuncA type="linear" slope="6" intercept="-2.6"/></feComponentTransfer>
+   <feMorphology in="shape" operator="erode" radius="${0.5*u}" result="inner"/><feGaussianBlur in="inner" stdDeviation="${0.8*u}" result="innerS"/>
+   <feComposite in="shape" in2="innerS" operator="out" result="rim"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.018/u).toFixed(5)}" numOctaves="3" seed="${seed+5}" result="g"/>
+   <feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.55 1.2" result="gA"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.45/u).toFixed(5)}" numOctaves="1" seed="${seed+9}" result="f"/>
+   <feColorMatrix in="f" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -0.12 1.04" result="fA"/>
+   <feComposite in="gA" in2="fA" operator="arithmetic" k1="1" result="tex"/>
+   <feComposite in="shape" in2="tex" operator="arithmetic" k1="1" result="bodyA"/>`;
+  if(mode==='ink') return {id,def:`<filter id="${id}" x="-12%" y="-25%" width="124%" height="150%" color-interpolation-filters="sRGB">${core}
+   <feFlood flood-color="${color}" flood-opacity=".93"/><feComposite in2="bodyA" operator="in" result="body"/>
+   <feFlood flood-color="${color}" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="rimC"/>
+   <feGaussianBlur in="d" stdDeviation="${2.6*u}" result="h"/><feComponentTransfer in="h" result="hA"><feFuncA type="linear" slope=".09"/></feComponentTransfer>
+   <feFlood flood-color="${color}"/><feComposite in2="hA" operator="in" result="halo"/>
+   <feMerge><feMergeNode in="halo"/><feMergeNode in="body"/><feMergeNode in="rimC"/></feMerge></filter>`};
+  return {id,def:`<filter id="${id}" x="-12%" y="-25%" width="124%" height="150%" color-interpolation-filters="sRGB">${core}
+   <feMorphology in="shape" operator="dilate" radius="${0.9*u}" result="out"/><feComposite in="out" in2="shape" operator="out" result="ring"/>
+   <feGaussianBlur in="ring" stdDeviation="${0.6*u}" result="ringS"/>
+   <feFlood flood-color="#0A3570" flood-opacity=".28"/><feComposite in2="ringS" operator="in" result="pool"/>
+   <feComposite in="shape" in2="tex" operator="arithmetic" k1=".6" k2=".4" result="bodyA2"/>
+   <feFlood flood-color="${color}" flood-opacity=".97"/><feComposite in2="bodyA2" operator="in" result="body"/>
+   <feFlood flood-color="${color}" flood-opacity=".75"/><feComposite in2="rim" operator="in" result="rimC"/>
+   <feComposite in="body" in2="rimC" operator="out" result="bodyIn"/>
+   <feMerge><feMergeNode in="pool"/><feMergeNode in="bodyIn"/><feMergeNode in="rimC"/></feMerge></filter>`};
+}
+const markG=MARK.map(d=>`<path d="${d}"/>`).join('');
+function lockup(mode,color,opt={}){
+  const w=G.bold, b=w.tightBounds, A=w.A, H=K.h*A, s=H/MH, W=MW*s;
+  const mx=b[0]-K.gap*A-W, my=-(A+K.above*A), p=A*(opt.pad??.1);
+  const x0=mx, x1=b[2], y0=my, y1=Math.max(my+H,-b[1]);
+  const vb=opt.vb||[x0-p,y0-p,x1-x0+2*p,y1-y0+2*p];
+  const f=bleed(A/100,mode,color,opt.seed||2);
+  return `<svg class="${opt.cls||''}" viewBox="${vb.join(' ')}" aria-label="Ferry"><defs>${f.def}</defs><g filter="url(#${f.id})" fill="#000"><path d="${w.tight}"/><g transform="translate(${mx} ${my}) scale(${s})">${markG}</g></g></svg>`;
+}
+function markOnly(mode,color,opt={}){ // mark's own units: A = 87.8
+  const f=bleed(87.8/100,mode,color,opt.seed||4), p=10;
+  return `<svg class="${opt.cls||''}" viewBox="${-p} ${-p} ${MW+2*p} ${MH+2*p}" aria-label="Ferry"><defs>${f.def}</defs><g filter="url(#${f.id})" fill="#000">${markG}</g></svg>`;
+}
+const clean=(s,c)=>`<svg width="${s}" height="${(s*MH/MW).toFixed(1)}" viewBox="0 0 ${MW} ${MH}" fill="${c}">${markG}</svg>`;
+let wid=0;
+function wash(seed=3){
+  const id='wf'+(wid++), W=1600, H=900;
+  const bands=[['#9BD3F2',0,.34],['#43A5E6',.18,.30],['#1468C2',.33,.22],['#2E86B8',.47,.14],['#3E9A86',.55,.14],['#6FA956',.63,.18],['#9DB84E',.74,.16],['#B9A13A',.82,.22],['#8EC593',.70,.12]];
+  const blobs=[['#0E5BB0',.18,.40,.42,.10],['#0E5BB0',.80,.38,.40,.11],['#5FB0E8',.55,.20,.40,.10],['#A8A63E',.20,.90,.30,.14],['#7FBF8A',.70,.86,.34,.12],['#2F8F7A',.45,.62,.30,.06]];
+  return `<svg class="wash" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+   <filter id="${id}" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="0.0022 0.007" numOctaves="3" seed="${seed}"/><feDisplacementMap in="SourceGraphic" scale="170" xChannelSelector="R" yChannelSelector="G" result="d"/>
+    <feGaussianBlur in="d" stdDeviation="22" result="soft"/><feGaussianBlur in="d" stdDeviation="5" result="edge"/>
+    <feComponentTransfer in="edge" result="edgeA"><feFuncA type="linear" slope=".35"/></feComponentTransfer><feMerge><feMergeNode in="soft"/><feMergeNode in="edgeA"/></feMerge></filter>
+   <filter id="${id}g"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="${seed+7}"/><feColorMatrix values="0 0 0 0 .2 0 0 0 0 .18 0 0 0 0 .15 0 0 0 .22 0"/></filter>
+   <filter id="${id}p"><feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="2" seed="${seed+3}"/><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 -.18"/></filter>
+  <linearGradient id="${id}base" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9BD3F2"/><stop offset=".45" stop-color="#1F74C4"/><stop offset=".7" stop-color="#6FA956"/><stop offset="1" stop-color="#B9A13A"/></linearGradient></defs><rect width="${W}" height="${H}" fill="url(#${id}base)"/>
+  <g filter="url(#${id})">${bands.map(([c,y,h])=>`<rect x="-200" y="${y*H}" width="${W+400}" height="${h*H}" fill="${c}"/>`).join('')}
+  ${blobs.map(([c,x,y,rx,ry])=>`<ellipse cx="${x*W}" cy="${y*H}" rx="${rx*W}" ry="${ry*H}" fill="${c}" opacity=".75"/>`).join('')}</g>
+  <rect width="${W}" height="${H}" filter="url(#${id}p)" style="mix-blend-mode:soft-light"/>
+  <rect width="${W}" height="${H}" filter="url(#${id}g)"/></svg>`;
+}
+
+const q=new URLSearchParams(location.search), what=q.get('a'), col=q.get('c')==='white'?'#FAF8F3':'#1A1A1C';
+const o=document.getElementById('o'); document.documentElement.style.setProperty('--w',(q.get('w')||'88')+'%');
+if(what==='lockup') o.innerHTML=lockup('ink',col,{pad:.14});
+if(what==='mark') o.innerHTML=markOnly('ink',col);
+if(what==='hero'){document.body.insertAdjacentHTML('afterbegin',wash(3)); o.innerHTML=lockup('reserve','#FAF8F3');}
+if(what==='appicon'){document.body.insertAdjacentHTML('afterbegin',wash(5)); o.innerHTML=markOnly('reserve','#FAF8F3',{seed:7});}
+document.title='ready';
+</script></body></html>

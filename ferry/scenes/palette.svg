@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 500" data-paint="1" data-title="Ferry palette" data-focus="800 250" data-style="watercolour">
+<!-- plan
+subject: the eight Ferry colours as broad vertical bands, painted, to be cut into swatches
+view: flat, no horizon; no motion
+-->
+<rect x="0" y="0" width="201" height="500" fill="#F2EEE6" data-role="wall"/>
+<rect x="200" y="0" width="201" height="500" fill="#C9CDBD" data-role="wall"/>
+<rect x="400" y="0" width="201" height="500" fill="#D2A57F" data-role="wall"/>
+<rect x="600" y="0" width="201" height="500" fill="#7D8F69" data-role="wall"/>
+<rect x="800" y="0" width="201" height="500" fill="#6B8A94" data-role="wall"/>
+<rect x="1000" y="0" width="201" height="500" fill="#2C454B" data-role="wall"/>
+<rect x="1200" y="0" width="201" height="500" fill="#1B262B" data-role="wall"/>
+<rect x="1400" y="0" width="201" height="500" fill="#D2602C" data-role="wall"/>
+<rect x="0" y="0" width="2" height="2" fill="#F2EEE6" data-role="sky"/>
+<g data-sprite="gull" data-path="M -900 -900 L -800 -900" data-duration="10"><path d="M -8 0 Q -4 -4 0 0 Q 4 -4 8 0" fill="none" stroke="#3b3a3f" stroke-width="1.8"/></g>
+</svg>

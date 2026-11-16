@@ -1,0 +1,143 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Postcard 01</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Monsieur+La+Doulaise&family=La+Belle+Aurore&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;--mute:#5E6A6E;--pen:#22304A}
+html,body{margin:0;background:#111}
+svg{display:block}
+</style></head><body>
+<svg id="card" width="1800" height="1200" viewBox="0 0 1800 1200"></svg>
+<script src="stamp.js"></script>
+<script src="emboss.js"></script>
+<script src="knife.js"></script>
+<script>
+// A 6 x 4 in postcard at 300 px per inch: 1800 x 1200.
+// ?side=front&f=border | bleed | strip | greet   ·   ?side=back
+const W=1800, H=1200, Q=new URLSearchParams(location.search);
+const SIDE=Q.get('side')||'front', F=Q.get('f')||'border';
+const PAINT='../assets/refs/rowboats-gouache.png', PW=1835, PH=1144;   // placeholder: a study of a reference photo
+const LOCK_R=LOCK_RATIO();
+const PLACE='the Departure Dock', PORT='PORT 02', NO='FP-02';
+
+const defs=`<defs>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="6" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 .32  0 0 0 0 .28  0 0 0 0 .22  0 0 0 .12 0" result="speck"/>
+    <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2" seed="3" result="t"/>
+    <feColorMatrix in="t" values="0 0 0 0 .5  0 0 0 0 .4  0 0 0 0 .28  0 0 0 .08 0" result="tone"/>
+    <feMerge><feMergeNode in="tone"/><feMergeNode in="speck"/></feMerge>
+  </filter>
+  <filter id="inkf" x="-2%" y="-2%" width="104%" height="104%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="2" seed="11" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.9 1.2" result="a"/>
+    <feComposite in="SourceGraphic" in2="a" operator="in"/>
+  </filter>
+</defs>`;
+const paper=`<rect width="${W}" height="${H}" fill="var(--paper)"/>`;
+const grain=`<rect width="${W}" height="${H}" filter="url(#grain)"/>`;
+// the painting, covering a box (slice), with the paper grain printed over it
+function painting(x,y,w,h,id){
+  const s=Math.max(w/PW,h/PH), iw=PW*s, ih=PH*s;
+  return `<clipPath id="${id}"><rect x="${x}" y="${y}" width="${w}" height="${h}"/></clipPath>
+  <g clip-path="url(#${id})"><image href="${PAINT}" x="${x+(w-iw)/2}" y="${y+(h-ih)/2}" width="${iw}" height="${ih}" preserveAspectRatio="none"/>
+  <rect x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#grain)" opacity=".8"/></g>`;
+}
+// the painting laid onto the paper with a knife edge; u 1.5 sizes the edge for a 1800 px card
+function knifed(x,y,w,h,seed){return FerryKnife.paintOn(PAINT,PW,PH,{x,y,w,h},{seed,u:1.5,
+  inner:`<rect x="${x-40}" y="${y-40}" width="${w+80}" height="${h+80}" filter="url(#grain)" opacity=".8"/>`});}
+function LOCK_RATIO(){return 4046.8/1274.2;}  // ferry-lockup-clean.svg viewBox
+const T=(x,y,txt,st,extra='')=>`<text x="${x}" y="${y}" style="${st}" ${extra}>${txt}</text>`;
+const CAPS=(px,ls)=>`font:700 ${px}px 'Ferry Sans';letter-spacing:${ls}px`;
+
+// ---------------- fronts ----------------
+const FRONTS={
+  // 1. picture in a cream border, caption and card number in the bottom border. The painting stops on the border
+  //    with a palette-knife edge (knife.js), not a trimmed rectangle
+  border:()=>`${paper}${knifed(56,56,W-112,H-56-128,5)}
+    <g fill="var(--ink)" filter="url(#inkf)">${T(60,H-48,`${PLACE.replace('the ','THE ').toUpperCase()}  ·  ${PORT}`,CAPS(24,6))}${T(W-60,H-48,NO,CAPS(20,4),'text-anchor="end"')}</g>${grain}`,
+  // 2. full bleed: the painting to every edge, nothing else (the caption moves to the back)
+  bleed:()=>`${painting(0,0,W,H,'w')}`,
+  // 3. brand strip: the painting framed, the wordmark running up a cream band on the right
+  strip:()=>`${paper}${painting(48,48,W-48-330,H-96,'w')}
+    <g transform="translate(${W-198} ${H/2}) rotate(-90)">
+      <image href="../export/ferry-lockup-clean.svg" x="-330" y="-${660/LOCK_R/2}" width="660" height="${660/LOCK_R}"/>
+    </g>
+    <g fill="var(--ink)" filter="url(#inkf)" transform="translate(${W-64} ${H/2}) rotate(-90)">${T(0,0,`${PLACE.replace('the ','THE ').toUpperCase()}  ·  ${PORT}`,CAPS(20,6),'text-anchor="middle"')}</g>${grain}`,
+  // 4. large letters: "Greetings from" over FERRY, each letter a window into the painting, with a printed extrusion
+  greet:()=>{
+    const fs=470, y=840, txt='FERRY', st=`font:700 ${fs}px 'Ferry Sans';letter-spacing:-8px`;
+    let ext='';for(let i=12;i>=1;i--)ext+=T(W/2+i*1.6,y+i*2.2,txt,st,'text-anchor="middle" fill="#14262B"');
+    return `<rect width="${W}" height="${H}" fill="var(--harbour)"/>${grain}
+    <clipPath id="letters">${T(W/2,y,txt,st,'text-anchor="middle"')}</clipPath>
+    ${ext}
+    <g clip-path="url(#letters)">${painting(0,0,W,H,'w2')}</g>
+    ${T(W/2,y,txt,st,'text-anchor="middle" fill="none" stroke="#F2EEE6" stroke-width="5"')}
+    <g fill="#F2EEE6">${T(W/2-648,330,'Greetings from',"font:italic 500 110px 'Bodoni Moda';font-variation-settings:'opsz' 96")}
+    ${T(W/2+560,960,PORT,CAPS(30,9),'text-anchor="end"')}</g>`;
+  }
+};
+
+// ---------------- the mark in print ----------------
+const MARK_D=['M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z','M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z'];
+const markPaths=(f='')=>MARK_D.map(d=>`<path d="${d}" ${f}/>`).join('');
+// blind emboss: the mark raised out of the card, lit from the top left, simulated live by emboss.js
+// (settings from emboss-tuner.html). Two layers over the card: multiply for the shade, screen for the light.
+// Placeholders here; fillBlindMark() renders them once the page is built.
+const BLIND={cx:1600,cy:1030};
+function blindMark(cx,cy){BLIND.cx=cx;BLIND.cy=cy;
+  return `<g id="blind"><image id="blindMul" style="mix-blend-mode:multiply"/><image id="blindScr" style="mix-blend-mode:screen"/></g>`;}
+async function fillBlindMark(){
+  const g=document.getElementById('blind');if(!g)return;
+  const r=await FerryEmboss.render('assets/mark-mask.png',FerryEmboss.settings());
+  g.setAttribute('transform',`translate(${BLIND.cx-r.w/2} ${BLIND.cy-r.h/2})`);
+  for(const [id,c] of [['blindMul',r.mul],['blindScr',r.scr]]){const el=document.getElementById(id);
+    el.setAttribute('href',c.toDataURL());el.setAttribute('width',r.w);el.setAttribute('height',r.h);}
+}
+
+// ---------------- back ----------------
+function back(){
+  const INK='var(--harbour)', DIV=990;
+  const rows=[['SENT','1,000.00 USDC'],['ARRIVED','1,000.00 USDC'],['FROM','Ethereum'],['TO','Solana'],['DEPARTED','12:04:00'],['CROSSING','41 s'],['ARRIVED','12:04:41'],['FEE','0.08 USDC']];
+  let table='';const tx=70,ty=800,cw=440,rh=62;
+  rows.forEach(([k,v],i)=>{const c=i%2,r=Math.floor(i/2),x=tx+c*cw,y=ty+r*rh;
+    table+=`<line x1="${x}" x2="${x+cw-30}" y1="${y+16}" y2="${y+16}" stroke="${INK}" stroke-width="1.4" opacity=".5"/>`+T(x,y,k,CAPS(15,3.5))+T(x+cw-30,y,v,"font:400 24px 'Ferry Sans'",'text-anchor="end"');});
+  const hand=(x,y,lines,px,lh)=>lines.map((l,i)=>T(x+(i%2?6:0),y+i*lh,l,`font:400 ${px}px 'La Belle Aurore'`,`fill="var(--pen)" transform="rotate(-2 ${x} ${y+i*lh})"`)).join('');
+  // stamp: Ferry stamp 01 at 0.16 scale, stuck on slightly crooked over the stamp box; postmark crossing onto the card
+  const sS=.158, sx=1548, sy=70;
+  return `${paper}${grain}
+  <g fill="${INK}" stroke="${INK}" filter="url(#inkf)">
+    <!-- divide, broken where the publisher line runs down it, the mark at its foot -->
+    <line x1="${DIV}" x2="${DIV}" y1="150" y2="1060" stroke-width="2.6"/>
+    <!-- heading over the address side -->
+    <g stroke="none">${T(1040,186,'POSTCARD',CAPS(44,11))}
+    <!-- stamp box -->
+    ${T(1640,150,'PLACE',CAPS(13,3),'text-anchor="middle"')}${T(1640,172,'STAMP',CAPS(13,3),'text-anchor="middle"')}${T(1640,194,'HERE',CAPS(13,3),'text-anchor="middle"')}</g>
+    <rect x="1536" y="60" width="210" height="262" fill="none" stroke-width="2.2"/>
+    <!-- address lines -->
+    <g stroke-width="2">${[560,670,780,890].map((y,i)=>`<line x1="${1040+(i%2)*40}" x2="1740" y1="${y}" y2="${y}"/>`).join('')}</g>
+    <g stroke="none">${T(1040,520,'TO',CAPS(15,4))}
+    <!-- caption of the front, top left -->
+    ${T(66,130,PLACE,"font:400 68px 'Monsieur La Doulaise'")}
+    ${T(70,212,'Seven rowboats wait along the dock at Port 02,',"font:400 21px 'Ferry Sans'")}
+    ${T(70,242,'where every crossing begins.',"font:400 21px 'Ferry Sans'")}
+    ${table}
+    ${T(70,H-44,'Published by Ferry Post  ·  Painted in Paint',"font:400 17px 'Ferry Sans'")}${T(W-60,H-44,NO,CAPS(17,4),'text-anchor="end"')}</g>
+  </g>
+  <!-- the mark, blind-embossed in the empty lower corner of the address side: raised, no ink -->
+  ${blindMark(1600,1030)}
+  <!-- the message, by hand (placeholder until the real pen hand is written) -->
+  ${hand(80,360,['Arrived. 41 seconds, door to door.','Calm water all the way across,','nothing lost on the way.','See you on the other side,'],46,72)}
+  ${T(560,660,'J.',"font:400 52px 'La Belle Aurore'",'fill="var(--pen)"')}
+  <!-- the address, by hand -->
+  ${hand(1110,548,['Mira'],50,0)}${hand(1150,658,['0x4F...A2C1'],44,0)}${hand(1110,768,['Port of Solana'],46,0)}
+  <!-- the stamp, slightly crooked, and the postmark across it onto the card -->
+  <g transform="translate(${sx} ${sy}) rotate(2.4 ${SW*sS/2} ${SH*sS/2}) scale(${sS})">${stampSVG('cs')}</g>
+  <g transform="translate(1508 236) rotate(-8) scale(.6)">${postmark('cp')}</g>`;
+}
+document.getElementById('card').innerHTML=defs+(SIDE==='back'?back():FRONTS[F]());
+Promise.all([document.fonts.ready,fillBlindMark()]).then(()=>{document.title='ready'});
+</script>
+</body></html>

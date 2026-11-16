@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry · In transit</title>
+<!-- the stamp's own voices (type/VOICES.md): Bodoni Moda for its value, Monsieur La Doulaise for its place. Used on the stamp only. -->
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Monsieur+La+Doulaise&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{
+  --paper:#F2EEE6;--card:#FFFBF0;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;
+  --quiet:#4A5559;           /* the ticket's own label ink; Sea glass is 3.2:1 on Paper, too light for type */
+  --r:2px;--col:480px;--gut:16px;
+  --lift:drop-shadow(.5px 1px .5px rgba(11,26,30,.22)) drop-shadow(2px 3px 2px rgba(11,26,30,.12));   /* the ticket's shadow */
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+body{font:400 15px/20px 'Ferry Sans',sans-serif;font-feature-settings:'tnum';-webkit-font-smoothing:antialiased}
+a,button{font:inherit;color:inherit}
+.num{font-feature-settings:'tnum'}
+.caps{font:700 11px/20px 'Ferry Sans';letter-spacing:.18em;text-transform:uppercase;color:var(--quiet)}
+
+/* top bar: the ticket's label voice for the tabs; the wallet on a paper label */
+.bar{height:60px;display:flex;align-items:center;gap:40px;padding:0 40px;border-bottom:1px solid var(--mist)}
+.mark{display:block;width:64px;height:20px;background:var(--ink);
+  -webkit-mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain;mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain}
+.tabs{display:flex;gap:30px;align-self:stretch}
+.tabs a{text-decoration:none;display:flex;align-items:center;font:700 12px/1 'Ferry Sans';letter-spacing:.16em;text-transform:uppercase;
+  border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--quiet)}
+.tabs a[aria-current]{color:var(--ink);border-bottom-color:var(--harbour)}
+.wallet{margin-left:auto;filter:var(--lift)}
+.wallet span{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;background:var(--card);border-radius:var(--r);color:var(--ink)}
+.wallet i{width:6px;height:6px;border-radius:50%;background:var(--seagrass)}
+
+main{width:var(--col);margin:0 auto;padding:70px 0 80px;overflow-x:clip}   /* the ticket's postmark cancels run off the right; never a sideways scroll */
+.head{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:70px}
+h1{margin:0;font:700 28px/30px 'Ferry Sans';letter-spacing:-.01em}
+.right{display:flex;align-items:center;gap:20px;position:relative}
+.fid{white-space:nowrap;font-weight:700;letter-spacing:.12em;color:var(--ink)}
+/* stamp 01 itself (print/stamp.js stampSVG, the gouache lighthouse): its serif value and script belong to the stamp only */
+.stamp{display:block;width:136px;transform:rotate(1.2deg);filter:drop-shadow(.7px 1px .9px rgba(11,26,30,.16)) drop-shadow(2px 3px 4px rgba(11,26,30,.05))}
+.stamp svg{display:block;width:100%;height:auto;overflow:visible}
+.stamp .pm.strike{animation:strike .3s ease-out both;transform-box:fill-box;transform-origin:center}
+@keyframes strike{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
+.head{align-items:flex-start}
+.head h1{margin-top:20px}
+.right{align-items:flex-start}
+.head .fid{display:block;margin-top:10px;color:var(--quiet)}
+
+.ticket-slot{position:relative;margin-top:76px}   /* room for the ARRIVED postmark the ticket strikes above its tear */
+.ticket-slot svg{display:block}
+.sentence{margin:30px 0 0}
+
+section{margin-top:40px}
+
+/* the indicator: one harbour icon in a fixed place, alive like a spinner, changing with each update */
+.ind{display:grid;grid-template-columns:56px 1fr 72px;gap:0 16px;align-items:center;height:90px;border-top:1.5px solid var(--harbour);border-bottom:1px solid var(--mist)}
+.ind .ic,.ind .tx,.ind .tm{position:relative;height:56px}
+.ind .ic{width:56px}
+.ind .layer{position:absolute;inset:0;display:flex;align-items:center}
+.ind .tx .layer{font:700 18px/24px 'Ferry Sans'}
+.ind .tm .layer{justify-content:flex-end;color:var(--quiet)}
+.ind .tm .layer.live{color:var(--harbour);font-weight:700}
+.ind .ic svg{display:block;overflow:visible}
+/* the change: the old icon lifts like a stamp leaving the paper, the new one strikes in; the words change in step (360 ms) */
+.ind .layer.out{animation:lift .16s ease-in forwards}
+.ind .layer.in{animation:strikeIn .22s ease-out .14s both}
+.ind .tx .layer.in,.ind .tm .layer.in{animation-name:fadeIn}
+.ind .tx .layer.out,.ind .tm .layer.out{animation-name:fadeOut}
+@keyframes lift{to{opacity:0;transform:scale(.92)}}
+@keyframes strikeIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* micro-animations, one per icon, slow and small */
+.mv{position:relative;width:56px;height:56px}
+.mv.bow{animation:pitch 2.8s ease-in-out infinite;transform-origin:50% 92%}
+@keyframes pitch{0%,100%{transform:translateY(0) rotate(-1.2deg)}50%{transform:translateY(-2px) rotate(1.2deg)}}
+.mv .part{position:absolute;inset:0}
+.mv .post{clip-path:polygon(0 0,66% 0,66% 62%,100% 62%,100% 100%,0 100%)}
+.mv .rope{clip-path:polygon(66% 0,100% 0,100% 62%,66% 62%);transform-origin:66% 38%;animation:slack 3.2s ease-in-out infinite}
+@keyframes slack{0%,100%{transform:rotate(0)}50%{transform:rotate(7deg)}}
+.mv.anchor{transform-origin:50% 12%;animation:sway 3.6s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+.mv.wave{transform-origin:50% 100%;animation:roll 3s ease-in-out infinite}
+@keyframes roll{0%,100%{transform:skewX(2deg) translateX(-1px)}50%{transform:skewX(-4deg) translateX(1px)}}
+.mv .lamp{position:absolute;left:25px;top:7px;width:6px;height:4px;background:var(--stone);border-radius:1px;animation:blink 3s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:0}45%,55%{opacity:1}}
+
+/* the log, collapsed: each event a small harbour icon struck in stamp ink, joined by the route line */
+.list{list-style:none;margin:0 0 10px;padding:0;border-top:1.5px solid var(--harbour)}
+.list li{display:grid;grid-template-columns:28px 1fr;gap:0 14px;align-items:center;height:50px;position:relative}
+.list .ic{width:28px;height:28px}
+.list .ic svg{display:block;overflow:visible}
+.list .st{display:grid}.list .st>svg{grid-area:1/1}
+.list .body{display:flex;justify-content:space-between;align-items:center;height:100%;border-bottom:1px solid var(--mist)}
+.list li:not(:last-child)::after{content:'';position:absolute;left:13.25px;top:41px;height:18px;border-left:1.5px solid var(--harbour)}
+.list .t{color:var(--quiet);text-align:right}
+
+details{border-bottom:1px solid var(--mist)}
+summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;height:50px}
+summary::-webkit-details-marker{display:none}
+summary .pm{color:var(--harbour);font-weight:700}
+details[open] summary .pm .o{display:none}
+details:not([open]) summary .pm .c{display:none}
+.facts{width:100%;border-collapse:collapse;margin-bottom:10px;border-top:1.5px solid var(--harbour)}
+.facts tr+tr{border-top:1px solid var(--mist)}
+.facts th{text-align:left;font:700 11px/20px 'Ferry Sans';letter-spacing:.18em;text-transform:uppercase;color:var(--quiet);height:40px;padding:0}
+.facts td{text-align:right;padding:0;white-space:nowrap}
+.copy{border:0;background:none;padding:0 0 0 10px;cursor:pointer;color:var(--harbour);vertical-align:-2px}
+.copy svg{width:14px;height:14px;display:block}
+
+.close{margin:40px 0 0;color:var(--quiet)}
+.links{display:flex;align-items:center;gap:30px;margin-top:20px}
+/* the tracking link is a paper stub: card stock, the ticket's stepped notch and dotted tear, the ticket's shadow */
+.stub{filter:var(--lift);display:inline-block}
+.stub button{position:relative;display:flex;align-items:center;height:40px;padding:0 44px 0 14px;border:0;cursor:pointer;background:var(--card);
+  color:var(--harbour);font-weight:700;border-radius:var(--r);
+  clip-path:polygon(0 0,calc(100% - 39px) 0,calc(100% - 39px) 4.5px,calc(100% - 34.5px) 4.5px,calc(100% - 34.5px) 9px,calc(100% - 25.5px) 9px,calc(100% - 25.5px) 4.5px,calc(100% - 21px) 4.5px,calc(100% - 21px) 0,100% 0,
+    100% 100%,calc(100% - 21px) 100%,calc(100% - 21px) calc(100% - 4.5px),calc(100% - 25.5px) calc(100% - 4.5px),calc(100% - 25.5px) calc(100% - 9px),calc(100% - 34.5px) calc(100% - 9px),calc(100% - 34.5px) calc(100% - 4.5px),calc(100% - 39px) calc(100% - 4.5px),calc(100% - 39px) 100%,0 100%)}
+.stub button::before{content:'';position:absolute;right:29px;top:12px;bottom:12px;border-left:1.5px dotted rgba(27,38,43,.4)}
+.stub button svg{position:absolute;right:8px;width:14px;height:14px}
+.links a{color:var(--harbour);font-weight:700;text-decoration:underline;text-decoration-color:var(--mist);text-underline-offset:4px}
+:focus-visible{outline:2px solid var(--harbour);outline-offset:3px;border-radius:var(--r)}
+
+@media (max-width:560px){
+  .bar{padding:0 var(--gut);gap:16px}
+  .tabs{gap:16px}
+  .wallet span{padding:0 8px}
+  main{width:auto;margin:0 var(--gut);padding-top:30px}
+  h1{font-size:22px}
+  .right{gap:12px}
+  .stamp{width:84px}
+  .head h1{margin-top:10px}
+  .head .fid{margin-top:6px}
+  .ticket-slot{margin-top:56px}
+  .ind{grid-template-columns:48px 1fr 64px;gap:0 12px}
+  .ind .ic{width:48px}
+  .ind .ic .mv{transform-origin:0 0;scale:.857}
+  .ind .tx .layer{font-size:16px;line-height:20px}
+}
+@media (prefers-reduced-motion:reduce){.mv,.mv *,.ind .layer,.pmk svg{animation:none!important}.mv .lamp{opacity:1}}
+</style></head><body>
+<header class="bar">
+  <a href="#" class="mark" aria-label="Ferry"></a>
+  <nav class="tabs"><a href="#" aria-current="page">Send</a><a href="#">History</a></nav>
+  <span class="wallet num"><span><i aria-hidden="true"></i>0x1cf2...9a56</span></span>
+</header>
+<main>
+  <div class="head"><div><h1>On its way.</h1><span class="fid num">FP-0417</span></div><div class="right"><span class="stamp" id="stamp" aria-hidden="true"></span></div></div>
+  <div class="ticket-slot" id="slot" role="img" aria-label="Transfer ticket: SOL to ETH"></div>
+  <p class="sentence" id="sentence" aria-live="polite"></p>
+
+  <section aria-labelledby="up">
+    <div class="caps" id="up" style="margin-bottom:10px">Updates</div>
+    <div class="ind" id="ind" role="status" aria-live="polite">
+      <div class="ic" id="indIc" aria-hidden="true"></div>
+      <div class="tx" id="indTx"></div>
+      <div class="tm num" id="indTm"></div>
+    </div>
+    <details id="log">
+      <summary><span class="caps">Log</span><span class="pm" aria-hidden="true"><span class="o">Show</span><span class="c">Hide</span></span></summary>
+      <ol class="list" id="list"></ol>
+    </details>
+  </section>
+
+  <section style="margin-top:0">
+    <details id="det">
+      <summary><span class="caps">Details</span><span class="pm" aria-hidden="true"><span class="o">Show</span><span class="c">Hide</span></span></summary>
+      <table class="facts num">
+        <tr><th>Transfer ID</th><td>FP-0417<button class="copy" data-copy="FP-0417" aria-label="Copy transfer ID"></button></td></tr>
+        <tr><th>From</th><td>Solana · 7Hq4...kP2w</td></tr>
+        <tr><th>To</th><td>Ethereum · 0x1cf2...9a56</td></tr>
+        <tr><th>Solana transaction</th><td>4xQm...9ZpK<button class="copy" data-copy="4xQm9ZpK" aria-label="Copy Solana transaction"></button></td></tr>
+        <tr><th>Amount</th><td>100 SOL</td></tr>
+        <tr><th>Fee</th><td>0.18 USDC</td></tr>
+        <tr><th>Rate</th><td>1 SOL = 0.04121 ETH</td></tr>
+        <tr><th>Recipient gets</th><td>4.1206 ETH</td></tr>
+      </table>
+    </details>
+  </section>
+
+  <p class="close">You can close this page. We will keep the crossing.</p>
+  <div class="links"><span class="stub"><button type="button" id="track"><span id="trackLabel">Copy tracking link</span></button></span><a href="#">Back to send</a></div>
+</main>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script src="icons/ferry-grid.js"></script>
+<script src="icons/ferry-icons.js"></script>
+<script src="icons/library.js"></script>
+<script src="transit.js"></script>
+</body></html>

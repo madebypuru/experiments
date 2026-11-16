@@ -1,0 +1,79 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Stamp 01</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Monsieur+La+Doulaise&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;--mute:#5E6A6E}
+html,body{margin:0;background:#111}
+.stage{position:relative;width:1600px;height:2000px;overflow:hidden;background:var(--harbour)}
+.stage svg{position:absolute;inset:0}
+</style></head><body>
+<div class="stage" id="stage"></div>
+<script>
+</script>
+<script src="stamp.js"></script>
+<script>
+// ---------- presentation: stamp on the harbour ground, editorial type round it ----------
+const st=document.getElementById('stage');
+if(new URLSearchParams(location.search).has('sizes')){document.body.style.background='#2C454B';
+  st.style.background='#2C454B';st.innerHTML=[600,300,150,90].map((w,i)=>`<svg style="position:absolute;left:${[60,720,1080,1300][i]}px;top:60px" width="${w}" height="${w*SH/SW}" viewBox="-40 -40 ${SW+80} ${SH+80}">${stampSVG('z'+i)}</svg>`).join('');document.fonts.ready.then(()=>{document.title='ready'});throw 0;}
+const S=0.74, ox=(1600-SW*S)/2-40, oy=300;
+// presentation: the close-up is Ferry's way to show a print piece (chosen 2026-11-11): envelope bleeds off, light falls from top left.
+// ?v=world puts the painting, faded, behind it; ?v=plain is the small stamp on a flat ground.
+const V=(q=>q==='plain'?'':(q||'crop'))(new URLSearchParams(location.search).get('v'));
+st.innerHTML=`<svg width="1600" height="2000" viewBox="0 0 1600 2000">
+  <defs>
+  <!-- light comes from the top left. Shadows only seat the paper; they must never catch the eye.
+       Each piece also gets a faint lighter edge just inside its lit (top-left) side: the paper's thickness catching the light. -->
+  <!-- the stamp is glued flat: a whisper of contact shadow, almost nothing behind -->
+  <filter id="shStamp" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="0.9" result="c"/><feOffset in="c" dx="0.7" dy="1" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="l"/><feOffset in="l" dx="2" dy="3" result="lo"/>
+    <feComponentTransfer in="lo" result="lift"><feFuncA type="linear" slope=".05"/></feComponentTransfer>
+    <feFlood flood-color="#0B1A1E"/><feComposite in2="lift" operator="in" result="liftC"/>
+    <feFlood flood-color="#0B1A1E"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feOffset in="SourceAlpha" dx="1.4" dy="1.8" result="sh"/><feComposite in="SourceAlpha" in2="sh" operator="out" result="rim"/>
+    <feGaussianBlur in="rim" stdDeviation="0.6" result="rimS"/>
+    <feFlood flood-color="#FFFDF7" flood-opacity=".75"/><feComposite in2="rimS" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="liftC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+  </filter>
+  <!-- the envelope lies loose on the surface: a soft, low shadow, and a quiet contact edge -->
+  <filter id="shEnv" x="-10%" y="-10%" width="125%" height="125%" color-interpolation-filters="sRGB">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="c"/><feOffset in="c" dx="2" dy="2.5" result="co"/>
+    <feComponentTransfer in="co" result="contact"><feFuncA type="linear" slope=".2"/></feComponentTransfer>
+    <feGaussianBlur in="SourceAlpha" stdDeviation="26" result="a"/><feOffset in="a" dx="12" dy="18" result="ao"/>
+    <feComponentTransfer in="ao" result="amb"><feFuncA type="linear" slope=".16"/></feComponentTransfer>
+    <feFlood flood-color="#050E10"/><feComposite in2="amb" operator="in" result="ambC"/>
+    <feFlood flood-color="#050E10"/><feComposite in2="contact" operator="in" result="contactC"/>
+    <feOffset in="SourceAlpha" dx="2" dy="2.5" result="sh"/><feComposite in="SourceAlpha" in2="sh" operator="out" result="rim"/>
+    <feGaussianBlur in="rim" stdDeviation="0.8" result="rimS"/>
+    <feFlood flood-color="#FFFDF7" flood-opacity=".6"/><feComposite in2="rimS" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="ambC"/><feMergeNode in="contactC"/><feMergeNode in="SourceGraphic"/><feMergeNode in="rimC"/></feMerge>
+  </filter>
+  <filter id="tear" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="18"/></filter>
+  <filter id="ep"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="12"/><feColorMatrix values="0 0 0 0 .4  0 0 0 0 .34  0 0 0 0 .25  0 0 0 .1 0"/></filter>
+  <filter id="gr"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" seed="2"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0"/></filter></defs>
+  <filter id="soft" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="18"/><feColorMatrix type="saturate" values=".55"/></filter>
+  <radialGradient id="light" cx="22%" cy="14%" r="95%"><stop offset="0" stop-color="#FFF6E6" stop-opacity=".16"/><stop offset=".45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#05110F" stop-opacity=".42"/></radialGradient>
+  ${V==='world'?`<image href="../assets/refs/lighthouse-gouache-hi.png" x="-160" y="-260" width="1920" height="${1920*2299/1430}" preserveAspectRatio="none" filter="url(#soft)"/>
+  <rect width="1600" height="2000" fill="#22383E" opacity=".62"/>`:''}
+  <rect width="1600" height="2000" filter="url(#gr)"/>
+  <!-- nothing but the envelope, the stamp and the postmark: they already carry every word -->
+  <g transform="${V==='crop'?'translate(800 1000) scale(1.36) translate(-800 -1000) ':''}${V==='world'?'translate(800 1000) scale(.9) translate(-800 -1000) ':''}translate(0 146)">
+  <!-- a torn corner of envelope paper: the stamp is stuck on it and the postmark runs onto it -->
+  <g transform="rotate(-3 800 1000)" filter="url(#shEnv)">
+    <g filter="url(#tear)"><path id="env" d="M 150 210 L 1450 196 L 1462 1500 L 140 1512 Z" fill="#ECE5D5"/></g>
+    <clipPath id="envc"><path d="M 150 210 L 1450 196 L 1462 1500 L 140 1512 Z"/></clipPath>
+    <rect x="140" y="196" width="1322" height="1316" filter="url(#ep)" opacity=".9" clip-path="url(#envc)"/>
+  </g>
+  <g transform="translate(${ox} ${oy}) rotate(1.2 ${SW*S/2} ${SH*S/2}) scale(${S})" filter="url(#shStamp)">${stampSVG('a')}</g>
+  <g transform="translate(${ox+SW*S-140} ${oy+150}) rotate(-11) scale(.95)">${postmark('p')}</g>
+  </g>
+  ${V?`<rect width="1600" height="2000" fill="url(#light)"/>`:''}
+</svg>`;
+document.fonts.ready.then(()=>{document.title='ready'});
+</script>
+</body></html>

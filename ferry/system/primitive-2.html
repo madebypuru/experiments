@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Merge</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-BoldItalic.woff2) format('woff2');font-weight:700;font-style:italic}
+:root{
+  --paper:#F2EEE6;--surface:#F9F7F3;--ink:#1B262B;--ink2:#4F5C62;--harbour:#2C454B;
+  --seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;
+  --well:#E3E5DD;--hair:#E2E2DA;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:#AFC3C2}
+body{font-family:'Ferry Sans',system-ui,sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;overflow-x:hidden}
+.ground{position:fixed;inset:-60px;z-index:-2;background:#A9C4C6 url(../assets/lighthouse/day.png) 0% 62%/420% auto no-repeat;filter:blur(40px)}
+.veil{position:fixed;inset:0;z-index:-1;background:rgba(249,247,243,.42)}
+.sheet{max-width:1440px;margin:0 auto;padding:72px 80px 120px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:56px}
+.top img{height:28px}
+.top span{font-size:13px;font-weight:700;letter-spacing:.02em}
+h2{font-size:13px;font-weight:700;letter-spacing:.02em;margin:0 0 16px}
+section{margin-bottom:88px}
+.stage{position:relative;width:100%;overflow:hidden;border-radius:24px}
+.stage>.in{position:absolute;left:0;top:0;transform-origin:0 0}
+.row{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+.panel{border-radius:28px;padding:40px;position:relative;overflow:hidden}
+.panel.light{background:var(--surface);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 18px 40px -24px rgba(27,38,43,.18)}
+.panel.paint{background:#9DB8BA}
+.panel.paint>.bg{position:absolute;inset:-40px;background:url(../assets/lighthouse/day.png) 30% 72%/260% auto no-repeat;filter:blur(18px)}
+.panel>*{position:relative}
+.stack{display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.chips-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px}
+.panel,.stack,.sizes{min-width:0;max-width:100%}
+.sizes{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.chip{display:block}
+.drift{transform-box:fill-box;transform-origin:50% 45%;animation:drift 26s cubic-bezier(.45,0,.55,1) infinite alternate}
+@keyframes drift{from{transform:scale(1) translateX(0)}to{transform:scale(1.035) translateX(-.6%)}}
+@media (prefers-reduced-motion:reduce){.drift{animation:none}}
+@media (max-width:700px){
+  .sheet{padding:40px 16px 80px}
+  .chips-grid{grid-template-columns:minmax(0,1fr)}
+  .panel{padding:24px 16px}
+  .row{gap:24px}
+  section{margin-bottom:56px}
+}
+</style>
+</head>
+<body>
+<div class="ground"></div><div class="veil"></div>
+<div class="sheet">
+  <header class="top"><img src="../export/ferry-lockup-clean.svg" alt="Ferry"><span>Shape language, round two</span></header>
+
+  <section>
+    <h2>The merge</h2>
+    <div class="stage" data-w="1920" data-h="1080"><div class="in" id="hero"></div></div>
+  </section>
+
+  <section>
+    <h2>Poster and product</h2>
+    <div class="row">
+      <div class="stage" style="flex:1 1 560px;max-width:680px" data-w="1080" data-h="1350"><div class="in" id="poster"></div></div>
+      <div class="stage" style="flex:0 1 390px;max-width:390px" data-w="390" data-h="844"><div class="in" id="phone"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The chip</h2>
+    <div class="panel light" style="margin-bottom:40px"><div id="anatomy"></div></div>
+    <div class="chips-grid">
+      <div class="panel light"><div class="stack" id="statesL"></div></div>
+      <div class="panel paint"><div class="bg"></div><div class="stack" id="statesP"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Construction</h2>
+    <div class="panel light"><div id="construct"></div></div>
+  </section>
+</div>
+
+<script>
+const PAINT={
+  ferry:'../assets/refs/ferry-arrival-gouache.png',
+  day:'../assets/lighthouse/day.png',
+  golden:'../assets/lighthouse/golden.png'
+};
+const C={paper:'#F2EEE6',surface:'#F9F7F3',ink:'#1B262B',ink2:'#4F5C62',well:'#E3E5DD',wellP:'rgba(250,248,244,.9)',signal:'#D2602C',stone:'#D2A57F',mist:'#C9CDBD',seaglass:'#6B8A94',hair:'#E2E2DA'};
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+let uid=0;const id=p=>p+(++uid);
+const f2=n=>Math.round(n*100)/100;
+
+/* ---------- geometry: one outline per merged object ----------
+   A merge is a run of segments along one axis. Each segment has a cross extent [t,b].
+   Where the extent changes, the outline makes an S of two tangent arcs:
+   a convex arc of the wider segment's corner radius r and a concave fillet of the narrower segment's f.
+   If the step is deeper than r+f the arcs are joined by a straight wall. */
+function transition(ops,X,ta,tb,r1,r2){
+  const d=Math.abs(tb-ta);if(d<1e-6)return;
+  const down=tb>ta,sy=down?1:-1;
+  const th=d>=r1+r2?Math.PI/2:Math.acos(1-d/(r1+r2));
+  const s=Math.sin(th),c=Math.cos(th);
+  ops.push({k:'L',x:X-r1*s,y:ta});
+  ops.push({k:'A',r:r1,s:down?1:0,x:X,y:ta+sy*r1*(1-c)});
+  if(d>r1+r2)ops.push({k:'L',x:X,y:tb-sy*r2});
+  ops.push({k:'A',r:r2,s:down?0:1,x:X+r2*s,y:tb});
+}
+function edge(segs,lv){
+  const ops=[];
+  for(let i=0;i<segs.length-1;i++){
+    const a=segs[i],b=segs[i+1],ta=lv(a),tb=lv(b),down=tb>ta;
+    transition(ops,a.x1,ta,tb,down?a.r:a.f,down?b.f:b.r);
+  }
+  return ops;
+}
+function reverseOps(start,ops){
+  const pts=[start,...ops.map(o=>({x:o.x,y:o.y}))],out=[];
+  for(let i=ops.length-1;i>=0;i--){const o=ops[i],p=pts[i];out.push(o.k==='A'?{k:'A',r:o.r,s:1-o.s,x:p.x,y:p.y}:{k:'L',x:p.x,y:p.y})}
+  return out;
+}
+function merge(segs){
+  const f=segs[0],l=segs[segs.length-1];
+  const ops=[{k:'M',x:f.x0+f.r,y:f.t},...edge(segs,s=>s.t)];
+  ops.push({k:'L',x:l.x1-l.r,y:l.t},{k:'A',r:l.r,s:1,x:l.x1,y:l.t+l.r},{k:'L',x:l.x1,y:l.b-l.r},{k:'A',r:l.r,s:1,x:l.x1-l.r,y:l.b});
+  const bo=edge(segs,s=>-s.b).map(o=>({...o,y:-o.y,s:o.k==='A'?1-o.s:undefined}));
+  if(bo.length){const e=bo[bo.length-1];ops.push({k:'L',x:e.x,y:e.y})}
+  ops.push(...reverseOps({x:f.x0+f.r,y:f.b},bo));
+  ops.push({k:'L',x:f.x0+f.r,y:f.b},{k:'A',r:f.r,s:1,x:f.x0,y:f.b-f.r},{k:'L',x:f.x0,y:f.t+f.r},{k:'A',r:f.r,s:1,x:f.x0+f.r,y:f.t},{k:'Z'});
+  return ops;
+}
+function pathD(ops,swap){
+  return ops.map(o=>{
+    if(o.k==='Z')return'Z';
+    const x=swap?o.y:o.x,y=swap?o.x:o.y;
+    if(o.k==='A')return`A${f2(o.r)} ${f2(o.r)} 0 0 ${swap?1-o.s:o.s} ${f2(x)} ${f2(y)}`;
+    return`${o.k}${f2(x)} ${f2(y)}`;
+  }).join('');
+}
+const mergeH=s=>pathD(merge(s),false);
+const mergeV=s=>pathD(merge(s),true);
+
+/* ---------- type measure ---------- */
+const cv=document.createElement('canvas').getContext('2d');
+function tw(t,fs,w=700,it=false){cv.font=`${it?'italic ':''}${w} ${fs}px "Ferry Sans"`;return cv.measureText(t).width}
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+/* ---------- the chip ---------- */
+const STATES={
+  holding:{word:'Holding at the pier',short:'At the pier',time:'12:04',origin:1,neck:0,dest:0},
+  departed:{word:'Departed',time:'12:04',origin:1,neck:.07,dest:0},
+  crossing:{word:'Crossing',time:'23s',origin:1,neck:.56,dest:0},
+  arrived:{word:'Arrived',time:'41s',origin:0,neck:1,dest:1},
+  paused:{word:'Paused in port',time:'12:06',origin:1,neck:.38,dest:0,paused:1}
+};
+function chipLayout(o){
+  const H=o.H,fs=o.fs||Math.max(12,.34*H),p=.36*H,R=.3*H,f=.2*H,d=.2*H,gap=.22*H;
+  const wF=tw(o.from,fs),wT=tw(o.to,fs);
+  const neckText=(w,t)=>tw(w,fs,400,true)+gap+tw(t,fs);
+  const words=o.words||[[o.status,o.time]];
+  const maxNeck=Math.max(...words.map(([w,t])=>neckText(w,t)));
+  if(o.form==='stacked'){
+    const W=Math.max(wF,wT,maxNeck)+2*p, L=fs*1.3+.44*H;
+    return{H,fs,p,R,f,d,gap,W,L,len:2*H+L,
+      path:mergeV([{x0:0,x1:H,t:0,b:W,r:R,f},{x0:H,x1:H+L,t:d,b:W-d,r:R,f},{x0:H+L,x1:2*H+L,t:0,b:W,r:R,f}])};
+  }
+  const w1=wF+2*p,nw=maxNeck+.84*H,w3=wT+2*p,W=w1+nw+w3;
+  return{H,fs,p,R,f,d,gap,w1,nw,w3,W,
+    path:mergeH([{x0:0,x1:w1,t:0,b:H,r:R,f},{x0:w1,x1:w1+nw,t:d,b:H-d,r:R,f},{x0:w1+nw,x1:W,t:0,b:H,r:R,f}])};
+}
+/* v: {origin,neck,dest,word,time,paused,fade} */
+function chipSVG(o,g,v){
+  const st=o.form==='stacked',cid=id('c'),W=st?g.W:g.W,Ht=st?g.len:g.H;
+  const well=o.ground==='paint'?C.wellP:C.well;
+  const iH=Math.max(10*g.H,Ht*2.6),iW=iH*1.37,ix=W-iW*.9,iy=-.03*iH;
+  const img=(clip,style='')=>`<g clip-path="url(#${clip})"><rect width="${W}" height="${Ht}" fill="#E9A84F"/><image href="${PAINT.ferry}" x="${f2(ix)}" y="${f2(iy)}" width="${f2(iW)}" height="${f2(iH)}" preserveAspectRatio="none" style="${style}"/></g>`;
+  let defs=`<clipPath id="${cid}"><path d="${g.path}"/></clipPath>`,paint='';
+  const reg=(x,y,w,h,style,op=1)=>{if(w<=.01||h<=.01||op<=0)return;const r=id('r');defs+=`<clipPath id="${r}"><rect x="${f2(x)}" y="${f2(y)}" width="${f2(w)}" height="${f2(h)}"/></clipPath>`;paint+=`<g opacity="${op}">${img(r,style)}</g>`};
+  const sw=v.originSweep||0,dw=v.destSweep==null?1:v.destSweep;
+  if(!st){
+    const {w1,nw,w3}=g;
+    reg(sw*w1,0,w1*(1-sw),Ht,'',v.origin);
+    reg(w1,0,nw*v.neck,Ht,'',v.neckOp==null?1:v.neckOp);
+    reg(w1+nw,0,w3*dw,Ht,'',v.dest);
+  }else{
+    const H=g.H,L=g.L;
+    reg(0,sw*H,W,H*(1-sw),'',v.origin);
+    reg(0,H,W,L*v.neck,'',v.neckOp==null?1:v.neckOp);
+    reg(0,H+L,W,H*dw,'',v.dest);
+  }
+  const fs=g.fs,T=(x,y,t,w=700,it=false,fill=C.ink)=>`<text x="${f2(x)}" y="${f2(y)}" font-size="${f2(fs)}" font-weight="${w}" ${it?'font-style="italic"':''} fill="${fill}">${esc(t)}</text>`;
+  let txt='';const dot=v.paused?.11*g.H:0;
+  if(!st){
+    const by=g.H/2+fs*.35,nx=g.w1+.42*g.H+(dot?dot*2+.14*g.H:0);
+    txt+=T(g.p,by,o.from)+T(g.w1+g.nw+g.p,by,o.to);
+    if(dot)txt+=`<circle cx="${f2(g.w1+.42*g.H+dot)}" cy="${f2(g.H/2)}" r="${f2(dot)}" fill="${C.signal}"/>`;
+    txt+=T(nx,by,v.word,400,true)+T(nx+tw(v.word,fs,400,true)+g.gap,by,v.time);
+  }else{
+    const H=g.H,L=g.L,b1=H/2+fs*.35,b2=H+L/2+fs*.35,b3=H+L+H/2+fs*.35,nx=g.p+(dot?dot*2+.14*H:0);
+    txt+=T(g.p,b1,o.from)+T(g.p,b3,o.to);
+    if(dot)txt+=`<circle cx="${f2(g.p+dot)}" cy="${f2(H+L/2)}" r="${f2(dot)}" fill="${C.signal}"/>`;
+    txt+=T(nx,b2,v.word,400,true)+T(nx+tw(v.word,fs,400,true)+g.gap,b2,v.time);
+  }
+  return`<svg class="chip" width="${f2(W)}" height="${f2(Ht)}" viewBox="0 0 ${f2(W)} ${f2(Ht)}" role="img" aria-label="${esc(o.from)} to ${esc(o.to)}, ${esc(v.word)} ${esc(v.time)}"><defs>${defs}</defs><g clip-path="url(#${cid})"><rect width="${W}" height="${Ht}" fill="${well}"/>${paint}</g>${txt}</svg>`;
+}
+function stateView(name,o){const s=STATES[name];return{...s,word:o.short&&s.short?s.short:s.word}}
+function chip(o,state){
+  const g=chipLayout(o);uid=uid;return{g,html:chipSVG(o,g,stateView(state,o))};
+}
+
+/* ---------- the calm crossing loop: 12 s ---------- */
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const clamp=t=>Math.max(0,Math.min(1,t));
+function loopView(t,o){
+  const hold=STATES.holding,word=o.short?hold.short:hold.word;
+  if(t<1.5)return{origin:1,neck:0,dest:0,word,time:'12:04'};
+  if(t<2.8)return{origin:1,neck:.07*ease(clamp((t-1.5)/1.3)),dest:0,word:'Departed',time:'12:04'};
+  if(t<8.6){const k=ease(clamp((t-2.8)/5.8));return{origin:1,neck:.07+.93*k,dest:0,word:'Crossing',time:Math.round(41*k)+'s'}}
+  if(t<10){const k=ease(clamp((t-8.6)/1.4));return{origin:1,originSweep:k,neck:1,dest:1,destSweep:k,word:'Arrived',time:'41s'}}
+  if(t<10.8)return{origin:0,neck:1,dest:1,word:'Arrived',time:'41s'};
+  const k1=ease(clamp((t-10.8)/.6)),k2=ease(clamp((t-11.4)/.6));return{origin:k2,neck:1,neckOp:1-k1,dest:1-k1,word:k1<1?'Arrived':word,time:k1<1?'41s':'12:04'};
+}
+const LIVE=[];
+function liveChip(el,o){
+  o.words=[[o.short?'At the pier':'Holding at the pier','12:04'],['Departed','12:04'],['Crossing','41s'],['Arrived','41s']];
+  const g=chipLayout(o);LIVE.push({el,o,g});
+  el.innerHTML=chipSVG(o,g,REDUCED?{...STATES.crossing}:loopView(0,o));
+}
+function tick(now){
+  const t=(now/1000)%12;
+  for(const c of LIVE)c.el.innerHTML=chipSVG(c.o,c.g,loopView(t,c.o));
+  setTimeout(()=>tick(performance.now()),33);
+}
+
+/* ---------- A. hero, 1920 x 1080 ---------- */
+/* Panel merge, from the mark: H = 940, c = 100 (0.106H), neck n = c at the mark's waterline (0.447H),
+   fillet f = c/2, corner R = 48, one stepped inner corner per panel: tread 1.3c, riser 0.76c. */
+const HERO={
+  body:[
+    {x0:90,x1:780,t:60,b:1000,r:48,f:48},
+    {x0:780,x1:910,t:136,b:1000,r:48,f:48},
+    {x0:910,x1:1010,t:430,b:530,r:0,f:50},
+    {x0:1010,x1:1140,t:256,b:1000,r:48,f:48},
+    {x0:1140,x1:1830,t:180,b:1000,r:48,f:48}],
+  tab:[
+    {x0:70,x1:150,t:1370,b:1510,r:24,f:24},
+    {x0:150,x1:180,t:1425,b:1455,r:0,f:15},
+    {x0:180,x1:420,t:1188,b:1782,r:0,f:0}]
+};
+function hero(){
+  const el=document.getElementById('hero');el.style.width='1920px';el.style.height='1080px';
+  const body=mergeH(HERO.body),tab=mergeV(HERO.tab);
+  const tabs=[['Send',1210],['Track',1370],['Receipt',1530]];
+  el.innerHTML=`<svg width="1920" height="1080" viewBox="0 0 1920 1080" style="position:absolute;inset:0">
+   <defs>
+    <filter id="hb" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="22"/></filter>
+    <clipPath id="hobj"><path d="${body}"/><path d="${tab}"/></clipPath>
+   </defs>
+   <rect width="1920" height="1080" fill="#8FB3B8"/>
+   <image href="${PAINT.day}" x="-260" y="-4420" width="5400" height="8100" preserveAspectRatio="none" filter="url(#hb)"/>
+   ${tabs.filter(t=>t[0]!=='Track').map(([w,x])=>`<rect x="${x}" y="70" width="140" height="80" rx="24" fill="rgba(249,247,243,.66)" stroke="rgba(255,255,255,.75)" stroke-width="1.5"/>`).join('')}
+   <g style="filter:drop-shadow(0 30px 50px rgba(27,38,43,.12)) drop-shadow(0 2px 4px rgba(27,38,43,.05))">
+    <g clip-path="url(#hobj)">
+     <rect width="1920" height="1080" fill="#E9A84F"/>
+     <image class="drift" href="${PAINT.ferry}" x="-150" y="40" width="1340" height="978" preserveAspectRatio="none"/>
+     <rect x="1010" y="0" width="910" height="1080" fill="${C.surface}"/>
+    </g>
+   </g>
+  </svg>
+  ${tabs.map(([w,x])=>`<div style="position:absolute;left:${x}px;top:70px;width:140px;height:80px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:${w==='Track'?700:400};color:${C.ink}">${w}</div>`).join('')}
+  <div style="position:absolute;left:1210px;top:250px;width:550px">
+    <div style="font-size:24px;color:${C.ink2};line-height:30px">Sending</div>
+    <div style="display:flex;align-items:baseline;gap:14px;margin-top:10px;line-height:100px">
+      <span style="font-size:104px;font-weight:700;letter-spacing:-.035em">1,000.00</span><span style="font-size:36px;font-weight:700">USDC</span>
+    </div>
+    <div id="heroChip" style="margin-top:40px"></div>
+    <div style="margin-top:48px;font-size:26px;line-height:30px">
+      ${[['Expected','about 41s'],['Fee','0.42 USDC'],['You receive','999.58 USDC'],['Arrives','12:04:50']].map(([a,b],i)=>`<div style="display:flex;justify-content:space-between;padding:20px 0;${i?'border-top:1.5px solid '+C.hair:''}"><span style="color:${C.ink2}">${a}</span><span style="font-weight:${i===2?700:400}">${b}</span></div>`).join('')}
+    </div>
+  </div>
+  <div style="position:absolute;left:1210px;width:550px;top:900px;display:flex;justify-content:space-between;font-size:22px;line-height:30px;color:${C.ink2}"><span>Ticket FRY 0412 7731</span><span>Departed 12:04:09</span></div>`;
+  liveChip(document.getElementById('heroChip'),{from:'Solana',to:'Ethereum',H:60});
+}
+
+/* ---------- B. poster, 1080 x 1350 ---------- */
+function poster(){
+  const el=document.getElementById('poster');el.style.width='1080px';el.style.height='1350px';
+  const X0=70,X1=1010,H=170,L=170,d=.2*H,R=.3*H,f=.2*H,top=110,P=720;
+  const shape=mergeV([
+    {x0:top,x1:top+H,t:X0,b:X1,r:R,f},
+    {x0:top+H,x1:top+H+L,t:X0+d,b:X1-d,r:R,f},
+    {x0:top+H+L,x1:top+H+L+P,t:X0,b:X1,r:R,f}]);
+  const fs=88,yN=top+H,yP=top+H+L;
+  el.innerHTML=`<svg width="1080" height="1350" viewBox="0 0 1080 1350" style="position:absolute;inset:0">
+   <defs><filter id="pb" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="30"/></filter>
+    <clipPath id="pobj"><path d="${shape}"/></clipPath><clipPath id="ptile"><rect x="0" y="0" width="1080" height="${yN}"/></clipPath></defs>
+   <rect width="1080" height="1350" fill="#8FB3B8"/>
+   <image href="${PAINT.golden}" x="-60" y="-2140" width="2400" height="3600" preserveAspectRatio="none" filter="url(#pb)"/>
+   <rect width="1080" height="1350" fill="#F9F7F3" opacity=".42"/>
+   <g style="filter:drop-shadow(0 30px 50px rgba(27,38,43,.14)) drop-shadow(0 2px 4px rgba(27,38,43,.06))">
+    <g clip-path="url(#pobj)">
+     <rect width="1080" height="1350" fill="${C.stone}"/>
+     <image class="drift" href="${PAINT.ferry}" x="-373" y="${yN}" width="1864" height="1360" preserveAspectRatio="none"/>
+     <rect width="1080" height="${yN}" fill="${C.surface}"/>
+    </g>
+   </g>
+   <g font-family="Ferry Sans" fill="${C.ink}" font-size="${fs}">
+    <text x="${X0+.36*H}" y="${top+H/2+fs*.35}" font-weight="700" letter-spacing="-2">Solana</text>
+    <text x="${X0+.36*H}" y="${yN+L/2+fs*.35}" font-style="italic">Arrived</text>
+    <text x="${X0+.36*H+tw('Arrived',fs,400,true)+.22*H}" y="${yN+L/2+fs*.35}" font-weight="700" letter-spacing="-2">41s</text>
+    <text x="${X0+.36*H}" y="${yP+H/2+fs*.35}" font-weight="700" letter-spacing="-2">Ethereum</text>
+   </g>
+   <image href="../export/ferry-lockup-clean.svg" x="70" y="1250" height="40" width="127"/>
+   <g font-family="Ferry Sans" fill="${C.ink}" font-size="28" text-anchor="end" style="font-variant-numeric:tabular-nums">
+    <text x="${X1-.36*H}" y="${top+H/2+10}">12:04:09</text>
+    <text x="${X1-.36*H}" y="${yP+H/2+10}">12:04:50</text>
+   </g>
+   <g font-family="Ferry Sans" fill="${C.ink}" font-size="24">
+    <text x="390" y="1262">1,000.00 USDC sent. Fee 0.42 USDC.</text>
+    <text x="390" y="1292">999.58 USDC received on Ethereum.</text>
+   </g>
+  </svg>`;
+}
+
+/* ---------- D. phone, 390 x 844 ---------- */
+function phone(){
+  const el=document.getElementById('phone');el.style.width='390px';el.style.height='844px';
+  const pT=88,pB=300,nB=332,cB=768,cx=195;
+  const shape=mergeV([
+    {x0:pT,x1:pB,t:16,b:374,r:28,f:28},
+    {x0:pB,x1:nB,t:cx-32,b:cx+32,r:0,f:16},
+    {x0:nB,x1:cB,t:16,b:374,r:28,f:28}]);
+  el.innerHTML=`<svg width="390" height="844" viewBox="0 0 390 844" style="position:absolute;inset:0">
+   <defs><filter id="db" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+    <clipPath id="dobj"><path d="${shape}"/></clipPath></defs>
+   <rect width="390" height="844" fill="#9DB9BD"/>
+   <image href="${PAINT.day}" x="-40" y="-1140" width="1100" height="1650" preserveAspectRatio="none" filter="url(#db)"/>
+   <rect width="390" height="844" fill="#F9F7F3" opacity=".42"/>
+   <g style="filter:drop-shadow(0 16px 28px rgba(27,38,43,.12))">
+    <g clip-path="url(#dobj)">
+     <rect width="390" height="844" fill="${C.stone}"/>
+     <image class="drift" href="${PAINT.ferry}" x="-60" y="${pT-50}" width="510" height="372" preserveAspectRatio="none"/>
+     <rect x="0" y="${nB}" width="390" height="600" fill="${C.surface}"/>
+    </g>
+   </g>
+  </svg>
+  <div style="position:absolute;left:16px;right:16px;top:40px;height:28px;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:17px;font-weight:700">Transfer</span><span style="font-size:13px;color:${C.ink}">FRY 0412 7731</span>
+  </div>
+  <div style="position:absolute;left:40px;width:310px;top:${nB+24}px">
+    <div style="font-size:13px;line-height:20px;color:${C.ink2}">Sending</div>
+    <div style="display:flex;align-items:baseline;gap:6px;line-height:44px;margin-top:2px"><span style="font-size:40px;font-weight:700;letter-spacing:-.03em">1,000.00</span><span style="font-size:17px;font-weight:700">USDC</span></div>
+    <div id="phoneChip" style="margin-top:16px"></div>
+    <div style="margin-top:16px;font-size:15px;line-height:20px">
+     ${[['Expected','about 41s'],['Fee','0.42 USDC'],['You receive','999.58 USDC'],['Arrives','12:04:50']].map(([a,b],i)=>`<div style="display:flex;justify-content:space-between;padding:13px 0;${i?'border-top:1px solid '+C.hair:''}"><span style="color:${C.ink2}">${a}</span><span style="font-weight:${i===2?700:400}">${b}</span></div>`).join('')}
+    </div>
+    <div style="margin-top:20px;height:48px;border-radius:14px;background:${C.ink};color:${C.surface};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700">View receipt</div>
+  </div>`;
+  liveChip(document.getElementById('phoneChip'),{from:'Solana',to:'Ethereum',H:40,short:true});
+}
+
+/* ---------- C. chip sheet ---------- */
+function anatomy(){
+  const el=document.getElementById('anatomy');
+  const o={from:'Solana',to:'Ethereum',status:'Crossing',time:'23s',H:innerWidth<700?56:120};
+  const g=chipLayout(o),x0=60,y0=70,H=g.H,W=x0+g.W+80,Ht=y0+H+80;
+  const inner=chipSVG(o,g,STATES.crossing).replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'');
+  const dim=C.seaglass,lab=C.ink2,th=Math.acos(.4),fx=x0+g.w1+g.f*Math.sin(th),fy=y0+g.d-g.f;
+  const L=(t,x,y,a='start')=>`<text x="${f2(x)}" y="${f2(y)}" font-size="15" fill="${lab}" text-anchor="${a}">${t}</text>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${Ht}" style="width:100%;max-width:${W}px;height:auto;display:block">
+   <g transform="translate(${x0},${y0})">${inner}</g>
+   <g stroke="${dim}" stroke-width="1.2" fill="none">
+    <path d="M${x0-28} ${y0}V${y0+H}M${x0-34} ${y0}h12M${x0-34} ${y0+H}h12"/>
+    <path d="M${x0+g.W+28} ${y0+g.d}V${y0+H-g.d}M${x0+g.W+22} ${y0+g.d}h12M${x0+g.W+22} ${y0+H-g.d}h12"/>
+    <path d="M${x0+g.w1} ${y0+H+22}v14M${x0+g.w1+g.nw} ${y0+H+22}v14M${x0+g.w1} ${y0+H+29}H${x0+g.w1+g.nw}"/>
+    <circle cx="${f2(fx)}" cy="${f2(fy)}" r="${f2(g.f)}" stroke-dasharray="3 4"/>
+    <circle cx="${x0+g.R}" cy="${y0+g.R}" r="${g.R}" stroke-dasharray="3 4"/>
+   </g>
+   ${L('H',x0-42,y0+H/2+5,'end')}${L('0.6H',x0+g.W+40,y0+H/2+5)}
+   ${L('neck',x0+g.w1+g.nw/2,y0+H+60,'middle')}
+   ${L('f 0.2H',fx+g.f+10,fy-6)}${L('R 0.3H',x0,y0-16)}
+  </svg>`;
+}
+function statesBlock(elId,ground){
+  const el=document.getElementById(elId);let h='';
+  const base={from:'Solana',to:'Ethereum',ground};
+  const across=['holding','departed','crossing','arrived','paused'];
+  const words=across.map(s=>[STATES[s].word,STATES[s].time]);
+  for(const s of across)h+=chip({...base,H:44,words},s).html;
+  h+=`<div style="height:16px"></div><div class="sizes">`;
+  for(const H of [32,40,44])h+=chip({...base,H,status:'Crossing',time:'23s'},'crossing').html;
+  h+=`</div><div style="height:16px"></div><div class="sizes" style="align-items:flex-start">`;
+  const sw=[['Crossing','23s'],['Arrived','41s'],['Paused in port','12:06']];
+  for(const s of ['crossing','arrived'])h+=chip({...base,H:44,form:'stacked',words:sw},s).html;
+  h+=`</div><div style="height:16px"></div>`;
+  h+=chip({...base,H:96,status:'Arrived',time:'41s'},'arrived').html;
+  el.innerHTML=h;
+  el.querySelectorAll('svg.chip').forEach(s=>{s.style.maxWidth='100%';s.style.height='auto'});
+}
+
+/* ---------- E. construction ---------- */
+function construct(){
+  const el=document.getElementById('construct');
+  const mk=`<path d="M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z"/><path d="M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z"/>`;
+  const k=1.9,mx=150,my=60,M=(x,y)=>[mx+x*k,my+y*k];
+  const s=.3,ox=670,oy=60,X=x=>ox+(x-90)*s,Y=y=>oy+(y-60)*s;
+  const dim=C.seaglass,lab=C.ink2;
+  const L=(t,x,y,a='start')=>`<text x="${f2(x)}" y="${f2(y)}" font-size="15" fill="${lab}" text-anchor="${a}">${t}</text>`;
+  const [ax,ay]=M(74.76,0),[bx]=M(90.24,0),[,ny0]=M(0,35.7),[,ny1]=M(0,92.7),[,mb]=M(0,142.4),[,wl]=M(0,63.7);
+  const [sx0]=M(35.6,0),[sx1]=M(55.78,0),[,sy0]=M(0,12.28),[,sy1]=M(0,35.7);
+  el.innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:24px 0"><svg viewBox="0 0 640 430" style="flex:1 1 300px;max-width:640px;height:auto;display:block">
+   <g transform="translate(${mx},${my}) scale(${k})" fill="${C.ink}">${mk}</g>
+   <g stroke="${dim}" stroke-width="1.2" fill="none">
+    <path d="M${ax} ${ny1}V${mb+22}M${bx} ${ny1}V${mb+22}" stroke-dasharray="3 4"/>
+    <path d="M${ax} ${mb+16}H${bx}"/>
+    <path d="M${mx-20} ${ny0}V${ny1}M${mx-26} ${ny0}h12M${mx-26} ${ny1}h12"/>
+    <path d="M${mx-6} ${wl}H${mx+165*k+6}" stroke-dasharray="2 5"/>
+   </g>
+   ${L('c',(ax+bx)/2,mb+40,'middle')}${L('nose 0.40H',mx-30,(ny0+ny1)/2+5,'end')}
+   ${L('waterline 0.447H',mx+165*k+12,wl+5)}
+   </svg><svg viewBox="640 0 600 430" style="flex:1 1 300px;max-width:600px;height:auto;display:block">
+   <path d="${mergeH(HERO.body)}" transform="translate(${ox-90*s},${oy-60*s}) scale(${s})" fill="none" stroke="${C.ink}" stroke-width="${1.5/s}"/>
+   <g stroke="${dim}" stroke-width="1.2" fill="none">
+    <path d="M${X(910)} ${Y(1000)+10}v18M${X(1010)} ${Y(1000)+10}v18M${X(910)} ${Y(1000)+19}H${X(1010)}"/>
+    <path d="M${X(910)} ${Y(530)}V${Y(1000)+10}M${X(1010)} ${Y(530)}V${Y(1000)+10}" stroke-dasharray="3 4"/>
+    <circle cx="${X(960)}" cy="${Y(380)}" r="${50*s}" stroke-dasharray="3 4"/>
+    <path d="M${X(780)} ${Y(110)}H${X(910)}M${X(780)} ${Y(104)}v12M${X(910)} ${Y(104)}v12"/>
+    <path d="M${X(1810)} ${Y(180)}V${Y(256)}M${X(1804)} ${Y(180)}h12M${X(1804)} ${Y(256)}h12" stroke-opacity="0"/>
+   </g>
+   ${L('c',X(960),Y(1000)+44,'middle')}
+   ${L('tread 1.3c, riser 0.76c',X(130),Y(120))}
+   ${L('neck n = c, at the waterline',X(130),Y(480)+5)}
+   ${L('fillet f = c/2',X(1190),Y(330))}
+   ${L('R = 48 on H = 940',X(1190),Y(940))}
+  </svg></div>`;
+}
+
+/* ---------- stage scaling ---------- */
+function fit(){
+  document.querySelectorAll('.stage').forEach(s=>{
+    const w=+s.dataset.w,h=+s.dataset.h,k=s.clientWidth/w;
+    s.style.height=(h*k)+'px';s.firstElementChild.style.transform=`scale(${k})`;
+  });
+}
+(async function(){
+  await Promise.all(['400 20px','700 20px','italic 400 20px'].map(f=>document.fonts.load(f+' "Ferry Sans"'))).catch(()=>{});
+  hero();poster();phone();anatomy();statesBlock('statesL','light');statesBlock('statesP','paint');construct();
+  fit();addEventListener('resize',fit);
+  if(!REDUCED)tick(performance.now());
+})();
+</script>
+</body>
+</html>

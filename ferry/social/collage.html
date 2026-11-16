@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Ferry Collage</title>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,500;0,6..96,700;1,6..96,500&family=Monsieur+La+Doulaise&display=block" rel="stylesheet">
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--ink:#1B262B;--harbour:#2C454B;--paper:#F2EEE6;--mist:#C9CDBD;--glass:#6B8A94;--stone:#D2A57F;--grass:#7D8F69;--signal:#D2602C;--mute:#4A5559}
+html,body{margin:0;background:var(--ink);overflow:hidden}
+#c{position:relative;width:1080px;height:1350px;overflow:hidden;background:var(--ink)}
+#c>*{position:absolute}
+.grain{inset:0;width:1080px;height:1350px;pointer-events:none}
+.pc{transform-origin:50% 50%}
+.paint{background-repeat:no-repeat}
+.ifr{overflow:visible}
+.ifr iframe{position:absolute;border:0;background:transparent;transform-origin:0 0;pointer-events:none}
+.scrap{overflow:hidden;background:var(--paper)}
+.crop{background-repeat:no-repeat;overflow:hidden}
+/* paper on felt: a contact shadow, barely there, and a hairline lighter rim on the lit edge */
+.paper{filter:drop-shadow(.7px 1px .9px rgba(0,0,0,.2)) drop-shadow(2px 4px 8px rgba(0,0,0,.12))}
+.rim{box-shadow:inset 1.5px 2px 0 rgba(255,253,247,.5)}
+.mask{-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:contain;mask-size:contain}
+svg.obj{overflow:visible;display:block}
+</style></head>
+<body>
+<div id="c">
+<svg class="grain" viewBox="0 0 1080 1350">
+  <filter id="felt" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency=".006 .009" numOctaves="3" seed="11" result="t"/>
+    <feColorMatrix in="t" values="0 0 0 0 .55  0 0 0 0 .62  0 0 0 0 .62  0 0 0 .10 -.02" result="tone"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3" result="n"/>
+    <feColorMatrix in="n" values="0 0 0 0 .9  0 0 0 0 .92  0 0 0 0 .88  0 0 0 .16 -.04" result="lite"/>
+    <feTurbulence type="fractalNoise" baseFrequency=".55 .32" numOctaves="2" seed="7" result="f"/>
+    <feColorMatrix in="f" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 -.06" result="dark"/>
+    <feMerge><feMergeNode in="tone"/><feMergeNode in="dark"/><feMergeNode in="lite"/></feMerge>
+  </filter>
+  <filter id="tear" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="14"/></filter>
+  <filter id="envgrain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="3" seed="12"/><feColorMatrix values="0 0 0 0 .4  0 0 0 0 .34  0 0 0 0 .25  0 0 0 .1 0"/></filter>
+  <rect width="1080" height="1350" filter="url(#felt)"/>
+</svg>
+</div>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script src="../system/pattern.js"></script>
+<script>
+(async function(){
+const c = document.getElementById('c');
+const REF = '../assets/refs/', POS = '../assets/mock/posters/';
+const IMG = { arrival:[1827,1333], lighthouse:[1430,2299], rowboats:[1835,1144], fire:[1827,1501], cabin:[1827,1125] };
+const FILE = { arrival:'ferry-arrival-gouache.png', lighthouse:'lighthouse-gouache-hi.png', rowboats:'rowboats-gouache.png', fire:'harbour-fire-gouache.png', cabin:'cabin-windows-gouache.png' };
+await Promise.all(['700 40px "Bodoni Moda"', 'italic 500 40px "Bodoni Moda"', '400 40px "Monsieur La Doulaise"', '400 40px "Ferry Sans"', '700 40px "Ferry Sans"'].map(f => document.fonts.load(f)));
+let pending = 1;
+const finish = () => { if (--pending === 0) document.title = 'ready'; };
+function box(cls, x, y, w, h, rot, z){
+  const d = document.createElement('div'); d.className = 'pc ' + cls;
+  Object.assign(d.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h == null ? '' : h + 'px', transform: `rotate(${rot || 0}deg)`, zIndex: z || 1 });
+  c.appendChild(d); return d;
+}
+// a painting crop: z = image width on the collage, fx/fy = focus 0..1
+function paint(name, x, y, w, h, z, fx, fy, rot, layer, round){
+  const [iw, ih] = IMG[name], W = z, H = ih * z / iw, d = box('paint', x, y, w, h, rot, layer);
+  d.style.backgroundImage = `url(${REF}${FILE[name]})`;
+  d.style.backgroundSize = `${W}px ${H}px`;
+  d.style.backgroundPosition = `${-(W - w) * fx}px ${-(H - h) * fy}px`;
+  if (round) d.style.borderRadius = '50%';
+  return d;
+}
+// a crop of a poster (2160 x 2700 export): source rect sx, sy, sw, sh shown at width w
+function poster(n, sx, sy, sw, sh, x, y, w, rot, layer){
+  const k = w / sw, d = box('crop paper rim', x, y, w, sh * k, rot, layer);
+  d.style.backgroundImage = `url(${POS}ferry-${n}-4x5.jpg)`;
+  d.style.backgroundSize = `${2160 * k}px ${2700 * k}px`;
+  d.style.backgroundPosition = `${-sx * k}px ${-sy * k}px`;
+  return d;
+}
+// an object drawn by its own page, cropped to one node and scaled to width w
+function piece(src, sel, x, y, w, rot, layer, o = {}){
+  const d = box('ifr' + (o.scrap ? ' scrap paper rim' : '') + (o.cls ? ' ' + o.cls : ''), x, y, w, null, rot, layer);
+  if (o.round) d.style.borderRadius = '50%';
+  const f = document.createElement('iframe'); f.src = src; f.style.width = (o.pw || 1080) + 'px'; f.style.height = (o.ph || 1350) + 'px';
+  f.setAttribute('scrolling', 'no'); d.appendChild(f); pending++;
+  f.onload = async () => {
+    const doc = f.contentDocument;
+    for (let i = 0; i < 60 && o.title !== false && doc.title !== 'ready'; i++) await new Promise(r => setTimeout(r, 50));
+    await doc.fonts.ready; await new Promise(r => setTimeout(r, 300));
+    const el = doc.querySelectorAll(sel)[o.n || 0], r = el.getBoundingClientRect();
+    const p = o.pad || 0, px = o.padx ?? p, k = w / (r.width + 2 * px);
+    f.style.transform = `scale(${k})`; f.style.left = (-(r.left - px) * k) + 'px'; f.style.top = (-(r.top - p) * k) + 'px';
+    d.style.height = ((r.height + 2 * p) * k) + 'px';
+    finish();
+  };
+  return d;
+}
+const EL = n => `../print/elements.html?only=${n}&bg=none`, ELP = n => `../print/elements.html?only=${n}`;
+function maskEl(url, x, y, w, ratio, col, rot, layer){
+  const d = box('mask', x, y, w, w / ratio, rot, layer);
+  d.style.background = col; d.style.webkitMaskImage = d.style.maskImage = `url(${url})`; return d;
+}
+
+// ================= the collage =================
+// ANCHOR: stamp 01, the Arrival Light, on a torn envelope corner, cancelled by the FERRY POST postmark (stamp.js, drawn here)
+const EW = 520, EH = 612, env = box('', 584, 26, EW, EH, -1.2, 6);
+const envPath = `M14 16 L${EW + 30} 10 L${EW + 30} ${EH - 12} L10 ${EH - 18} Z`;
+env.innerHTML = `<svg class="obj" width="${EW}" height="${EH}" viewBox="0 0 ${EW} ${EH}">
+  <g style="filter:drop-shadow(0 1px 1px rgba(0,0,0,.22)) drop-shadow(3px 6px 10px rgba(0,0,0,.14))">
+    <g filter="url(#tear)"><path d="${envPath}" fill="#ECE5D5"/></g></g>
+  <clipPath id="envc"><path d="${envPath}"/></clipPath>
+  <rect width="${EW}" height="${EH}" filter="url(#envgrain)" clip-path="url(#envc)" opacity=".9"/>
+  <g transform="translate(44 38) rotate(1.8 210 259)" style="filter:drop-shadow(.7px 1px .9px rgba(0,0,0,.16))">
+    <svg class="obj" width="420" height="${420 * 1580 / 1280}" viewBox="-40 -40 1280 1580">${stampSVG('st')}
+      <g transform="translate(1010 1240) rotate(-11) scale(1.05)">${postmark('pm', { date: '12 NOV', time: '12:04:41' })}</g></svg>
+  </g></svg>`;
+
+// the name, as exported, in Paper
+maskEl('../export/ferry-lockup-clean.svg', 62, 70, 330, 4046.8 / 1274.2, 'var(--paper)', 0, 5);
+
+// MEDIUM: postcard 01, front (the rowboats in their painted border) and back (the captain's hand and the crossing's facts)
+piece('../print/postcard-01.html', '#card', -44, 776, 480, -3.5, 4, { pw: 1800, ph: 1200, title: false, cls: 'paper' });
+piece('../print/postcard-01.html?side=back', '#card', 448, 984, 520, 4, 5, { pw: 1800, ph: 1200, title: false, cls: 'paper' });
+
+// MEDIUM: the transfer ticket, arrived
+await Ticket.ready;
+const T = box('', 54, 560, 500, null, -3, 7);
+Ticket.draw(T, { state:'arrived', from:'SOL', to:'ETH', fromName:'Solana', toName:'Ethereum', departs:'12:04', arrives:'12:04:41', elapsed:'41s', size:120, seed:7, x:0, y:0, scale: 500 / Ticket.width(120) });
+
+// MEDIUM-SMALL: poster crops (headline type in the bleed, painting with brushwork)
+poster(4, 120, 170, 1420, 1180, 66, 214, 236, -2, 4);          // Departed. Crossing. Crossing. Arrived.
+poster(6, 0, 0, 2160, 2700, 862, 712, 196, 3, 5);              // Arrived. Every time., the whole sheet
+poster(1, 110, 1770, 1480, 450, 586, 772, 262, -1.5, 5);       // Safe passage between chains., the bleed headline
+
+// SMALL: painting crops
+paint('cabin', 404, 366, 108, 108, 300, .42, .5, 0, 5, true);
+paint('fire', 962, 606, 140, 92, 360, .55, .55, -3, 7);
+paint('arrival', 316, 216, 150, 196, 420, .5, .6, 2.5, 3);
+
+// SMALL: printed and flat brand elements
+piece('../print/icons-v3.html', '#blocks svg.gb', 70, 1150, 120, 3, 3, { scrap: true, n: 3, pad: 10, pw: 1440, ph: 3600, title: false });
+piece(EL('gull'), 'svg[data-el]', 600, 636, 96, 0, 8);
+piece(ELP('seal'), 'svg[data-el]', 404, 30, 92, 0, 4, { scrap: true, round: true, pad: 8 });
+maskEl('../src/butterfly-mark.svg', 1000, 1080, 52, 165 / 142.93, 'var(--stone)', 0, 2);
+// the brand pattern: Harbour on Ink at scale 3, pitch 14, bleed on; drawn large and set small so it reads as fine columns
+const pt = box('', 252, 1222, 150, 130, 0, 2); pt.style.overflow = 'hidden';
+const ps = Pattern.draw({ w: 460, h: 400, s: 3, Q: 14, seed: 6, fig: '#2C454B', ground: '#1B262B', bleed: true });
+pt.innerHTML = `<div style="width:460px;height:400px;transform:scale(${150 / 460});transform-origin:0 0">${ps.trim().startsWith('<svg') ? ps : `<svg width="460" height="400">${ps}</svg>`}</div>`;
+finish();
+})();
+</script>
+</body></html>

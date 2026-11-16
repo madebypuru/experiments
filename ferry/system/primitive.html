@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry Primitive</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Italic.woff2) format('woff2');font-weight:400;font-style:italic}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-BoldItalic.woff2) format('woff2');font-weight:700;font-style:italic}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;--signal:#D2602C;--mute:#55615F;--rule:#D9D4C8;--pad:64px}
+*{box-sizing:border-box;margin:0}
+html{background:var(--paper)}
+body{color:var(--ink);font:400 16px/1.5 'Ferry Sans',"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1280px;margin:0 auto;padding:0 var(--pad)}
+.top{display:flex;justify-content:space-between;align-items:center;padding:40px 0 0}
+.top img{height:30px;display:block}
+.caps{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+section{padding:80px 0 0}
+section>h2{font:700 11px/20px 'Ferry Sans';letter-spacing:.2em;text-transform:uppercase;padding-top:10px;border-top:1px solid var(--rule);margin-bottom:30px;display:flex;gap:20px}
+section>h2 span:first-child{color:var(--mute);width:40px}
+svg{display:block;max-width:100%;height:auto}
+.fig{min-width:0}
+.cap{font-size:13px;line-height:20px;color:var(--mute);margin-top:10px}
+.g2{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:40px;align-items:center}
+#markfig svg{max-height:520px;margin:0 auto}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.ratios{width:100%;border-collapse:collapse;font-size:14px;line-height:20px}
+.ratios td{padding:5px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.ratios td:nth-child(2),.ratios td:nth-child(3){text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:12px}
+.ratios td:nth-child(3){font-weight:700}
+.ratios tr:first-child td{color:var(--mute);font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+.tile{background:#E9E4D9;border-radius:3px;padding:30px;display:flex;align-items:center;justify-content:center;min-height:300px;overflow:hidden}
+.stack{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.states{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.state{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;align-items:center;padding:16px 0;border-bottom:1px solid var(--rule)}
+.state b{font-size:14px}
+.state .note{font-size:13px;color:var(--mute);line-height:18px}
+.scale{display:flex;flex-direction:column;gap:30px}
+.crop{height:300px;overflow:hidden;position:relative;border-radius:2px;background:var(--harbour) url(../assets/studies/rowboats.png) 30% 8%/220% auto no-repeat}
+.crop svg{position:absolute;left:-40px;top:50%;transform:translateY(-50%);max-width:none}
+.apps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.poster{aspect-ratio:4/5;width:100%;background:var(--harbour);border-radius:2px;overflow:hidden}
+.poster svg{width:100%;height:100%}
+.env{position:relative;overflow:hidden;border-radius:2px;background:var(--harbour)}
+.env>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.product{aspect-ratio:16/8}
+.product>img{object-position:50% 30%;transform:translateX(12%) scale(1.3)}
+.panel{position:absolute;left:5%;width:min(560px,50%);top:50%;transform:translateY(-50%);background:var(--paper);border-radius:6px;padding:22px 24px 8px;box-shadow:.5px 1px 1px rgba(27,38,43,.2),0 10px 26px rgba(27,38,43,.16)}
+.panel h3{font:700 20px/1.2 'Ferry Sans';letter-spacing:-.02em;margin-bottom:14px}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:12px 0;border-top:1px solid var(--rule)}
+.prow .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:14px;line-height:18px}
+.prow .amt span{display:block;color:var(--mute);font-size:12px}
+.receipt{aspect-ratio:4/5}
+.receipt>img{object-position:50% 0%;transform:scale(1.25);transform-origin:50% 0%}
+.slip{position:absolute;left:50%;top:7%;width:min(330px,74%);transform:translateX(-50%) rotate(-1.2deg);background:#F7F4ED;padding:26px 24px 28px;box-shadow:.5px 1px 1px rgba(27,38,43,.22),2px 3px 4px rgba(27,38,43,.2)}
+.slip .lk{height:18px;display:block;margin-bottom:22px}
+.slip dl{display:grid;grid-template-columns:auto minmax(0,1fr);font-size:13px;line-height:20px;gap:0 12px}
+.slip dt{color:var(--mute)}
+.slip dd{text-align:right;font-variant-numeric:tabular-nums}
+.slip .line{margin:16px 0 14px;padding:14px 0;border-top:1px dashed #B9B3A6;border-bottom:1px dashed #B9B3A6}
+.slip .tot{display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin-top:14px}
+.motion{background:#E9E4D9;border-radius:3px;min-height:240px;display:flex;align-items:center;justify-content:center;padding:30px}
+footer{padding:80px 0 60px}
+@media (max-width:860px){
+ :root{--pad:16px}
+ section{padding-top:56px}
+ .g2,.apps{grid-template-columns:minmax(0,1fr)}
+ .g3{grid-template-columns:minmax(0,1fr)}
+ .tile{min-height:220px;padding:20px}
+ .state{grid-template-columns:minmax(0,1fr);gap:8px}
+ .crop{height:200px}
+ .apps{grid-template-columns:minmax(0,1fr)}
+ .prow{grid-template-columns:minmax(0,1fr)}
+ .prow .amt{text-align:left;display:flex;gap:8px;align-items:baseline}
+ .panel{left:4%;width:92%;padding:16px 14px 6px}
+ .product{aspect-ratio:4/5}
+ .product>img{transform:scale(1.15)}
+}
+</style></head><body>
+<div class="wrap">
+<header class="top"><img src="../export/ferry-lockup-clean.svg" alt="Ferry"><span class="caps">Primitive</span></header>
+
+<section><h2><span>01</span><span>The mark, measured</span></h2>
+ <div class="g2">
+  <div class="fig" id="markfig"></div>
+  <table class="ratios" id="ratios"></table>
+ </div>
+</section>
+
+<section><h2><span>02</span><span>Shape</span></h2>
+ <div class="g3">
+  <div class="fig"><div class="tile" id="sh1"></div><p class="cap">The shore. One step, on the side that faces the crossing.</p></div>
+  <div class="fig"><div class="tile" id="sh2"></div><p class="cap">Two shores, one channel. The painting carries on across the gap.</p></div>
+  <div class="fig"><div class="tile" id="sh3"></div><p class="cap">24 to 160 px. The step keeps its proportion; the radius never drops below 2 px.</p></div>
+ </div>
+</section>
+
+<section><h2><span>03</span><span>The transfer chip</span></h2>
+ <div class="fig" id="anat"></div>
+ <div class="stack" id="elastic" style="margin-top:40px"></div>
+</section>
+
+<section><h2><span>04</span><span>States</span></h2>
+ <div class="states" id="states"></div>
+</section>
+
+<section><h2><span>05</span><span>Scale</span></h2>
+ <div class="scale" id="scale"></div>
+ <div class="crop" id="crop" style="margin-top:30px"></div>
+</section>
+
+<section><h2><span>06</span><span>In use</span></h2>
+ <div class="apps">
+  <div class="poster" id="poster"></div>
+  <div class="env receipt"><img src="../assets/studies/rowboats.png" alt="" onerror="this.remove()">
+   <div class="slip"><img class="lk" src="../export/ferry-lockup-clean.svg" alt="Ferry">
+    <dl><dt>Ticket</dt><dd>FRY 0412 7731</dd><dt>Date</dt><dd>12 Nov 2026</dd><dt>Departed</dt><dd>12:04:09</dd></dl>
+    <div class="line" id="rline"></div>
+    <dl><dt>Sent</dt><dd>1,000.00 USDC</dd><dt>Fee</dt><dd>0.42 USDC</dd></dl>
+    <div class="tot"><span>Received</span><span>999.58 USDC</span></div>
+   </div></div>
+ </div>
+ <div class="env product" style="margin-top:20px"><img src="../assets/lighthouse/dusk.png" alt="" onerror="this.remove()">
+  <div class="panel"><h3>Transfers</h3><div id="prows"></div></div></div>
+</section>
+
+<section><h2><span>07</span><span>The crossing, in motion</span></h2>
+ <div class="motion" id="motion"></div>
+</section>
+<footer class="cap">Solana, Ethereum, Base and Arbitrum are placeholder chains. Paintings are studies, shown only as environment.</footer>
+</div>
+
+<script>
+const C={paper:'#F2EEE6',ink:'#1B262B',harbour:'#2C454B',seaglass:'#6B8A94',mist:'#C9CDBD',signal:'#D2602C',chip:'#FBF9F4',mute:'#55615F',guide:'#6B8A94'};
+const MARK=['M32.3115 0.521362C34.1289 0.521362 35.6025 1.99501 35.6025 3.81238V8.99109C35.6029 10.8082 37.0764 12.2811 38.8936 12.2811H52.4893C54.3066 12.2811 55.7803 13.7548 55.7803 15.5721V32.4159C55.7806 34.233 57.2541 35.7059 59.0713 35.7059H71.4707C73.2881 35.7059 74.7617 37.1796 74.7617 38.9969V89.3964C74.7614 91.2134 73.2878 92.6864 71.4707 92.6864H59.0713C57.2539 92.6864 55.7803 94.16 55.7803 95.9774V121.838C55.7799 123.655 54.3064 125.128 52.4893 125.128H38.8936C37.0762 125.128 35.6025 126.601 35.6025 128.419V139.64C35.6022 141.457 34.1287 142.93 32.3115 142.93H3.29102C1.47387 142.93 0.00035392 141.457 0 139.64V85.2245H20.9717C22.7889 85.2244 24.2615 83.7516 24.2617 81.9344V45.4393C24.2615 43.6222 22.7889 42.1484 20.9717 42.1483H0V3.81238C0 1.99501 1.47365 0.521362 3.29102 0.521362H32.3115Z','M132.687 0C130.87 0.000201891 129.397 1.47381 129.397 3.29102V8.46973C129.397 10.2868 127.923 11.7596 126.106 11.7598H112.51C110.692 11.76 109.22 13.2336 109.219 15.0508V31.8945C109.219 33.7116 107.746 35.1844 105.928 35.1846H93.5271C91.7099 35.1848 90.2371 36.6584 90.2371 38.4756V88.875C90.2373 90.6921 91.71 92.1648 93.5271 92.165H105.928C107.746 92.1652 109.219 93.6388 109.219 95.4561V121.316C109.22 123.133 110.692 124.606 112.51 124.606H126.106C127.923 124.607 129.397 126.08 129.397 127.897V139.118C129.397 140.935 130.87 142.408 132.687 142.408H161.709C163.526 142.408 165 140.935 165 139.118V84.7061H144.028C142.211 84.7061 140.737 83.2331 140.737 81.416V44.9209C140.737 43.1036 142.211 41.6309 144.028 41.6309H165V3.29102C165 1.47376 163.526 0.00012137 161.709 0H132.687Z'];
+const PAINT={boats:'../assets/studies/rowboats.png',light:'../assets/lighthouse/dusk.png'};
+
+/* ---------- geometry: every shape is an orthogonal polygon with the mark's radius on every corner ---------- */
+function rpath(pts,r){
+  const n=pts.length;let d='';
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n];
+    const l1=Math.hypot(p1[0]-p0[0],p1[1]-p0[1]),l2=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]);
+    const rr=Math.min(r,l1/2,l2/2);
+    const d1=[(p1[0]-p0[0])/l1,(p1[1]-p0[1])/l1],d2=[(p2[0]-p1[0])/l2,(p2[1]-p1[1])/l2];
+    const a=[p1[0]-d1[0]*rr,p1[1]-d1[1]*rr],b=[p1[0]+d2[0]*rr,p1[1]+d2[1]*rr];
+    const sw=(d1[0]*d2[1]-d1[1]*d2[0])>0?1:0;
+    d+=(i?'L':'M')+a[0].toFixed(2)+' '+a[1].toFixed(2);
+    if(rr>0)d+=`A${rr.toFixed(2)} ${rr.toFixed(2)} 0 0 ${sw} ${b[0].toFixed(2)} ${b[1].toFixed(2)}`;
+  }
+  return d+'Z';
+}
+/* the step unit for a shape of height H: tread s = H/8, riser a = H/6 (nose = 2/3 H), radius r = max(2, H/40) */
+const G=H=>({s:H/8,a:H/6,r:Math.max(2,H/40)});
+/* a shore x..x+w, nose of depth s on side 'r' (right) or 'l' (left) */
+function shore(x,y,w,H,side){
+  const {s,a}=G(H);
+  return side==='r'
+   ?[[x,y],[x+w,y],[x+w,y+a],[x+w+s,y+a],[x+w+s,y+H-a],[x+w,y+H-a],[x+w,y+H],[x,y+H]]
+   :[[x+s,y],[x+s+w,y],[x+s+w,y+H],[x+s,y+H],[x+s,y+H-a],[x,y+H-a],[x,y+a],[x+s,y+a]];
+}
+
+/* ---------- text ---------- */
+const cv=document.createElement('canvas').getContext('2d');
+function tw(t,size,w=400,it=false){cv.font=`${it?'italic ':''}${w} ${size}px "Ferry Sans"`;return cv.measureText(t).width}
+const esc=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const txt=(x,y,t,size,w,fill,it,extra='')=>`<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="Ferry Sans" font-size="${size.toFixed(2)}" font-weight="${w}"${it?' font-style="italic"':''} fill="${fill}" ${extra}>${esc(t)}</text>`;
+
+/* ---------- the transfer chip ----------
+   data: {from,to,status,time,amount?,p (0..1 crossing progress),held (value sits on 'from' or 'to'),paused}
+   theme 'light' (on paper or UI surfaces), 'mono' (black and white), 'dark' (on a painting)                */
+const THEMES={
+ light:{held:C.harbour,heldText:C.paper,open:C.chip,openStroke:C.harbour,openText:C.ink,band:C.mist,bandText:C.ink,wake:C.harbour},
+ mono:{held:'#111',heldText:'#fff',open:'#fff',openStroke:'#111',openText:'#111',band:'#E2E2E2',bandText:'#111',wake:'#111'},
+ dark:{held:C.paper,heldText:C.ink,open:C.harbour,openStroke:C.paper,openText:C.paper,band:C.mist,bandText:C.ink,wake:C.harbour},
+};
+function chipLayout(d,H,opt={}){
+  const {s,a,r}=G(H), fs=H*.36, pad=H*.36, g=H*.25, gap=H*.2;
+  const wl=pad+tw(d.from,fs,700)+pad-s/2, wr=pad+tw(d.to,fs,700)+pad-s/2;
+  const parts=[];
+  if(d.amount)parts.push({t:d.amount,w:400,it:false});
+  parts.push({t:d.status,w:400,it:true});
+  if(d.time)parts.push({t:d.time,w:700,it:false});
+  parts.forEach(p=>p.width=tw(p.t,fs,p.w,p.it));
+  const inner=parts.reduce((m,p)=>m+p.width,0)+gap*(parts.length-1);
+  const cw=Math.max(opt.minBand||0,g+inner+g);
+  const x0=wl+s, x1=x0+cw;
+  return {H,s,a,r,fs,pad,g,gap,wl,wr,parts,cw,x0,x1,W:x1+s+wr};
+}
+function chipEls(d,H,theme='light',opt={}){
+  const T=THEMES[theme], L=chipLayout(d,H,opt), {s,a,r,fs,pad,g,gap,wl,wr,x0,x1,W}=L;
+  const by=H/2+fs*.355, sw=Math.max(1,H/40), wake=Math.max(2,H/16);
+  const heldTo=d.held==='to', p=d.p??0, fa=opt.fill??(heldTo?1:0);
+  const left=rpath(shore(0,0,wl,H,'r'),r), right=rpath(shore(x1,0,wr,H,'l'),r);
+  const surf=[], marks=[];
+  surf.push({fill:T.band,el:`<rect x="${x0-1}" y="${a}" width="${L.cw+2}" height="${H-2*a}"/>`});
+  if(p>0)marks.push({fill:d.paused?C.signal:T.wake,el:`<rect x="${x0-1}" y="${H-a-wake}" width="${((L.cw+2)*p).toFixed(2)}" height="${wake}"/>`});
+  // value shore filled, the other open (outlined)
+  const lFill=fa<1, rFill=fa>0;
+  surf.push({fill:fa<1?T.held:T.open,el:`<path d="${left}"/>`});
+  if(fa>=1)surf.push({stroke:T.openStroke,sw,el:`<path d="${left}"/>`,inset:true});
+  surf.push({fill:T.open,el:`<path d="${right}"/>`});
+  if(fa>0)surf.push({fill:T.held,el:`<path d="${right}" opacity="${fa}"/>`});
+  if(fa<1)surf.push({stroke:T.openStroke,sw,el:`<path d="${right}"/>`,inset:true});
+  marks.push({fill:fa<1?T.heldText:T.openText,el:txt(pad,by,d.from,fs,700,'')});
+  let x=x0+g;
+  for(const q of L.parts){marks.push({fill:T.bandText,el:txt(x,by,q.t,fs,q.w,'',q.it)});x+=q.width+gap}
+  marks.push({fill:fa>.5?T.heldText:T.openText,el:txt(x1+s+pad-s/2,by,d.to,fs,700,'')});
+  return {L,W,surf,marks,sw};
+}
+/* strokes are drawn centred on the path; to keep them inside the shape we clip with the shape itself */
+function paintClipped(list,id){let k=0;return list.map(o=>{
+  if(!o.stroke)return o.el.replace(/^<(\w+) /,`<$1 fill="${o.fill}" `);
+  const cid=id+'c'+(k++), dd=o.el.match(/d="([^"]+)"/)[1];
+  return `<clipPath id="${cid}"><path d="${dd}"/></clipPath><path d="${dd}" fill="none" stroke="${o.stroke}" stroke-width="${o.sw*2}" clip-path="url(#${cid})"/>`;}).join('')}
+let uid=0;
+function chipSVG(d,H,theme='light',opt={}){
+  const E=chipEls(d,H,theme,opt), W=Math.ceil(E.W), id='k'+(uid++);
+  const lbl=`${d.from} to ${d.to}. ${d.amount?d.amount+'. ':''}${d.status}${d.time?' '+d.time:''}.`;
+  return {W,H,svg:`<svg width="${opt.width??W}" ${opt.width?'':`height="${H}"`} viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lbl)}">${paintClipped(E.surf,id)}${paintClipped(E.marks,id)}</svg>`};
+}
+
+
+/* the stacked form: same shores, same step, turned a quarter. Used when the across form does not fit, and for portrait display */
+function chipStackEls(d,W,H,theme='light',opt={}){
+  const T=THEMES[theme], {s,a,r}=G(H), fs=opt.fs||H*.36, pad=H*.36, g=H*.25, gap=H*.2, sw=Math.max(1,H/40), wake=Math.max(2,H/16);
+  const lh=fs*1.25, bx=a, bw=W-2*a;
+  const parts=[];
+  if(d.amount)parts.push({t:d.amount,w:400,it:false});
+  parts.push({t:d.status,w:400,it:true});
+  if(d.time)parts.push({t:d.time,w:700,it:false});
+  // wrap the band's words into lines
+  let lines=[[]],x=0;
+  for(const q of parts){q.width=tw(q.t,fs,q.w,q.it);const need=(lines.at(-1).length?gap:0)+q.width;
+    if(x+need>bw-2*g&&lines.at(-1).length){lines.push([]);x=0}
+    lines.at(-1).push(q);x+=(lines.at(-1).length>1?gap:0)+q.width}
+  const hb=Math.max(H,(H-fs*1.25)+lines.length*lh);
+  const y1=H+s, y2=y1+hb, Ht=y2+s+H;
+  const top=[[0,0],[W,0],[W,H],[W-a,H],[W-a,H+s],[a,H+s],[a,H],[0,H]];
+  const bot=[[0,y2+s],[a,y2+s],[a,y2],[W-a,y2],[W-a,y2+s],[W,y2+s],[W,Ht],[0,Ht]];
+  const heldTo=d.held==='to', p=d.p??0, fa=opt.fill??(heldTo?1:0);
+  const tp=rpath(top,r), bp=rpath(bot,r), surf=[], marks=[];
+  surf.push({fill:T.band,el:`<rect x="${bx}" y="${y1-1}" width="${bw}" height="${hb+2}"/>`});
+  if(p>0)marks.push({fill:d.paused?C.signal:T.wake,el:`<rect x="${bx}" y="${y1-1}" width="${wake}" height="${((hb+2)*p).toFixed(2)}"/>`});
+  surf.push({fill:fa<1?T.held:T.open,el:`<path d="${tp}"/>`});
+  if(fa>=1)surf.push({stroke:T.openStroke,sw,el:`<path d="${tp}"/>`});
+  surf.push({fill:T.open,el:`<path d="${bp}"/>`});
+  if(fa>0)surf.push({fill:T.held,el:`<path d="${bp}" opacity="${fa}"/>`});
+  if(fa<1)surf.push({stroke:T.openStroke,sw,el:`<path d="${bp}"/>`});
+  const cap=fs*.355;
+  marks.push({fill:fa<1?T.heldText:T.openText,el:txt(pad,H/2+cap,d.from,fs,700,'')});
+  const l0=y1+hb/2-(lines.length-1)*lh/2+cap;
+  lines.forEach((ln,i)=>{let xx=bx+g;for(const q of ln){marks.push({fill:T.bandText,el:txt(xx,l0+i*lh,q.t,fs,q.w,'',q.it)});xx+=q.width+gap}});
+  marks.push({fill:fa>.5?T.heldText:T.openText,el:txt(pad,y2+s+H/2+cap,d.to,fs,700,'')});
+  return {W,Ht,surf,marks,L:{fs}};
+}
+const label=d=>`${d.from} to ${d.to}. ${d.amount?d.amount+'. ':''}${d.status}${d.time?' '+d.time:''}.`;
+function chipFit(d,H,theme,avail,opt={}){
+  const E=chipEls(d,H,theme,opt);
+  if(E.W<=avail)return chipSVG(d,H,theme,opt).svg;
+  const S=chipStackEls(d,Math.floor(avail),H,theme,opt), id='k'+(uid++);
+  return `<svg width="${S.W}" height="${Math.ceil(S.Ht)}" viewBox="0 0 ${S.W} ${Math.ceil(S.Ht)}" role="img" aria-label="${esc(label(d))}">${paintClipped(S.surf,id)}${paintClipped(S.marks,id)}</svg>`;
+}
+
+/* ---------- watercolour bleed (from src/bleed.html, ink mode) ---------- */
+function bleed(u,color,seed=2,tex=1){
+  const id='bl'+(uid++);
+  return {id,def:`<filter id="${id}" x="-12%" y="-25%" width="124%" height="150%" color-interpolation-filters="sRGB">
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.05/u).toFixed(5)}" numOctaves="2" seed="${seed}" result="n"/>
+   <feDisplacementMap in="SourceAlpha" in2="n" scale="${1.3*u}" xChannelSelector="R" yChannelSelector="G" result="d"/>
+   <feGaussianBlur in="d" stdDeviation="${1.1*u}" result="b"/>
+   <feComponentTransfer in="b" result="shape"><feFuncA type="linear" slope="6" intercept="-2.6"/></feComponentTransfer>
+   <feMorphology in="shape" operator="erode" radius="${0.5*u}" result="inner"/><feGaussianBlur in="inner" stdDeviation="${0.8*u}" result="innerS"/>
+   <feComposite in="shape" in2="innerS" operator="out" result="rim"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.018/u).toFixed(5)}" numOctaves="3" seed="${seed+5}" result="g"/>
+   <feColorMatrix in="g" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ${-0.55*tex} ${1+0.2*tex}" result="gA"/>
+   <feTurbulence type="fractalNoise" baseFrequency="${(0.45/u).toFixed(5)}" numOctaves="1" seed="${seed+9}" result="f"/>
+   <feColorMatrix in="f" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ${-0.12*tex} ${1+0.04*tex}" result="fA"/>
+   <feComposite in="gA" in2="fA" operator="arithmetic" k1="1" result="tex"/>
+   <feComposite in="shape" in2="tex" operator="arithmetic" k1="1" result="bodyA"/>
+   <feFlood flood-color="${color}" flood-opacity=".95"/><feComposite in2="bodyA" operator="in" result="body"/>
+   <feFlood flood-color="${color}" flood-opacity=".5"/><feComposite in2="rim" operator="in" result="rimC"/>
+   <feGaussianBlur in="d" stdDeviation="${2.6*u}" result="h"/><feComponentTransfer in="h" result="hA"><feFuncA type="linear" slope=".09"/></feComponentTransfer>
+   <feFlood flood-color="${color}"/><feComposite in2="hA" operator="in" result="halo"/>
+   <feMerge><feMergeNode in="halo"/><feMergeNode in="body"/><feMergeNode in="rimC"/></feMerge></filter>`};
+}
+/* the chip laid down in paint: each colour is its own wash, in drawing order */
+function chipBleed(E,x,y){
+  const u=E.L.fs*.0072; let defs='',out='',seed=3;
+  const layer=(fill,inner,tex=1)=>{const f=bleed(u,fill,seed++,tex);defs+=f.def;out+=`<g filter="url(#${f.id})" fill="#000">${inner}</g>`};
+  // band, then the shores (open shore = fill + stroke as one wash), then the type
+  const band=E.surf[0], rest=E.surf.slice(1);
+  layer(band.fill,band.el,.15);
+  const byFill={};
+  for(const o of rest){const col=o.stroke||o.fill;(byFill[col]=byFill[col]||[]).push(o.stroke?o.el.replace('<path ',`<path fill="none" stroke="#000" stroke-width="${o.sw*1.6}" `):o.el)}
+  for(const [col,els] of Object.entries(byFill))layer(col,els.join(''),.15);
+  const marks={};for(const o of E.marks)(marks[o.fill]=marks[o.fill]||[]).push(o.el);
+  for(const [col,els] of Object.entries(marks))layer(col,els.join(''));
+  return {W:E.W,defs,g:`<g transform="translate(${x} ${y})">${out}</g>`};
+}
+
+/* ---------- 01 the mark, measured ---------- */
+const M={c:15.475,r:3.291};
+function markFig(){
+  const el=document.getElementById('markfig'), small=el.clientWidth<560;
+  const fs=small?10:6.5, vb=[-48,small?-42:-30,165+96,142.93+(small?56:44)];
+  const gx=[0,24.26,35.6,55.78,74.76,90.24,109.22,129.4,140.74,165], gy=[0.52,12.28,35.71,92.69,125.13,142.93,42.15,85.22];
+  const gl=`stroke="${C.guide}" stroke-width=".3" stroke-dasharray="1.2 1.2"`;
+  const lab=(x,y,t,anchor='middle')=>`<text x="${x}" y="${y}" font-family="Ferry Sans" font-size="${fs}" font-weight="700" fill="${C.ink}" text-anchor="${anchor}">${t}</text>`;
+  const red=`stroke="${C.signal}" stroke-width=".5" fill="none"`;
+  const dh=(x1,x2,y,label,ly)=>`<path d="M${x1} ${y}H${x2}M${x1} ${y-2}v4M${x2} ${y-2}v4" ${red}/>`+lab((x1+x2)/2,ly,label);
+  const dv=(x,y1,y2,label,lx,anchor)=>`<path d="M${x} ${y1}V${y2}M${x-2} ${y1}h4M${x-2} ${y2}h4" ${red}/>`+lab(lx,(y1+y2)/2+fs*.35,label,anchor);
+  let s=`<svg viewBox="${vb.join(' ')}" role="img" aria-label="The Ferry mark with its measured construction lines">`;
+  gx.forEach(x=>s+=`<line x1="${x}" y1="-8" x2="${x}" y2="151" ${gl}/>`);
+  gy.forEach(y=>s+=`<line x1="-8" y1="${y}" x2="173" y2="${y}" ${gl}/>`);
+  s+=`<g fill="${C.ink}">${MARK.map(d=>`<path d="${d}"/>`).join('')}</g>`;
+  s+=dh(74.76,90.24,64,'c',59);
+  s+=dh(35.6,55.78,-8,'1.30c',-12);
+  s+=dh(55.78,74.76,small?-26:-8,'1.23c',small?-30:-12);
+  s+=dv(178,35.71,92.69,'3.68c',182,'start');
+  s+=dv(-14,42.15,85.22,'2.78c',-18,'end');
+  if(!small)s+=dh(0,24.26,72,'1.57c',66);
+  s+=`<circle cx="71.47" cy="38.99" r="6" ${red}/>`+(small?lab(82.5,112,'r 0.21c'):lab(82,30,'r 0.21c','start'));
+  el.innerHTML=s+'</svg>';
+}
+function ratios(){
+  const rows=[['Measured on the 165 wide drawing','units','in c'],
+   ['Channel between the noses','15.48','1'],
+   ['Corner radius, every corner','3.29','0.21'],
+   ['Step tread, outer then inner','20.18, 18.98','1.30, 1.23'],
+   ['Nose, the face across the channel','56.98','3.68'],
+   ['Step risers above the nose','11.76, 23.42','0.76, 1.51'],
+   ['Step risers below the nose','32.44, 17.80','2.10, 1.15'],
+   ['Berth notch, depth by height','24.26 × 43.08','1.57 × 2.78'],
+   ['One half, width by height','74.76 × 142.41','4.83 × 9.20'],
+   ['Whole mark, width','165.00','10.66']];
+  document.getElementById('ratios').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+}
+
+/* ---------- 02 shape ---------- */
+function imgFill(id,href,x,y,w,h,pos='xMidYMid slice'){return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${x}" y="${y}" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${C.harbour}"/><image href="${href}" width="${w}" height="${h}" preserveAspectRatio="${pos}"/></pattern>`}
+function shapes(){
+  // the shore as a crop of a painting
+  { const H=240,w=150,{s,r}=G(H);
+    document.getElementById('sh1').innerHTML=`<svg viewBox="-2 -2 ${w+s+4} ${H+4}" style="height:240px;width:auto"><defs>${imgFill('p1',PAINT.light,0,0,w+s,H,'xMidYMin slice')}</defs><path d="${rpath(shore(0,0,w,H,'r'),r)}" fill="url(#p1)"/></svg>`; }
+  // two shores across the channel, one painting
+  { const H=200,w=96,{s,r}=G(H),c=s; const W=w+s+c+s+w;
+    document.getElementById('sh2').innerHTML=`<svg viewBox="-2 -2 ${W+4} ${H+4}" style="height:200px;width:auto;max-width:100%"><defs>${imgFill('p2',PAINT.boats,0,0,W,H,'xMidYMid slice')}</defs><path d="${rpath(shore(0,0,w,H,'r'),r)}" fill="url(#p2)"/><path d="${rpath(shore(w+s+c,0,w,H,'l'),r)}" fill="url(#p2)"/></svg>`; }
+  // size ladder
+  { const hs=[24,32,44,64,96,160]; let x=0,o='';
+    for(const H of hs){const w=H*.9,{s,r}=G(H);o+=`<path d="${rpath(shore(x,160-H,w,H,'r'),r)}" fill="${C.ink}"/>`;x+=w+s+14}
+    document.getElementById('sh3').innerHTML=`<svg viewBox="0 0 ${x} 160" style="width:100%;height:auto">${o}</svg>`; }
+}
+
+/* ---------- 03 anatomy (black and white) ---------- */
+function anatomy(){
+  const el=document.getElementById('anat'), w=el.clientWidth, small=w<600;
+  const d={from:'Solana',to:'Ethereum',status:'Crossing',time:'41s',p:.55};
+  const L0=chipLayout(d,100), H=Math.min(132,Math.floor(100*(w-(small?8:150))/L0.W)), E=chipEls(d,H,'mono'), L=E.L;
+  const top=small?40:56, bot=small?56:70, W=Math.ceil(E.W), lx=small?0:60;
+  const f=11, lab=(x,y,t,anchor='middle',col=C.ink)=>`<text x="${x}" y="${y}" font-family="Ferry Sans" font-size="${f}" font-weight="700" letter-spacing="1.8" fill="${col}" text-anchor="${anchor}">${t}</text>`;
+  const red=`stroke="${C.signal}" stroke-width="1" fill="none"`;
+  let s=`<svg viewBox="${-lx} ${-top} ${W+lx+(small?4:80)} ${H+top+bot}" style="width:100%;height:auto" role="img" aria-label="Chip anatomy"><g>${paintClipped(E.surf,'an')}${paintClipped(E.marks,'an')}</g>`;
+  // H and nose
+  if(!small){s+=`<path d="M-24 0V${H}M-28 0h8M-28 ${H}h8" ${red}/>`+lab(-30,H/2+4,'H','end');
+   s+=`<path d="M${L.x1+L.s+L.wr+16} ${L.a}V${H-L.a}M${L.x1+L.s+L.wr+12} ${L.a}h8M${L.x1+L.s+L.wr+12} ${H-L.a}h8" ${red}/>`+lab(L.x1+L.s+L.wr+26,H/2+4,'⅔ H','start');}
+  // step tread s at the origin nose
+  if(!small){s+=`<path d="M${L.wl} -12H${L.wl+L.s}M${L.wl} -16v8M${L.wl+L.s} -16v8" ${red}/>`+lab(L.wl+L.s/2,-22,'H/8');
+  s+=`<path d="M${L.x1} -12H${L.x1+L.s}M${L.x1} -16v8M${L.x1+L.s} -16v8" ${red}/>`;}
+  // the parts
+  const y=H+(small?24:30);
+  s+=`<path d="M0 ${y-14}H${L.wl+L.s}" stroke="${C.ink}" stroke-width="1"/>`+lab(0,y+4,'FROM','start');
+  s+=`<path d="M${L.x0} ${y-14}H${L.x1}" stroke="${C.ink}" stroke-width="1"/>`+lab(L.x0,y+4,'CHANNEL','start');
+  s+=`<path d="M${L.x1} ${y-14}H${W}" stroke="${C.ink}" stroke-width="1"/>`+lab(L.x1,y+4,'TO','start');
+  if(!small){
+   s+=lab(L.x0+L.g,y+22,'STATUS ITALIC · TIME BOLD','start',C.mute);
+   s+=lab(0,y+22,'BOLD','start',C.mute);
+   s+=lab(L.x1,y+22,'BOLD','start',C.mute);
+  }
+  el.innerHTML=s+'</svg>';
+  // elastic: copy of any length, one shape
+  const rows=[
+   {from:'Base',to:'Solana',status:'Arrived',time:'38s',held:'to',p:1},
+   {from:'Solana',to:'Ethereum',amount:'1,000 USDC',status:'Crossing',time:'41s',p:.55},
+   {from:'Arbitrum One',to:'Ethereum',amount:'25,000.00 USDC',status:'Holding at the pier',time:'12:04',p:0},
+  ];
+  const Hs=small?32:40;
+  document.getElementById('elastic').innerHTML=rows.map(r=>chipFit(r,Hs,'mono',w)).join('');
+}
+
+/* ---------- 04 states ---------- */
+const STATES=[
+ {k:'Holding at the pier',d:{from:'Solana',to:'Ethereum',status:'Holding at the pier',time:'12:04',p:0},n:'Value on the origin shore. Channel still.'},
+ {k:'Departed',d:{from:'Solana',to:'Ethereum',status:'Departed',time:'12:04',p:.07},n:'The wake leaves the origin nose.'},
+ {k:'Crossing',d:{from:'Solana',to:'Ethereum',status:'Crossing',time:'41s',p:.55},n:'The wake grows with the crossing.'},
+ {k:'Arrived',d:{from:'Solana',to:'Ethereum',status:'Arrived',time:'41s',p:1,held:'to'},n:'Value on the far shore. The origin opens.'},
+ {k:'Paused in port',d:{from:'Solana',to:'Ethereum',status:'Paused in port',time:'12:06',p:.38,paused:true},n:'The wake stops in Signal, the one Signal in view.'},
+];
+function states(){
+  const w=document.getElementById('states').clientWidth;
+  document.getElementById('states').innerHTML=STATES.map(s=>{const c=chipSVG(s.d,44,'light');return `<div class="state"><div><b>${s.k}</b><div class="note">${s.n}</div></div><div>${chipFit(s.d,w<860?40:44,'light',w<860?w:w-220)}</div></div>`}).join('');
+}
+
+/* ---------- 05 scale ---------- */
+function scale(){
+  const el=document.getElementById('scale'), w=el.clientWidth;
+  const d={from:'Solana',to:'Ethereum',status:'Crossing',time:'41s',p:.55};
+  let o='';
+  for(const H of [32,44,96]){const c=chipSVG(d,H,'light');o+=c.svg}
+  el.innerHTML=o;
+  const bd={from:'Solana',to:'Ethereum',status:'Arrived',time:'41s',p:1,held:'to'}, bH=w<600?220:380, big=chipSVG(bd,bH,'dark'), bL=chipLayout(bd,bH);
+  const cr=document.getElementById('crop'); cr.innerHTML=big.svg;
+  cr.firstChild.style.left=(w<600?-Math.round(bL.wl-bL.pad*.5):-40)+'px';
+}
+
+/* ---------- 06a poster: the chip is the headline, laid down in paint over the painting ---------- */
+function poster(){
+  const Wp=1080,Hp=1350, mx=70, d={from:'Solana',to:'Ethereum',status:'Arrived',time:'41s',p:1,held:'to'};
+  // stacked form across four columns (620 px), type at the T4 headline size
+  const fs=80, H=Math.round(fs/.36/1.15), Wc=620;
+  const E=chipStackEls(d,Wc,H,'dark',{fs});
+  const top=110, B=chipBleed(E,mx,top);
+  const sc=2.6, iw=1835*sc, ih=1144*sc;
+  document.getElementById('poster').innerHTML=`<svg viewBox="0 0 ${Wp} ${Hp}" role="img" aria-label="Poster. Solana to Ethereum. Arrived, 41 seconds.">
+   <defs>${B.defs}</defs>
+   <rect width="${Wp}" height="${Hp}" fill="${C.harbour}"/>
+   <image href="${PAINT.boats}" x="${130-.535*iw}" y="${1000-.36*ih}" width="${iw}" height="${ih}"/>
+   ${B.g}
+   <text x="${mx}" y="${top+E.Ht+70}" font-family="Ferry Sans" font-size="30" fill="${C.paper}">1,000 USDC left Solana at 12:04.</text>
+   <text x="${mx}" y="${top+E.Ht+110}" font-family="Ferry Sans" font-size="30" fill="${C.paper}">1,000 USDC arrived on Ethereum.</text>
+   <image href="../export/ferry-lockup-white.png" x="${mx}" y="${Hp-140-40}" height="40" width="${40*4000/1280}"/>
+  </svg>`;
+}
+
+/* ---------- 06b product rows, 06c receipt line ---------- */
+function product(){
+  const el=document.getElementById('prows'), w=el.clientWidth||600, H=w<420?32:36;
+  const rows=[
+   [{from:'Solana',to:'Ethereum',status:'Crossing',time:'41s',p:.55},'1,000.00 USDC','12:04'],
+   [{from:'Base',to:'Solana',status:'Arrived',time:'38s',p:1,held:'to'},'250.00 USDC','11:52'],
+   [{from:'Ethereum',to:'Arbitrum',status:'Paused in port',time:'11:40',p:.38,paused:true},'4,800.00 USDC','11:38'],
+  ];
+  el.innerHTML=rows.map(([d,a,t])=>{return `<div class="prow"><div style="min-width:0">${chipFit(d,H,'light',w<420?w:w-130)}</div><div class="amt">${a}<span>Today ${t}</span></div></div>`}).join('');
+  const r=document.getElementById('rline'), rw=r.clientWidth||280;
+  const c=chipSVG({from:'Solana',to:'Ethereum',status:'Arrived',time:'41s',p:1,held:'to'},32,'light');
+  r.innerHTML=c.svg;
+}
+
+/* ---------- 07 motion: Departed, Crossing, Arrived, then rest ---------- */
+function motion(){
+  const el=document.getElementById('motion'), w=el.clientWidth-60, small=w<600;
+  const H=small?40:64, base={from:'Solana',to:'Ethereum'};
+  const minBand=Math.max(...['Holding at the pier','Departed','Crossing','Arrived'].map(st=>chipLayout({...base,status:st,time:'41s'},H).cw));
+  const render=(st,time,p,fill)=>{const c=chipSVG({...base,status:st,time,p},H,'light',{minBand,fill});el.innerHTML=c.svg};
+  const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2, cl=t=>Math.max(0,Math.min(1,t));
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){render('Crossing','41s',.55,0);return}
+  const T=12000;
+  function frame(now){
+    const t=now%T/1000;
+    if(t<1.5)render('Holding at the pier','12:04',0,0);
+    else if(t<2.8)render('Departed','12:04',.07*ease(cl((t-1.5)/1.3)),0);
+    else if(t<8.6){const k=ease(cl((t-2.8)/5.8));render('Crossing',Math.round(k*41)+'s',.07+.93*k,0)}
+    else if(t<10.8)render('Arrived','41s',1,ease(cl((t-8.6)/1.4)));
+    else render('Arrived','41s',1-ease(cl((t-10.8)/1.2)),1-ease(cl((t-10.8)/1.2)));
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function all(){markFig();ratios();shapes();anatomy();states();scale();poster();product()}
+Promise.race([Promise.all(['400','700','italic 400','italic 700'].map(f=>document.fonts.load(f+' 20px "Ferry Sans"'))),new Promise(r=>setTimeout(r,1500))]).catch(()=>{}).then(()=>{
+  all();motion();document.fonts.addEventListener&&document.fonts.addEventListener('loadingdone',()=>all());let to;addEventListener('resize',()=>{clearTimeout(to);to=setTimeout(all,120)});document.title='Ferry Primitive';document.documentElement.dataset.ready='1';
+});
+</script>
+</body></html>

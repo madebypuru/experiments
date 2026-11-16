@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry · In transit</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{
+  --paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--seagrass:#7D8F69;
+  --quiet:#4A5559;           /* the ticket's own label ink; Sea glass is 3.2:1 on Paper, too light for type */
+  --r:2px;--col:480px;--gut:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink)}
+body{font:400 15px/20px 'Ferry Sans',sans-serif;font-feature-settings:'tnum';-webkit-font-smoothing:antialiased}
+a,button{font:inherit;color:inherit}
+.num{font-feature-settings:'tnum'}
+.caps{font:700 11px/20px 'Ferry Sans';letter-spacing:.18em;text-transform:uppercase;color:var(--quiet)}
+
+/* top bar: 60 px on the 10 px baseline */
+.bar{height:60px;display:flex;align-items:center;gap:40px;padding:0 40px;border-bottom:1px solid var(--mist)}
+.mark{display:block;width:64px;height:20px;background:var(--ink);
+  -webkit-mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain;mask:url(../export/ferry-lockup-clean.svg) no-repeat 0 50%/contain}
+.tabs{display:flex;gap:30px}
+.tabs a{text-decoration:none;line-height:58px;border-bottom:2px solid transparent;color:var(--quiet)}
+.tabs a[aria-current]{color:var(--ink);border-bottom-color:var(--harbour)}
+.wallet{margin-left:auto;color:var(--quiet)}
+
+main{width:var(--col);margin:0 auto;padding:80px 0 80px}
+.head{display:flex;align-items:baseline;justify-content:space-between;gap:20px}
+h1{margin:0;font:700 28px/30px 'Ferry Sans';letter-spacing:-.01em}
+.fid{color:var(--quiet)}
+
+.ticket-slot{position:relative;margin-top:30px}
+.ticket-slot svg{display:block}
+.sentence{margin:30px 0 0}
+
+section{margin-top:40px}
+.list{list-style:none;margin:0;padding:0;border-top:1px solid var(--mist)}
+.list li{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:0 10px;height:50px;border-bottom:1px solid var(--mist)}
+.list .t{color:var(--quiet);text-align:right}
+.list li.now .t{color:var(--harbour);font-weight:700}
+.list li.new{animation:in .4s ease-out both}
+@keyframes in{from{opacity:0}to{opacity:1}}
+.mk{width:14px;height:14px;display:block}
+
+details{border-bottom:1px solid var(--mist)}
+section.det{margin-top:20px}
+summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;height:50px}
+summary::-webkit-details-marker{display:none}
+summary .pm{color:var(--quiet)}
+details[open] summary .pm .o{display:none}
+details:not([open]) summary .pm .c{display:none}
+.facts{width:100%;border-collapse:collapse;margin-bottom:10px}
+.facts tr{border-top:1px solid var(--mist)}
+.facts th{text-align:left;font-weight:400;color:var(--quiet);height:40px;padding:0}
+.facts td{text-align:right;padding:0;white-space:nowrap}
+.copy{border:0;background:none;padding:0 0 0 10px;cursor:pointer;color:var(--harbour);vertical-align:-2px}
+.copy svg{width:14px;height:14px;display:block}
+
+.close{margin:40px 0 0;color:var(--quiet)}
+.links{display:flex;gap:30px;margin-top:20px}
+.links a,.links button{border:0;background:none;padding:0;cursor:pointer;color:var(--harbour);font-weight:700;text-decoration:underline;text-decoration-color:var(--mist);text-underline-offset:4px}
+:focus-visible{outline:2px solid var(--harbour);outline-offset:3px;border-radius:var(--r)}
+
+@media (max-width:560px){
+  .bar{padding:0 var(--gut);gap:20px}
+  .tabs{gap:20px}
+  main{width:auto;margin:0 var(--gut);padding-top:40px}
+  h1{font-size:24px}
+}
+@media (prefers-reduced-motion:reduce){.list li.new{animation:none}}
+</style></head><body>
+<header class="bar">
+  <a href="#" class="mark" aria-label="Ferry"></a>
+  <nav class="tabs"><a href="#" aria-current="page">Send</a><a href="#">History</a></nav>
+  <span class="wallet num">0x1cf2...9a56</span>
+</header>
+<main>
+  <div class="head"><h1>On its way.</h1><span class="fid num">FP-0417</span></div>
+  <div class="ticket-slot" id="slot" role="img" aria-label="Transfer ticket: SOL to ETH, crossing"></div>
+  <p class="sentence" id="sentence" aria-live="polite"></p>
+
+  <section aria-labelledby="up">
+    <div class="caps" id="up" style="margin-bottom:10px">Updates</div>
+    <ol class="list" id="list"></ol>
+  </section>
+
+  <section class="det">
+    <details id="det">
+      <summary><span class="caps">Details</span><span class="pm" aria-hidden="true"><span class="o">Show</span><span class="c">Hide</span></span></summary>
+      <table class="facts num">
+        <tr><th>Transfer ID</th><td>FP-0417<button class="copy" data-copy="FP-0417" aria-label="Copy transfer ID"></button></td></tr>
+        <tr><th>From</th><td>Solana · 7Hq4...kP2w</td></tr>
+        <tr><th>To</th><td>Ethereum · 0x1cf2...9a56</td></tr>
+        <tr><th>Solana transaction</th><td>4xQm...9ZpK<button class="copy" data-copy="4xQm9ZpK" aria-label="Copy Solana transaction"></button></td></tr>
+        <tr><th>Amount</th><td>100 SOL</td></tr>
+        <tr><th>Fee</th><td>0.18 USDC</td></tr>
+        <tr><th>Rate</th><td>1 SOL = 0.04121 ETH</td></tr>
+        <tr><th>Recipient gets</th><td>4.1206 ETH</td></tr>
+      </table>
+    </details>
+  </section>
+
+  <p class="close">You can close this page. We will keep the crossing.</p>
+  <div class="links"><button type="button" id="track">Copy tracking link</button><a href="#">Back to send</a></div>
+</main>
+<script src="../print/stamp.js"></script>
+<script src="../print/ticket.js"></script>
+<script src="transit-v1.js"></script>
+</body></html>

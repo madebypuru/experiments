@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ferry footer</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Regular.woff2) format('woff2');font-weight:400}
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--seaglass:#6B8A94;--mist:#C9CDBD;--stone:#D2A57F;--grass:#7D8F69;--grey:#4A5559;--r:2px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);overflow-x:hidden}
+body{font:400 15px/20px 'Ferry Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+a:focus-visible,input:focus-visible{outline:2px solid var(--harbour);outline-offset:2px;border-radius:var(--r)}
+
+/* the ruled grid: 8 columns of one module plus its gutter (140 + 20), hairlines in Mist */
+.ff{border-top:1px solid var(--mist)}
+.wrap{max-width:1282px;margin:0 auto;border-left:1px solid var(--mist);border-right:1px solid var(--mist)}
+.grid{display:grid;grid-template-columns:repeat(8,1fr);gap:1px;background:var(--mist)}
+.cell{background:var(--paper);padding:20px}
+.s2{grid-column:span 2}.s4{grid-column:span 4}.s8{grid-column:span 8}
+.rowA .cell{min-height:280px}
+.grid+.grid{border-top:1px solid var(--mist)}
+.lab{font:700 11px/20px 'Ferry Sans';letter-spacing:.16em;text-transform:uppercase;color:var(--grey);margin:0 0 10px}
+.links{list-style:none;margin:0;padding:0}
+.links li{line-height:30px}
+.statement h2{font:700 36px/40px 'Ferry Sans';letter-spacing:-.01em;margin:0 0 20px;max-width:280px}
+.statement p{color:var(--grey);margin:0;max-width:260px}
+.post{position:relative}
+.post .stamp{position:absolute;left:20px;top:20px}
+.post .stamp svg{display:block}
+.post .pm{position:absolute;left:126px;top:112px;transform:rotate(-9deg);pointer-events:none}
+.post .pm svg{display:block}
+.rowB .cell{padding-top:20px;padding-bottom:20px;color:var(--grey)}
+.status a{color:var(--ink);display:inline-flex;align-items:center;gap:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grass);display:inline-block}
+.legal>span+span{margin-left:20px}
+.social a{color:var(--ink);margin-right:20px}
+.word{padding:40px 20px 20px}
+#wordmark{display:block;width:100%;height:auto;fill:var(--mist)}
+
+/* the dock: the live rowboats study, full bleed to the page's sides and bottom; its top dissolves into the page as brush strokes */
+body{display:flex;flex-direction:column;min-height:100vh}
+.above{flex:1 0 120px}
+.rowC{background:transparent}.rowC .word{background:transparent;position:relative;z-index:2;pointer-events:none}
+.harbour{position:relative;z-index:1;width:100%;height:calc(var(--cw) * 1032 / 1836);margin-top:calc(-1 * var(--edge));overflow:hidden;background:#33493f;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-size:100% 100%;mask-size:100% 100%}
+.harbour canvas{position:absolute;bottom:0;left:calc((100% - var(--cw)) / 2);width:var(--cw);height:auto;display:block;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+:root{--cw:100vw;--edge:230px}
+@media (max-width:1100px){:root{--edge:170px}.grid{grid-template-columns:repeat(4,1fr)}.statement,.post{grid-column:span 2}.rowB .s4,.rowB .s2{grid-column:span 4}.s8{grid-column:span 4}}
+@media (max-width:640px){
+  :root{--cw:170vw;--edge:110px}
+  .above{flex-basis:60px}
+  .wrap{border:0}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .cell{padding:20px 16px}
+  .s2,.s4,.s8,.statement,.post,.rowB .s4,.rowB .s2{grid-column:span 2}
+  .rowA .cell{min-height:0}
+  .rowA .col{padding-bottom:20px}
+  .statement h2{font-size:30px;line-height:40px}
+  .post{height:250px}
+  .post .stamp{left:16px}
+  .legal>span{display:block}.legal>span+span{margin-left:0}
+  .word{padding:30px 16px 20px}
+}
+</style></head>
+<body>
+<div class="above"></div>
+<footer class="ff">
+  <div class="wrap">
+    <div class="grid rowA">
+      <div class="cell s2 statement">
+        <h2>Safe passage between chains.</h2>
+        <p>Ferry moves money between chains and shows you every crossing.</p>
+      </div>
+      <nav class="cell col" aria-label="Product">
+        <p class="lab">Product</p>
+        <ul class="links"><li><a href="#">Send</a></li><li><a href="#">Receive</a></li><li><a href="#">Routes</a></li><li><a href="#">Pricing</a></li></ul>
+      </nav>
+      <nav class="cell col" aria-label="Developers">
+        <p class="lab">Developers</p>
+        <ul class="links"><li><a href="#">Docs</a></li><li><a href="#">API reference</a></li><li><a href="#">SDKs</a></li><li><a href="#">Testnets</a></li></ul>
+      </nav>
+      <nav class="cell col" aria-label="Company">
+        <p class="lab">Company</p>
+        <ul class="links"><li><a href="#">About</a></li><li><a href="#">Security</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li></ul>
+      </nav>
+      <nav class="cell col" aria-label="Legal">
+        <p class="lab">Legal</p>
+        <ul class="links"><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">Cookies</a></li><li><a href="#">Disclosures</a></li></ul>
+      </nav>
+      <div class="cell s2 post" aria-hidden="true"><div class="stamp" id="stamp"></div><div class="pm" id="postmark"></div></div>
+    </div>
+    <div class="grid rowB">
+      <div class="cell s2 status"><a href="#"><span class="dot"></span>All crossings running</a></div>
+      <div class="cell s4 legal"><span>&copy; <span id="yr">2026</span> Ferry</span><span>Ferry is software. It is not a bank and does not hold your funds.</span></div>
+      <div class="cell s2 social"><a href="#">X</a><a href="#">GitHub</a><a href="#">Discord</a></div>
+    </div>
+    <div class="grid rowC">
+      <div class="cell s8 word"><svg id="wordmark" role="img" aria-label="Ferry" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+  </div>
+  <div class="harbour" id="harbour"><canvas id="dock" aria-label="A painted dock where rowing boats go out and come back; tap the water to make a wave"></canvas></div>
+</footer>
+<script src="footer-lib/ferry-grid.js"></script>
+<script src="footer-lib/ferry-icons.js"></script>
+<script src="footer-lib/library.js"></script>
+<script src="footer-v1.js"></script>
+<script src="footer-lib/dock-live.js"></script>
+</body></html>

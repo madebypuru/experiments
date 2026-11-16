@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Ferry Icons 02</title>
+<style>
+@font-face{font-family:'Ferry Sans';src:url(../type/fonts/FerrySans-Bold.woff2) format('woff2');font-weight:700}
+html,body{margin:0;background:#F2EEE6}
+body{width:1440px;position:relative;color:#1B262B;font-family:'Ferry Sans',sans-serif}
+.grain{position:absolute;inset:0;pointer-events:none;z-index:0}
+.sheet{position:relative;z-index:1;padding:128px 0 132px}
+:root{--paper:#F2EEE6;--ink:#1B262B;--harbour:#2C454B;--mute:#2C454B}
+#blocks{display:grid;grid-template-columns:repeat(3,352px);column-gap:56px;row-gap:56px;justify-content:center}
+.stp{display:block;width:352px;height:432px}
+#imps{margin-top:120px;display:flex;justify-content:center;align-items:center;gap:28px}
+.imp{display:block;width:190px;height:256px}
+figure{margin:0}
+.blk{display:block;width:340px;height:457px}
+figcaption{margin-top:20px;text-align:center;font:700 11px 'Ferry Sans';letter-spacing:.36em;padding-left:.36em}
+#sizes{margin-top:120px;display:flex;justify-content:center;align-items:flex-end;gap:30px}
+.cl{display:flex;align-items:flex-end;gap:11px}
+.cl svg{display:block}
+.cl.fly{margin-left:34px}
+#use{margin-top:132px;display:flex;justify-content:center;gap:190px}
+.use{width:270px;height:270px;display:block}
+</style></head>
+<body>
+<svg class="grain" width="100%" height="100%"><filter id="paper" x="0" y="0" width="100%" height="100%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="8" result="n"/>
+  <feColorMatrix in="n" values="0 0 0 0 .32  0 0 0 0 .28  0 0 0 0 .22  0 0 0 .09 0" result="speck"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2" seed="4" result="t"/>
+  <feColorMatrix in="t" values="0 0 0 0 .55  0 0 0 0 .45  0 0 0 0 .3  0 0 0 .06 0" result="tone"/>
+  <feMerge><feMergeNode in="tone"/><feMergeNode in="speck"/></feMerge>
+</filter><rect width="100%" height="100%" filter="url(#paper)"/></svg>
+<div class="sheet">
+  <div id="blocks"></div>
+  <div id="imps"></div>
+  <div id="sizes"></div>
+  <div id="use"></div>
+</div>
+<script src="stamp.js"></script>
+<script src="icons-v2.js"></script>
+</body></html>

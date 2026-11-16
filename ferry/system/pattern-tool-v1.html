@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ferry pattern tool</title>
+<style>
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Bold.woff2) format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Ferry Sans'; src: url(../type/fonts/FerrySans-Regular.woff2) format('woff2'); font-weight: 400; }
+:root { --paper: #F2EEE6; --ink: #1B262B; --harbour: #2C454B; --line: rgba(27,38,43,.12); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font: 400 13px/1.3 'Ferry Sans', sans-serif; }
+body { display: flex; }
+#stage { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; padding: 24px; position: relative; }
+#frame { box-shadow: 0 0 0 1px var(--line), 0 2px 12px rgba(27,38,43,.06); line-height: 0; overflow: hidden; }
+#frame svg { display: block; width: 100%; height: 100%; }
+#info { position: absolute; left: 24px; bottom: 8px; font-size: 11px; opacity: .6; }
+#panel { width: 320px; flex: none; border-left: 1px solid var(--line); height: 100%; overflow-y: auto; padding: 0 16px 16px; }
+section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+section:last-child { border-bottom: 0; }
+h2 { margin: 0 0 8px; font: 700 10px/1 'Ferry Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.row > label { flex: none; width: 72px; }
+.row.wide > label { width: auto; }
+.val { flex: none; width: 36px; text-align: right; font-variant-numeric: tabular-nums; opacity: .7; }
+input[type=range] { flex: 1; min-width: 0; margin: 0; accent-color: var(--harbour); }
+input[type=number], select { font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 4px; height: 32px; padding: 0 8px; min-width: 0; }
+input[type=number] { width: 100%; }
+button { font: 700 12px/1 'Ferry Sans', sans-serif; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 4px; height: 32px; padding: 0 12px; cursor: pointer; }
+button:hover { border-color: rgba(27,38,43,.4); }
+button.primary { background: var(--harbour); color: var(--paper); border-color: var(--harbour); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--harbour); outline-offset: 1px; }
+.seg { display: flex; flex: 1; }
+.seg button { flex: 1; padding: 0 4px; border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 4px 4px 0; }
+.seg button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); position: relative; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.sw { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.sw i { flex: 1; max-width: 24px; aspect-ratio: 1; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; position: relative; display: block; }
+.sw i.on { outline: 2px solid var(--ink); outline-offset: 2px; }
+.pics { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 8px; }
+.pics div { aspect-ratio: 1; border-radius: 4px; background-size: cover; background-position: center; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: 700; letter-spacing: .06em; }
+.pics div.on { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.btns button { flex: 1; }
+.chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hint { margin-top: 8px; opacity: .6; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="frame"></div><div id="info"></div></div>
+<div id="panel"></div>
+<script src="pattern.js"></script>
+<script>
+(() => {
+const P = window.Pattern;
+
+/* ---- Presets: plain objects, edit freely. Every key is a control. ---- */
+const BRAND = { Paper: '#F2EEE6', Ink: '#1B262B', Harbour: '#2C454B', 'Sea glass': '#6B8A94', Mist: '#C9CDBD', Stone: '#D2A57F', 'Sea grass': '#7D8F69' };
+const PAINTINGS = { ferry: 'ferry-arrival-gouache.png', lighthouse: 'lighthouse-gouache-hi.png', rowboats: 'rowboats-gouache.png', fire: 'harbour-fire-gouache.png', cabin: 'cabin-windows-gouache.png' };
+const PAINT_DIR = '../assets/refs/';
+const FORMATS = { '16:9': [1920, 1080], '4:5': [1080, 1350], '1:1': [1080, 1080], 'X header': [1500, 500], custom: null };
+const DEFAULTS = { format: '16:9', w: 1920, h: 1080, fig: '#2C454B', ground: '#F2EEE6', fill: 'flat', painting: 'ferry',
+  s: 24, Q: 14, cols: 3, ox: 0, oy: 0, rotate: 0, bands: 'off', routes: false, bleed: true,
+  motion: 'tide', duration: 12, seed: 4 };
+const PRESETS = {
+  'Quiet ground':    { fig: '#C9CDBD', ground: '#F2EEE6', s: 12, Q: 14, motion: 'tide', duration: 24, seed: 3 },
+  'Large shores':    { fig: '#2C454B', ground: '#F2EEE6', s: 40, Q: 14, motion: 'arrive', duration: 10, seed: 2, ox: 200 },
+  'Painting windows':{ fill: 'painting', painting: 'ferry', ground: '#F2EEE6', s: 40, Q: 14, motion: 'arrive', duration: 10, seed: 2, ox: 440, oy: 0 },
+  'Tide':            { fig: '#1B262B', ground: '#C9CDBD', s: 9, Q: 14, bands: '1-1.5-2', motion: 'tide', duration: 12, seed: 3 },
+  'Night harbour':   { format: '1:1', w: 1080, h: 1080, fig: '#2C454B', ground: '#1B262B', s: 14, Q: 14, motion: 'tide', duration: 16, seed: 7 },
+  'Header':          { format: 'X header', w: 1500, h: 500, fig: '#F2EEE6', ground: '#6B8A94', s: 10, Q: 14, rotate: 90, motion: 'swap', duration: 12, seed: 5 },
+};
+
+/* ---- State ---- */
+const S = Object.assign({}, DEFAULTS);
+let t = 0, playing = true, last = null, lastSvg = '';
+const BASE = { arrive: 10, tide: 12, swap: 12, none: 0 };
+const $ = (q, r = document) => r.querySelector(q);
+const el = (h) => { const d = document.createElement('div'); d.innerHTML = h.trim(); return d.firstChild; };
+const ctl = {}; // key -> sync function
+
+/* ---- Rendering ---- */
+function opts() {
+  const rot = S.rotate === 90, ah = rot ? S.w : S.h;
+  const o = { w: S.w, h: S.h, s: S.s, Q: S.Q, cols: S.cols, seed: S.seed, ox: S.ox, oy: S.oy, fig: S.fig, ground: S.ground,
+    motion: S.motion, rotate: S.rotate, routes: S.routes, bleed: S.bleed };
+  if (S.motion !== 'none') o.speed = +(BASE[S.motion] / S.duration).toFixed(4);
+  if (S.bands !== 'off') {
+    const sc = S.bands === '1-1.5-2' ? [1, 1.5, 2] : [2, 1.5, 1], fr = [.3, .3, .4];
+    let y = 0; o.bands = sc.map((scale, i) => { const h = Math.round(ah * fr[i]); const b = { y, h: i === 2 ? ah - y : h, scale }; y += h; return b; });
+  }
+  return o;
+}
+function holdT() { return S.motion === 'arrive' ? S.duration * 0.45 : 0; }
+function build(time, embed) {
+  const o = opts(), W = S.w, H = S.h;
+  let inner;
+  if (S.fill === 'painting') {
+    const mo = Object.assign({}, o, { maskOnly: true, fig: '#fff', motion: o.motion === 'swap' ? 'none' : o.motion });
+    const href = embed || (PAINT_DIR + PAINTINGS[S.painting]);
+    inner = `<defs><mask id="pm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#000"/>${P.draw(mo, time)}</mask></defs>
+      <rect width="${W}" height="${H}" fill="${S.ground}"/><g mask="url(#pm)"><image href="${href}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"/></g>`;
+  } else inner = P.draw(o, time);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${inner}</svg>`;
+}
+const frame = $('#frame');
+function fit() {
+  const st = $('#stage'), aw = st.clientWidth - 48, ah = st.clientHeight - 56, k = Math.min(aw / S.w, ah / S.h);
+  frame.style.width = Math.floor(S.w * k) + 'px'; frame.style.height = Math.floor(S.h * k) + 'px';
+  $('#info').textContent = `${S.w} x ${S.h} px  ·  preview ${Math.round(k * 100)}%`;
+}
+let shellKey = '', maskNode = null;
+function render() {
+  if (S.fill === 'painting') { // keep the <image> node alive between frames so the painting never reloads
+    const key = [S.w, S.h, S.ground, S.painting].join();
+    if (key !== shellKey) {
+      shellKey = key; lastSvg = '';
+      frame.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${S.w}" height="${S.h}" viewBox="0 0 ${S.w} ${S.h}"><defs><mask id="pm" maskUnits="userSpaceOnUse" x="0" y="0" width="${S.w}" height="${S.h}"><rect width="${S.w}" height="${S.h}" fill="#000"/><g id="mg"></g></mask></defs><rect width="${S.w}" height="${S.h}" fill="${S.ground}"/><g mask="url(#pm)"><image href="${PAINT_DIR + PAINTINGS[S.painting]}" width="${S.w}" height="${S.h}" preserveAspectRatio="xMidYMid slice"/></g></svg>`;
+      maskNode = $('#mg', frame);
+    }
+    const o = opts(), inner = P.draw(Object.assign({}, o, { maskOnly: true, fig: '#fff', motion: o.motion === 'swap' ? 'none' : o.motion }), t);
+    if (inner !== lastSvg) maskNode.innerHTML = lastSvg = inner;
+    return;
+  }
+  shellKey = '';
+  const svg = build(t);
+  if (svg !== lastSvg) { frame.innerHTML = lastSvg = svg; }
+}
+function sync() { fit(); for (const k in ctl) ctl[k](); updateHash(); render(); }
+
+/* ---- Controls ---- */
+const panel = $('#panel');
+function section(title) { const s = el(`<section><h2>${title}</h2></section>`); panel.appendChild(s); return s; }
+function seg(sec, key, label, opts_, after) {
+  const r = el(`<div class="row"><label>${label}</label><div class="seg"></div></div>`), box = $('.seg', r);
+  opts_.forEach(([v, n]) => { const b = el(`<button>${n}</button>`); b.onclick = () => { S[key] = v; after && after(v); sync(); }; box.appendChild(b); b._v = v; });
+  ctl[key] = () => [...box.children].forEach(b => b.classList.toggle('on', b._v === S[key]));
+  sec.appendChild(r);
+}
+function slider(sec, key, label, min, max, step, fmt = v => v) {
+  const r = el(`<div class="row"><label>${label}</label><input type="range" min="${min}" max="${max}" step="${step}"><span class="val"></span></div>`), i = $('input', r), v = $('.val', r);
+  i.oninput = () => { S[key] = +i.value; sync(); };
+  ctl[key] = () => { i.value = S[key]; v.textContent = fmt(S[key]); };
+  sec.appendChild(r);
+}
+function swatches(sec, key, label) {
+  const r = el(`<div class="row"><label>${label}</label><div class="sw"></div></div>`), box = $('.sw', r);
+  Object.entries(BRAND).forEach(([n, c]) => { const i = el(`<i title="${n} ${c}" style="background:${c}"></i>`); i.onclick = () => { S[key] = c; sync(); }; i._c = c; box.appendChild(i); });
+  ctl[key] = () => [...box.children].forEach(i => i.classList.toggle('on', i._c.toLowerCase() === S[key].toLowerCase()));
+  sec.appendChild(r);
+}
+function num(sec, key, label, min, max, after) {
+  const r = el(`<div class="row"><label>${label}</label><input type="number" min="${min}" max="${max}"></div>`), i = $('input', r);
+  i.onchange = () => { S[key] = Math.max(min, Math.min(max, Math.round(+i.value) || min)); after && after(); sync(); };
+  ctl[key + '_n'] = () => { i.value = S[key]; };
+  sec.appendChild(r); return i;
+}
+function btn(label, fn, cls = '') { const b = el(`<button class="${cls}">${label}</button>`); b.onclick = fn; return b; }
+
+let s = section('Format');
+seg(s, 'format', 'Size', Object.keys(FORMATS).map(k => [k, k === 'X header' ? 'X' : k === 'custom' ? 'Custom' : k]), v => { if (FORMATS[v]) [S.w, S.h] = FORMATS[v]; });
+const dims = el('<div class="row"><label>W x H</label><input type="number" min="64" max="4096"><input type="number" min="64" max="4096"></div>'), [dw, dh] = dims.querySelectorAll('input');
+dw.onchange = () => { S.w = Math.max(64, Math.min(4096, +dw.value || 64)); S.format = 'custom'; sync(); };
+dh.onchange = () => { S.h = Math.max(64, Math.min(4096, +dh.value || 64)); S.format = 'custom'; sync(); };
+ctl.dims = () => { dw.value = S.w; dh.value = S.h; };
+s.appendChild(dims);
+
+s = section('Colours');
+swatches(s, 'fig', 'Figure'); swatches(s, 'ground', 'Ground');
+s.appendChild(el('<div class="btns"></div>')).appendChild(btn('Swap colours', () => { [S.fig, S.ground] = [S.ground, S.fig]; sync(); }));
+
+s = section('Fill');
+seg(s, 'fill', 'Fill', [['flat', 'Flat colour'], ['painting', 'Painting']]);
+const pics = el('<div class="pics"></div>');
+Object.entries(PAINTINGS).forEach(([k, f]) => { const d = el(`<div title="${f}" style="background-image:url(${PAINT_DIR + f})"></div>`); d.onclick = () => { S.fill = 'painting'; S.painting = k; sync(); }; d._k = k; pics.appendChild(d); });
+ctl.painting = () => [...pics.children].forEach(d => d.classList.toggle('on', S.fill === 'painting' && d._k === S.painting));
+s.appendChild(pics);
+s.appendChild(el('<div class="hint">The painting shows through the shapes; ground colour fills the rest.</div>'));
+
+s = section('Shape');
+slider(s, 'cols', 'Variety', 1, 8, 1);
+slider(s, 's', 'Scale', 3, 80, 1, v => v + ' px');
+slider(s, 'Q', 'Pitch', 8, 30, 1, v => v + ' c');
+slider(s, 'ox', 'Offset X', 0, 1200, 1);
+slider(s, 'oy', 'Offset Y', 0, 1200, 1);
+seg(s, 'rotate', 'Rotate', [[0, '0'], [90, '90']]);
+seg(s, 'bands', 'Bands', [['off', 'Off'], ['1-1.5-2', '1 / 1.5 / 2'], ['2-1.5-1', '2 / 1.5 / 1']]);
+const rt = el('<div class="row"><label>Routes</label><div class="seg"></div></div>');
+[[false, 'Off'], [true, 'On']].forEach(([v, n]) => { const b = el(`<button>${n}</button>`); b.onclick = () => { S.routes = v; sync(); }; b._v = v; $('.seg', rt).appendChild(b); });
+ctl.routes = () => [...$('.seg', rt).children].forEach(b => b.classList.toggle('on', b._v === S.routes));
+s.appendChild(rt);
+
+s = section('Edge');
+seg(s, 'bleed', 'Paint bleed', [[true, 'On'], [false, 'Off']]);
+
+s = section('Motion');
+seg(s, 'motion', 'Motion', [['none', 'None'], ['arrive', 'Arrive'], ['tide', 'Tide'], ['swap', 'Swap']], v => { t = v === 'none' ? 0 : holdT(); });
+slider(s, 'duration', 'Duration', 2, 60, 1, v => v + ' s');
+const tr = el('<div class="row"><button style="width:72px" id="pp">Pause</button><input type="range" min="0" max="1" step="0.001" value="0"><span class="val" id="tv">0.0</span></div>');
+const pp = $('#pp', tr), scrub = $('input', tr), tv = $('#tv', tr);
+pp.onclick = () => toggle();
+scrub.oninput = () => { playing = false; t = +scrub.value * S.duration; ui(); render(); };
+s.appendChild(tr);
+s.appendChild(el('<div class="hint">One loop = Duration. The engine has no stagger option; the wave across the frame is built in.</div>'));
+function ui() { pp.textContent = playing ? 'Pause' : 'Play'; const none = S.motion === 'none'; pp.disabled = scrub.disabled = none; scrub.value = none ? 0 : (t % S.duration) / S.duration; tv.textContent = (none ? 0 : t % S.duration).toFixed(1); }
+ctl.motion_ui = ui;
+function toggle() { playing = !playing; last = null; ui(); }
+
+s = section('Seed');
+const sd = el('<div class="row"><input type="number" min="1" max="99999"></div>'), sdi = $('input', sd);
+sdi.onchange = () => { S.seed = Math.max(1, Math.round(+sdi.value) || 1); sync(); };
+sd.appendChild(btn('Shuffle', shuffle));
+ctl.seed = () => { sdi.value = S.seed; };
+s.appendChild(sd);
+function shuffle() { S.seed = 1 + Math.floor(Math.random() * 9999); sync(); }
+
+s = section('Presets');
+const chips = el('<div class="chips"></div>');
+Object.keys(PRESETS).forEach(n => { const b = btn(n, () => applyPreset(n)); chips.appendChild(b); });
+s.appendChild(chips);
+function applyPreset(n) { Object.assign(S, DEFAULTS, PRESETS[n]); t = S.motion === 'none' ? 0 : holdT(); history.replaceState(null, '', '#preset=' + encodeURIComponent(n)); sync(true); location.hash.startsWith('#preset') && history.replaceState(null, '', '#preset=' + encodeURIComponent(n)); }
+
+/* ---- Export ---- */
+s = section('Export');
+const eb = el('<div class="btns"></div>'); s.appendChild(eb);
+const status = el('<div class="hint" id="st"></div>'); s.appendChild(status);
+const say = m => { status.textContent = m; };
+const dl = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+const stamp = () => `ferry-pattern-${S.seed}`;
+const pcache = {};
+async function dataUri() {
+  if (S.fill !== 'painting') return null;
+  const u = PAINT_DIR + PAINTINGS[S.painting];
+  if (!pcache[u]) pcache[u] = fetch(u).then(r => r.blob()).then(b => new Promise(res => { const f = new FileReader(); f.onload = () => res(f.result); f.readAsDataURL(b); }));
+  return pcache[u];
+}
+const loadImg = svg => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+async function toCanvas(time, cv) {
+  const img = await loadImg(build(time, await dataUri()));
+  cv = cv || Object.assign(document.createElement('canvas'), { width: S.w, height: S.h });
+  const c = cv.getContext('2d'); c.drawImage(img, 0, 0, S.w, S.h); return cv;
+}
+const blobOf = (cv, type, q) => new Promise(r => cv.toBlob(r, type, q));
+eb.appendChild(btn('PNG', async () => { say('Rendering PNG...'); try { dl(await blobOf(await toCanvas(t), 'image/png'), stamp() + '.png'); say('PNG saved.'); } catch (e) { say('PNG failed: ' + e.message); } }, 'primary'));
+eb.appendChild(btn('SVG', async () => { try { dl(new Blob([build(t, await dataUri())], { type: 'image/svg+xml' }), stamp() + '.svg'); say('SVG saved (current frame, painting embedded).'); } catch (e) { say('SVG failed: ' + e.message); } }));
+eb.appendChild(btn('Loop', async () => {
+  if (S.motion === 'none') { say('Pick a motion to record a loop.'); return; }
+  if (!window.MediaRecorder) { say('MediaRecorder is not available in this browser.'); return; }
+  const was = playing; playing = false;
+  try {
+    const fps = 20, n = Math.round(S.duration * fps), blobs = [];
+    for (let i = 0; i < n; i++) { say(`Rendering frames ${i + 1} / ${n}`); blobs.push(await blobOf(await toCanvas(i / fps), 'image/jpeg', .94)); }
+    const cv = Object.assign(document.createElement('canvas'), { width: S.w, height: S.h }), c = cv.getContext('2d');
+    const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+    const rec = new MediaRecorder(cv.captureStream(fps), { mimeType: mime, videoBitsPerSecond: 12e6 }), parts = [];
+    rec.ondataavailable = e => e.data.size && parts.push(e.data);
+    const done = new Promise(r => rec.onstop = r);
+    c.drawImage(await createImageBitmap(blobs[0]), 0, 0); rec.start();
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) {
+      c.drawImage(await createImageBitmap(blobs[i]), 0, 0);
+      say(`Recording ${i + 1} / ${n}`);
+      const wait = t0 + (i + 1) * 1000 / fps - performance.now(); if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    }
+    rec.stop(); await done; dl(new Blob(parts, { type: 'video/webm' }), stamp() + '-loop.webm'); say(`Loop saved: ${S.duration} s at ${fps} fps, ${S.w} x ${S.h}.`);
+  } catch (e) { say('Loop failed: ' + e.message); }
+  playing = was; last = null; ui();
+}));
+eb.appendChild(btn('Copy settings', async () => {
+  const o = opts(); if (S.fill === 'painting') o.painting = PAINT_DIR + PAINTINGS[S.painting];
+  const j = JSON.stringify(o, null, 2);
+  try { await navigator.clipboard.writeText(j); say('Options copied as JSON.'); } catch (e) { const ta = document.createElement('textarea'); ta.value = j; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); say('Options copied as JSON.'); }
+}));
+eb.appendChild(btn('Copy link', async () => { try { await navigator.clipboard.writeText(location.href); say('Link copied.'); } catch (e) { say('Copy the address bar to share.'); } }));
+
+/* ---- Hash: #preset=<name> or #s=<json of settings> ---- */
+function updateHash() { const d = {}; for (const k in S) if (S[k] !== DEFAULTS[k]) d[k] = S[k]; history.replaceState(null, '', '#s=' + encodeURIComponent(JSON.stringify(d))); }
+function readHash() {
+  const h = location.hash.slice(1);
+  try {
+    if (h.startsWith('preset=')) { const n = decodeURIComponent(h.slice(7)); if (PRESETS[n]) { Object.assign(S, DEFAULTS, PRESETS[n]); return; } }
+    if (h.startsWith('s=')) Object.assign(S, DEFAULTS, JSON.parse(decodeURIComponent(h.slice(2))));
+    else Object.assign(S, DEFAULTS, PRESETS['Large shores']);
+  } catch (e) {}
+}
+readHash();
+if (S.motion !== 'none') t = holdT();
+
+/* ---- Loop, keys ---- */
+function tick(now) {
+  if (playing && S.motion !== 'none' && !document.hidden) {
+    if (last !== null) t += Math.min(0.1, (now - last) / 1000);
+    last = now; if (t >= S.duration) t -= S.duration; render(); ui();
+  } else last = null;
+  requestAnimationFrame(tick);
+}
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const typing = e.target.matches && e.target.matches('input[type=number], input[type=text]');
+  if (typing) return;
+  if (e.code === 'Space') { e.preventDefault(); toggle(); }
+  else if (e.key === 's' || e.key === 'S') shuffle();
+});
+addEventListener('resize', fit);
+addEventListener('hashchange', () => { if (location.hash.startsWith('#preset=')) { readHash(); t = S.motion === 'none' ? 0 : holdT(); sync(); } });
+sync(); ui();
+requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
