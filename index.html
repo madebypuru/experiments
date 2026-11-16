@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Experiments · 37degree</title>
-<meta name="description" content="Small things made for fun at 37degree: watercolour simulations, drawn sheep and whatever comes next.">
+<title>Experiments at 37° N · 37degree</title>
+<meta name="description" content="Small things made for fun at 37degree, laid out along the 37th parallel. Scroll to travel along it.">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Experiments · 37degree">
-<meta property="og:description" content="Small things made for fun at 37degree.">
+<meta property="og:title" content="Experiments at 37° N · 37degree">
+<meta property="og:description" content="Small things made for fun at 37degree, laid out along the 37th parallel.">
 <meta property="og:url" content="https://madebypuru.github.io/experiments/">
 <meta property="og:image" content="https://madebypuru.github.io/experiments/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -17,94 +17,92 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gentium+Plus:ital@1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#121212;--muted:#707070;--faint:#A3A09D;--paper:#FFFFFF;--paper-2:#F9F7F6;
+    --ink:#121212;--muted:#707070;--paper:#FFFFFF;--paper-2:#F9F7F6;
     --line:#E0E0E0;--line-2:#ECEAE8;--brand:#FD611E;
-    --font-sans:"Inter",system-ui,sans-serif;--font-accent:"Gentium Plus",Georgia,serif;
-    --r-pill:999px;--r-card:16px;--r-inner:10px;--top:44px;
-    --ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.3,1.35,.5,1);
+    --font:"Inter",system-ui,sans-serif;
+    --r-pill:999px;--r-card:16px;--top:44px;
+    --ease:cubic-bezier(.2,.8,.2,1);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--paper);color:var(--ink);font:300 15px/1.5 var(--font-sans);letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font:300 15px/1.5 var(--font);letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
   a{color:inherit}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
-  /* top strip */
   .strip{position:fixed;inset:0 0 auto 0;z-index:40;height:var(--top);display:flex;align-items:center;justify-content:space-between;
     padding:0 18px;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line-2)}
-  .mark{display:inline-flex;align-items:center;gap:7px;font:600 14px/1 var(--font-sans);letter-spacing:-.02em;text-decoration:none}
+  .mark{display:inline-flex;align-items:center;gap:7px;font:600 14px/1 var(--font);letter-spacing:-.02em;text-decoration:none}
   .crumb{display:inline-flex;align-items:center;gap:10px}
   .crumb .sep{width:1px;height:14px;background:var(--line)}
-  .crumb .here{font:500 13px/1 var(--font-sans);color:var(--muted)}
-  .strip__link{font:500 13px/1 var(--font-sans);text-decoration:none;padding:8px 12px;border-radius:var(--r-pill);transition:background .2s,color .2s}
+  .crumb .here{font:500 13px/1 var(--font);color:var(--muted)}
+  .strip__link{font:500 13px/1 var(--font);text-decoration:none;padding:8px 12px;border-radius:var(--r-pill);transition:background .2s,color .2s}
   .strip__link:hover{background:var(--ink);color:var(--paper)}
 
-  /* globe stage */
-  .stage{position:relative;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:calc(var(--top) + 36px) 16px 104px}
-  .coord{position:absolute;top:calc(var(--top) + 22px);font:400 12px/1 var(--font-sans);font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--ink);pointer-events:none}
+  /* the journey: a tall section whose scroll drives the pinned scene */
+  .journey{position:relative}
+  .scene{position:sticky;top:0;height:100svh;overflow:hidden}
+  #globe{position:absolute;inset:0;width:100%;height:100%}
+  #globe.can-open{cursor:pointer}
+  .coord{position:absolute;top:calc(var(--top) + 22px);z-index:3;font:400 12px/1 var(--font);font-variant-numeric:tabular-nums;letter-spacing:.02em;pointer-events:none}
   .coord--l{left:22px}.coord--r{right:22px;text-align:right}
   .coord b{display:block;font-weight:500;color:var(--muted);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-  .hero{position:relative;width:clamp(260px,min(92vw,calc(100svh - var(--top) - 250px)),720px);aspect-ratio:1}
-  #globe{position:absolute;inset:0;width:100%;height:100%;touch-action:pan-y;cursor:grab}
-  #globe.dragging{cursor:grabbing}
-  .title{margin:0;text-align:center;text-wrap:balance;font:300 clamp(34px,5.4vw,60px)/1.02 var(--font-sans);letter-spacing:-.03em}
-  .title em{font-family:var(--font-accent);font-style:italic;font-weight:400;letter-spacing:-.01em}
-  .tag{position:absolute;pointer-events:none;transform:translate(-50%,-100%);margin-top:-10px;padding:5px 10px;border-radius:var(--r-pill);
-    background:var(--paper);border:1px solid var(--line);font:500 12px/1 var(--font-sans);white-space:nowrap;opacity:0;transition:opacity .25s}
-  .tag.on{opacity:1}
-  .lede{margin:0;max-width:min(88vw,440px);text-align:center;font:400 14px/1.55 var(--font-sans);color:var(--muted)}
+  .hero{position:absolute;inset:calc(var(--top) + 54px) 16px auto;z-index:2;text-align:center;pointer-events:none;will-change:opacity,transform}
+  .hero h1{margin:0;font:300 clamp(36px,5.6vw,64px)/1.02 var(--font);letter-spacing:-.035em;text-wrap:balance}
+  .hero h1 b{font-weight:500}
+  .cue{position:absolute;left:50%;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 66px);z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100vw - 32px);
+    text-align:center;font:400 14px/1.5 var(--font);color:var(--muted);pointer-events:none}
+  .tag{position:absolute;z-index:3;transform:translate(-50%,0);margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r-pill);
+    background:var(--paper);border:1px solid var(--line);font:500 13px/1 var(--font);white-space:nowrap;text-decoration:none;opacity:0;pointer-events:none;transition:opacity .2s,border-color .2s}
+  .tag.on{opacity:1;pointer-events:auto}
+  .tag:hover{border-color:var(--ink)}
+  .tag .when{font-weight:400;color:var(--muted)}
+  .tag svg{width:12px;height:12px}
 
-  /* list */
-  .list{max-width:1180px;margin:0 auto;padding:40px 24px 140px}
+  /* the plain list after the journey */
+  .list{max-width:1180px;margin:0 auto;padding:72px 24px 140px}
   .list__head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--line-2);margin-bottom:24px}
-  .list__head h2{margin:0;font:300 30px/1.1 var(--font-sans);letter-spacing:-.025em}
-  .list__head h2 em{font-family:var(--font-accent);font-style:italic;font-weight:400}
-  .meta{font:500 11px/1.2 var(--font-sans);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .list__head h2{margin:0;font:300 30px/1.1 var(--font);letter-spacing:-.025em}
+  .meta{font:500 11px/1.2 var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
   .card{display:flex;flex-direction:column;gap:14px;text-decoration:none;outline:none}
-  .card__img{position:relative;aspect-ratio:1200/630;border-radius:var(--r-card);overflow:hidden;background:var(--paper-2);border:1px solid var(--line-2)}
+  .card__img{aspect-ratio:1200/630;border-radius:var(--r-card);overflow:hidden;background:var(--paper-2);border:1px solid var(--line-2)}
   .card__img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s var(--ease)}
   .card:hover .card__img img,.card:focus-visible .card__img img{transform:scale(1.03)}
   .card:focus-visible .card__img{outline:2px solid var(--ink);outline-offset:3px}
   .card__row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-  .card__title{margin:0;font:500 20px/1.15 var(--font-sans);letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
-  .card__title .dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .25s}
-  .card.is-on .card__title .dot{background:var(--brand)}
-  .card__lede{margin:0;font:400 14px/1.5 var(--font-sans);color:var(--muted);max-width:46ch}
-  .card__open{font:500 13px/1 var(--font-sans);white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
-  .card__open svg{width:13px;height:13px;transition:transform .25s var(--ease)}
-  .card:hover .card__open svg{transform:translateX(3px)}
-
+  .card__title{margin:0;font:500 20px/1.15 var(--font);letter-spacing:-.02em}
+  .card__lede{margin:0;font:400 14px/1.5 var(--font);color:var(--muted);max-width:46ch}
+  .card__open{font:500 13px/1 var(--font);display:inline-flex;align-items:center;gap:6px}
+  .card__open svg{width:12px;height:12px;transition:transform .25s var(--ease)}
+  .card:hover .card__open svg{transform:translate(2px,-2px)}
   .foot{max-width:1180px;margin:0 auto;padding:28px 24px 120px;border-top:1px solid var(--line-2);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-  .foot p{margin:0;font:400 13px/1.55 var(--font-sans);color:var(--muted)}
+  .foot p{margin:0;font:400 13px/1.55 var(--font);color:var(--muted)}
 
-  /* bottom bar, as on the studio site */
   .dynbar{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));z-index:75;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;
     background:var(--paper);border:1px solid var(--line-2);border-radius:var(--r-pill);box-shadow:0 6px 20px rgba(18,18,18,.08)}
-  .dyn-cta{padding:9px 14px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font:500 13px/1 var(--font-sans);text-decoration:none;white-space:nowrap;transition:background .2s}
+  .dyn-cta{padding:9px 14px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font:500 13px/1 var(--font);text-decoration:none;white-space:nowrap;transition:background .2s}
   .dyn-cta:hover{background:var(--brand)}
   .dyn-div{width:1px;height:20px;background:var(--line);margin:0 4px}
   .dyn-step{display:flex;align-items:center;gap:2px}
   .dyn-step button{width:30px;height:30px;border-radius:var(--r-pill);display:grid;place-items:center;color:var(--muted);transition:color .2s,background .2s}
   .dyn-step button:hover{color:var(--ink);background:var(--paper-2)}
   .dyn-step svg{width:15px;height:15px}
-  .dyn-now{display:flex;align-items:center;gap:8px;padding:0 6px;min-width:0}
-  .dyn-name{font:500 13px/1 var(--font-sans);white-space:nowrap}
-  .dyn-count{white-space:nowrap;font:400 12px/1 var(--font-sans);font-variant-numeric:tabular-nums;color:var(--muted)}
-  .dyn-open{padding:9px 14px;border-radius:var(--r-pill);border:1px solid var(--line-2);font:500 13px/1 var(--font-sans);text-decoration:none;white-space:nowrap;transition:border-color .2s}
+  .dyn-now{display:flex;align-items:center;gap:8px;padding:0 6px}
+  .dyn-name{font:500 13px/1 var(--font);white-space:nowrap}
+  .dyn-count{font:400 12px/1 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+  .dyn-open{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--r-pill);border:1px solid var(--line-2);font:500 13px/1 var(--font);text-decoration:none;white-space:nowrap;transition:border-color .2s}
   .dyn-open:hover{border-color:var(--ink)}
+  .dyn-open svg{width:12px;height:12px}
 
   @media (max-width:640px){
-    .coord{display:none}
-    .stage{min-height:0;justify-content:flex-start;padding-top:calc(var(--top) + 48px);padding-bottom:40px}
+    .coord{top:calc(var(--top) + 16px)}.coord--l{left:16px}.coord--r{right:16px}
+    .hero{top:calc(var(--top) + 76px)}
     .grid{grid-template-columns:1fr}
     .list__head h2{font-size:26px}
-    .dyn-cta{display:none}
-    .dyn-cta+.dyn-div{display:none}
+    .dyn-cta,.dyn-cta+.dyn-div{display:none}
   }
-  @media (prefers-reduced-motion:reduce){.card__img img{transition:none}}
 </style>
 </head>
 <body>
@@ -120,28 +118,25 @@
   <a class="strip__link" href="https://madebypuru.github.io/37degree-site/">Studio</a>
 </header>
 
-<section class="stage" aria-label="Experiments on a globe">
-  <div class="coord coord--l"><b>Latitude</b><span id="lat">37.000000° N</span></div>
-  <div class="coord coord--r"><b>Longitude</b><span id="lon">0.000000° E</span></div>
-  <h1 class="title">Small things, <em>made for fun</em></h1>
-  <div class="hero">
+<section class="journey" id="journey" aria-label="Experiments along the 37th parallel">
+  <div class="scene">
     <canvas id="globe" aria-hidden="true"></canvas>
-    <div class="tag" id="tag"></div>
+    <div class="coord coord--l"><b>Latitude</b><span>37.000000° N</span></div>
+    <div class="coord coord--r"><b>Longitude</b><span id="lon">0.000000° E</span></div>
+    <div class="hero" id="hero"><h1>Experiments at <b>37° N</b></h1></div>
+    <p class="cue" id="cue">Everything here lives on the 37th parallel. Scroll to travel along it.</p>
+    <a class="tag" id="tag" target="_blank" rel="noopener"></a>
   </div>
-  <p class="lede">Everything here lives on the 37th parallel. Drag the globe, or pick one below.</p>
 </section>
 
 <main class="list" id="list">
-  <div class="list__head">
-    <h2>All <em>experiments</em></h2>
-    <span class="meta" id="total"></span>
-  </div>
+  <div class="list__head"><h2>All experiments</h2><span class="meta" id="total"></span></div>
   <div class="grid" id="grid"></div>
 </main>
 
 <footer class="foot">
   <p>Made at 37degree, a design and growth studio for tech &amp; AI companies.</p>
-  <p><a href="https://github.com/madebypuru/experiments">Source on GitHub</a></p>
+  <p><a href="https://github.com/madebypuru/experiments" target="_blank" rel="noopener">Source on GitHub</a></p>
 </footer>
 
 <nav class="dynbar" aria-label="Step through experiments">
@@ -152,129 +147,213 @@
     <div class="dyn-now" aria-live="polite"><span class="dyn-name" id="dynName"></span><span class="dyn-count" id="dynCount"></span></div>
     <button data-step="1" aria-label="Next experiment"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5 11 8l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
-  <a class="dyn-open" id="dynOpen" href="#">Open</a>
+  <a class="dyn-open" id="dynOpen" href="#" target="_blank" rel="noopener">Open</a>
 </nav>
 
 <script>
-// Each experiment sits on the 37th parallel. Add one line here for the next one.
+// Every experiment sits on the 37th parallel, at its own longitude. Add one line for the next.
 const EXPERIMENTS=[
-  {name:'Meadow',path:'meadow/',img:'meadow/og.jpg',date:'Nov 2026',lon:-28,
+  {name:'Meadow',path:'meadow/',img:'meadow/og.jpg',date:'Nov 2026',lon:14,
    lede:'Draw a loop on a watercolour meadow and it becomes a sheep. The paint is simulated: water flows, colours bleed, edges dry dark.'},
-  {name:'Paint',path:'paint/',img:'paint/og.jpg',date:'Nov 2026',lon:62,
+  {name:'Paint',path:'paint/',img:'paint/og.jpg',date:'Nov 2026',lon:38,
    lede:'Turn any photo into a watercolour, painted live in your browser by a simulation of water and pigment. Nothing is uploaded.'},
 ];
-const LAT=37;
+const LAT=37,D2R=Math.PI/180;
+const ext='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5h5.5V8M9.2 2.8 2.5 9.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const open=i=>window.open(EXPERIMENTS[i].path,'_blank','noopener');
 
-// ---------- list + bar ----------
+// ---------- the list ----------
 const grid=document.getElementById('grid');
-const arrow='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9.5M8.5 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 EXPERIMENTS.forEach((e,i)=>{
-  const a=document.createElement('a');a.className='card';a.href=e.path;a.dataset.i=i;
+  const a=document.createElement('a');a.className='card';a.href=e.path;a.target='_blank';a.rel='noopener';
   a.innerHTML=`<div class="card__img"><img src="${e.img}" alt="" loading="lazy" width="1200" height="630"></div>
-    <div class="card__row"><h3 class="card__title"><span class="dot" aria-hidden="true"></span>${e.name}</h3><span class="meta">${e.date}</span></div>
-    <p class="card__lede">${e.lede}</p><span class="card__open">Open ${arrow}</span>`;
-  a.addEventListener('pointerenter',()=>select(i));a.addEventListener('focus',()=>select(i));
+    <div class="card__row"><h3 class="card__title">${e.name}</h3><span class="meta">${e.lon}° E · ${e.date}</span></div>
+    <p class="card__lede">${e.lede}</p><span class="card__open">Open in a new tab ${ext}</span>`;
   grid.appendChild(a);
+  e.image=new Image();e.image.src=e.img;
 });
 document.getElementById('total').textContent=`${EXPERIMENTS.length} ${EXPERIMENTS.length===1?'experiment':'experiments'}`;
-let cur=0;
-function select(i,spin=true){
-  cur=(i+EXPERIMENTS.length)%EXPERIMENTS.length;const e=EXPERIMENTS[cur];
-  document.getElementById('dynName').textContent=e.name;
-  document.getElementById('dynCount').textContent=`${cur+1} / ${EXPERIMENTS.length}`;
-  document.getElementById('dynOpen').href=e.path;
-  grid.querySelectorAll('.card').forEach(c=>c.classList.toggle('is-on',+c.dataset.i===cur));
-  if(spin){target=-e.lon;auto=false;idleT=0;}
+
+// ---------- scroll: first screen dives in, the rest travels east ----------
+const journey=document.getElementById('journey');
+const START=EXPERIMENTS[0].lon-16,END=EXPERIMENTS[EXPERIMENTS.length-1].lon+16;
+const DIVE=1,TRAVEL=.6+.9*EXPERIMENTS.length; // in screens
+function layout(){journey.style.height=`${(1+DIVE+TRAVEL)*innerHeight}px`;}
+layout();addEventListener('resize',layout);
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function targets(){
+  const y=Math.max(0,scrollY-journey.offsetTop),vh=innerHeight;
+  const dive=Math.min(1,y/(DIVE*vh)),travel=Math.min(1,Math.max(0,(y-DIVE*vh)/(TRAVEL*vh)));
+  return {dive,lon:START+(END-START)*travel};
 }
-document.querySelectorAll('.dyn-step button').forEach(b=>b.addEventListener('click',()=>select(cur+ +b.dataset.step)));
+function scrollToExp(i){ // the scroll position where experiment i sits in the middle
+  const vh=innerHeight,t=(EXPERIMENTS[i].lon-START)/(END-START);
+  scrollTo({top:journey.offsetTop+DIVE*vh+t*TRAVEL*vh,behavior:'smooth'});
+}
+
+// ---------- bar ----------
+let cur=0;
+function setCur(i){
+  if(i===cur&&document.getElementById('dynName').textContent)return;cur=i;const e=EXPERIMENTS[i];
+  document.getElementById('dynName').textContent=e.name;
+  document.getElementById('dynCount').textContent=`${i+1} / ${EXPERIMENTS.length}`;
+  const o=document.getElementById('dynOpen');o.href=e.path;o.innerHTML=`Open ${ext}`;
+}
+cur=-1;setCur(0);
+document.querySelectorAll('.dyn-step button').forEach(b=>b.addEventListener('click',()=>{
+  const n=(cur+ +b.dataset.step+EXPERIMENTS.length)%EXPERIMENTS.length;setCur(n);scrollToExp(n);}));
 
 // ---------- the globe ----------
-// An orthographic wireframe: every 10° of latitude and longitude, the far side faint,
-// the 37th parallel in orange, and the selected experiment's patch of grid lit up.
 const cv=document.getElementById('globe'),ctx=cv.getContext('2d'),tag=document.getElementById('tag');
+const hero=document.getElementById('hero'),cue=document.getElementById('cue'),lonOut=document.getElementById('lon');
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const TILT=24*Math.PI/180,R2D=180/Math.PI,D2R=Math.PI/180;
-let W=0,H=0,DPR=1,rot=0,target=null,auto=!reduce,idleT=0,drag=null,vel=0,glow=0;
-function size(){DPR=Math.min(2,devicePixelRatio||1);const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*DPR;cv.height=H*DPR;}
+let W=0,H=0,DPR=1;
+function size(){DPR=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;}
 addEventListener('resize',size);size();
-function proj(lat,lon){ // returns [x,y,z]; z>0 faces us
-  const la=lat*D2R,lo=(lon+rot)*D2R;
-  const x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);
-  const y2=y*Math.cos(TILT)-z*Math.sin(TILT),z2=y*Math.sin(TILT)+z*Math.cos(TILT);
-  return [x,-y2,z2];
+
+// camera: far away and tilted 24° at rest; close to the surface, looking down onto the parallel, once dived
+let cam={d:4.4,tilt:24,c:0,S:1,cy:.5};
+function setCam(e,c){
+  cam.d=4.4+(1.56-4.4)*e;
+  cam.tilt=24+(40-24)*e;
+  cam.c=c;
+  const k=Math.min(W,H);cam.S=(W<640?.42:.34)*k*Math.sqrt(4.4*4.4-1); // globe radius at rest
+  cam.cy=.53+(.48-.53)*e;
 }
-function line(pts,front,back,width,col){ // draw a polyline, split by facing side
-  for(const side of [0,1]){
+// lat/lon -> screen [x,y,facing]; facing > 0 means on the side we can see
+function P(lat,lon){
+  const la=lat*D2R,lo=(lon-cam.c)*D2R,t=cam.tilt*D2R;
+  const x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);
+  const y2=y*Math.cos(t)-z*Math.sin(t),z2=y*Math.sin(t)+z*Math.cos(t);
+  const s=cam.S/(cam.d-z2);
+  return [W/2+x*s,H*cam.cy-y2*s,(z2-1/cam.d)/(1-1/cam.d)];
+}
+function stroke(pts,col,alpha,width,backAlpha=0){
+  // split into front and back runs; fade lines toward the horizon
+  for(const front of [false,true]){
+    if(!front&&!backAlpha)continue;
     ctx.beginPath();let on=false;
-    for(const [lat,lon] of pts){const [x,y,z]=proj(lat,lon),vis=side?z>=0:z<0;
-      const px=W/2+x*rad,py=H/2+y*rad;
-      if(vis){on?ctx.lineTo(px,py):ctx.moveTo(px,py);on=true;}else on=false;}
-    ctx.strokeStyle=col;ctx.globalAlpha=side?front:back;ctx.lineWidth=width;ctx.stroke();
+    for(const [la,lo] of pts){const [x,y,f]=P(la,lo),vis=front?f>0:f<=0;
+      if(vis){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}
+    ctx.globalAlpha=front?alpha:backAlpha;ctx.strokeStyle=col;ctx.lineWidth=width;ctx.stroke();
   }
   ctx.globalAlpha=1;
 }
-let rad=1;
-function draw(dt){
-  rad=Math.min(W,H)*.46;
-  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
-  // a very soft shade so the sphere reads as round on white
-  const g=ctx.createRadialGradient(W/2-rad*.35,H/2-rad*.4,rad*.1,W/2,H/2,rad);
-  g.addColorStop(0,'rgba(18,18,18,0)');g.addColorStop(1,'rgba(18,18,18,.035)');
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(W/2,H/2,rad,0,Math.PI*2);ctx.fill();
-  const ink='#121212';
-  for(let lat=-80;lat<=80;lat+=10){if(lat===0)continue;const p=[];for(let lon=-180;lon<=180;lon+=3)p.push([lat,lon]);line(p,.16,.05,1,ink);}
-  {const p=[];for(let lon=-180;lon<=180;lon+=3)p.push([0,lon]);line(p,.3,.07,1,ink);}
-  for(let lon=-180;lon<180;lon+=10){const p=[];for(let lat=-90;lat<=90;lat+=3)p.push([lat,lon]);line(p,lon%30===0?.24:.14,.045,1,ink);}
-  // the lit patch around the selected experiment: its own grid, finer, in orange
-  const e=EXPERIMENTS[cur],brand='#FD611E';
-  glow=Math.min(1,glow+dt*2);
-  const la0=LAT-12,la1=LAT+12,lo0=e.lon-14,lo1=e.lon+14;
-  ctx.save();ctx.beginPath();
-  const edge=[];for(let lo=lo0;lo<=lo1;lo+=2)edge.push([la1,lo]);for(let la=la1;la>=la0;la-=2)edge.push([la,lo1]);
-  for(let lo=lo1;lo>=lo0;lo-=2)edge.push([la0,lo]);for(let la=la0;la<=la1;la+=2)edge.push([la,lo0]);
-  let vis=0;edge.forEach(([la,lo],i)=>{const [x,y,z]=proj(la,lo);if(z>0)vis++;const px=W/2+x*rad,py=H/2+y*rad;i?ctx.lineTo(px,py):ctx.moveTo(px,py);});
-  if(vis>edge.length*.6){ctx.closePath();ctx.fillStyle=brand;ctx.globalAlpha=.11*glow;ctx.fill();}
-  ctx.restore();
-  for(let la=la0;la<=la1;la+=4){const p=[];for(let lo=lo0;lo<=lo1;lo+=1)p.push([la,lo]);line(p,.8*glow,0,1,brand);}
-  for(let lo=lo0;lo<=lo1;lo+=4){const p=[];for(let la=la0;la<=la1;la+=1)p.push([la,lo]);line(p,.8*glow,0,1,brand);}
-  // the 37th parallel
-  {const p=[];for(let lon=-180;lon<=180;lon+=2)p.push([LAT,lon]);line(p,.9,.18,1.4,brand);}
-  // rim
-  ctx.strokeStyle=ink;ctx.globalAlpha=.22;ctx.lineWidth=1;ctx.beginPath();ctx.arc(W/2,H/2,rad,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
-  // experiment points
-  EXPERIMENTS.forEach((x,i)=>{const [px,py,pz]=proj(LAT,x.lon);if(pz<=0)return;const sx=W/2+px*rad,sy=H/2+py*rad,on=i===cur;
-    ctx.globalAlpha=Math.min(1,pz*3);
-    if(on){ctx.fillStyle=brand;ctx.globalAlpha*=.18;ctx.beginPath();ctx.arc(sx,sy,10+3*Math.sin(performance.now()/400),0,Math.PI*2);ctx.fill();ctx.globalAlpha=Math.min(1,pz*3);}
-    ctx.fillStyle=on?brand:'#fff';ctx.strokeStyle=on?brand:ink;ctx.lineWidth=1.2;
-    ctx.beginPath();ctx.arc(sx,sy,on?4.5:3.5,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.globalAlpha=1;});
-  // the tag follows the selected point
-  const [tx,ty,tz]=proj(LAT,e.lon);
-  tag.textContent=e.name;tag.style.left=(W/2+tx*rad)+'px';tag.style.top=(H/2+ty*rad)+'px';tag.classList.toggle('on',tz>.25);
-  // read-out: the longitude under the centre of the globe
-  const c=((-rot%360)+540)%360-180;
-  document.getElementById('lon').textContent=`${Math.abs(c).toFixed(6)}° ${c<0?'W':'E'}`;
+// draw an image onto a curved patch of the sphere: split into small quads, each as two affine triangles
+function tri(img,s,d){
+  const [[u0,v0],[u1,v1],[u2,v2]]=s,[[x0,y0],[x1,y1],[x2,y2]]=d;
+  const den=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);if(Math.abs(den)<1e-9)return;
+  const a=((x1-x0)*(v2-v0)-(x2-x0)*(v1-v0))/den,c=((x2-x0)*(u1-u0)-(x1-x0)*(u2-u0))/den;
+  const b=((y1-y0)*(v2-v0)-(y2-y0)*(v1-v0))/den,dd=((y2-y0)*(u1-u0)-(y1-y0)*(u2-u0))/den;
+  const e=x0-a*u0-c*v0,f=y0-b*u0-dd*v0;
+  const mx=(x0+x1+x2)/3,my=(y0+y1+y2)/3,g=p=>{const dx=p[0]-mx,dy=p[1]-my,l=Math.hypot(dx,dy)||1;return [p[0]+dx/l*.7,p[1]+dy/l*.7];};
+  const [p0,p1,p2]=[g([x0,y0]),g([x1,y1]),g([x2,y2])];
+  ctx.save();ctx.beginPath();ctx.moveTo(...p0);ctx.lineTo(...p1);ctx.lineTo(...p2);ctx.closePath();ctx.clip();
+  ctx.transform(a,b,c,dd,e,f);ctx.drawImage(img,0,0);ctx.restore();
 }
-let last=performance.now();
-function frame(now){
-  const dt=Math.min(.05,(now-last)/1000);last=now;
-  if(!drag){
-    if(target!=null){let d=((target-rot)%360+540)%360-180;rot+=d*Math.min(1,dt*4);if(Math.abs(d)<.05){rot=target;target=null;}}
-    else if(Math.abs(vel)>.5){rot+=vel*dt;vel*=Math.pow(.05,dt);}
-    else if(auto)rot+=dt*6;
-    else if(!reduce){idleT+=dt;if(idleT>6)auto=true;}
+const TILE={la0:LAT+.6,la1:LAT+7.1,half:5.2,nx:10,ny:7,cellLon:2.6,cellLat:2.17};
+function tileOutline(ex){
+  const o=[],{la0,la1,half}=TILE,l0=ex.lon-half,l1=ex.lon+half;
+  for(let i=0;i<=8;i++)o.push(P(la1,l0+(l1-l0)*i/8));for(let i=0;i<=6;i++)o.push(P(la1-(la1-la0)*i/6,l1));
+  for(let i=0;i<=8;i++)o.push(P(la0,l1-(l1-l0)*i/8));for(let i=0;i<=6;i++)o.push(P(la0+(la1-la0)*i/6,l0));
+  return o;
+}
+function drawTile(ex,i,alpha){
+  const img=ex.image;if(!img.complete||!img.naturalWidth)return;
+  const {la0,la1,half,nx,ny}=TILE,l0=ex.lon-half,l1=ex.lon+half;
+  // cover-crop the preview to the patch's proportions
+  const [ax,ay]=P(la0,l0),[bx,by]=P(la0,l1),[cx,cy]=P(la1,l0);
+  const pw=Math.hypot(bx-ax,by-ay),ph=Math.hypot(cx-ax,cy-ay)||1,ar=pw/ph,iw=img.naturalWidth,ih=img.naturalHeight;
+  let sw=iw,sh=iw/ar;if(sh>ih){sh=ih;sw=ih*ar;}const sx=(iw-sw)/2,sy=(ih-sh)/2;
+  const pts=[];for(let j=0;j<=ny;j++){const row=[];for(let k=0;k<=nx;k++)row.push(P(la1-(la1-la0)*j/ny,l0+(l1-l0)*k/nx));pts.push(row);}
+  ctx.globalAlpha=alpha;
+  for(let j=0;j<ny;j++)for(let k=0;k<nx;k++){
+    const A=pts[j][k],B=pts[j][k+1],C=pts[j+1][k],D=pts[j+1][k+1];if(A[2]<=0||B[2]<=0||C[2]<=0||D[2]<=0)continue;
+    const u0=sx+sw*k/nx,u1=sx+sw*(k+1)/nx,v0=sy+sh*j/ny,v1=sy+sh*(j+1)/ny;
+    tri(img,[[u0,v0],[u1,v0],[u0,v1]],[A,B,C]);tri(img,[[u1,v0],[u1,v1],[u0,v1]],[B,D,C]);
   }
-  draw(dt);requestAnimationFrame(frame);
+  // split into cells, the way the wall of a globe would be
+  ctx.globalAlpha=alpha*.9;
+  for(let lo=l0+TILE.cellLon;lo<l1-.1;lo+=TILE.cellLon){const p=[];for(let la=la0;la<=la1+.01;la+=.5)p.push([la,lo]);stroke(p,'#fff',alpha*.9,1.6);}
+  for(let la=la0+TILE.cellLat;la<la1-.1;la+=TILE.cellLat){const p=[];for(let lo=l0;lo<=l1+.01;lo+=.5)p.push([la,lo]);stroke(p,'#fff',alpha*.9,1.6);}
+  ctx.globalAlpha=1;
 }
-cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,r:rot,t:performance.now(),lx:e.clientX};cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');target=null;auto=false;idleT=0;});
-cv.addEventListener('pointermove',e=>{if(!drag)return;const now=performance.now();vel=(e.clientX-drag.lx)/Math.max(1,now-drag.t)*1000*(180/(rad*Math.PI));drag.lx=e.clientX;drag.t=now;rot=drag.r+(e.clientX-drag.x)*(180/(rad*Math.PI));});
-const end=e=>{if(!drag)return;const moved=Math.abs(e.clientX-drag.x);drag=null;cv.classList.remove('dragging');
-  if(moved<4){ // a tap: open the nearest visible experiment if it was on a point, else just pick it
-    const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let best=-1,bd=24;
-    EXPERIMENTS.forEach((x,i)=>{const [px,py,pz]=proj(LAT,x.lon);if(pz<=0)return;const d=Math.hypot(W/2+px*rad-mx,H/2+py*rad-my);if(d<bd){bd=d;best=i;}});
-    if(best>=0){if(best===cur)location.href=EXPERIMENTS[best].path;else select(best);}vel=0;}};
-cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-select(0,false);rot=-EXPERIMENTS[0].lon+40;target=-EXPERIMENTS[0].lon;
-requestAnimationFrame(frame);
+let hover=-1;
+function frame(e,c,now){
+  setCam(e,c);
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
+  const ink='#121212',brand='#FD611E';
+  // the globe's disc, faintly shaded, while it's still seen whole
+  const [gx,gy]=[W/2,H*cam.cy],gr=cam.S/Math.sqrt(cam.d*cam.d-1);
+  if(e<.98){const g=ctx.createRadialGradient(gx-gr*.35,gy-gr*.4,gr*.1,gx,gy,gr);g.addColorStop(0,'rgba(18,18,18,0)');g.addColorStop(1,`rgba(18,18,18,${.035*(1-e)})`);
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fill();}
+  // grid: 10° at rest, 5° once close
+  const fine=Math.max(0,(e-.45)/.55),back=.05*(1-e);
+  for(let lat=-80;lat<=80;lat+=5){const major=lat%10===0;if(!major&&fine<=0)continue;
+    const p=[];for(let lon=c-180;lon<=c+180;lon+=2)p.push([lat,lon]);
+    stroke(p,ink,(major?.17+.06*fine:.13*fine)*(lat===0?1.6:1),1,major?back:0);}
+  const lo0=Math.floor((c-180)/5)*5;
+  for(let lon=lo0;lon<c+180;lon+=5){const major=lon%10===0;if(!major&&fine<=0)continue;
+    const p=[];for(let lat=-90;lat<=90;lat+=2)p.push([lat,lon]);
+    stroke(p,ink,major?(lon%30===0?.24:.17+.06*fine):.13*fine,1,major?back:0);}
+  // rim
+  if(e<.98){ctx.strokeStyle=ink;ctx.globalAlpha=.22*(1-e);ctx.lineWidth=1;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+  // tiles
+  const show=Math.max(0,(e-.25)/.75);
+  EXPERIMENTS.forEach((ex,i)=>{const f=P(LAT+4,ex.lon)[2];drawTile(ex,i,Math.min(1,show*1.2)*Math.min(1,Math.max(0,f*4)));});
+  // hover outline
+  if(hover>=0&&show>.5){const o=tileOutline(EXPERIMENTS[hover]);ctx.beginPath();o.forEach(([x,y],k)=>k?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+    ctx.strokeStyle=brand;ctx.lineWidth=2;ctx.stroke();}
+  // the 37th parallel
+  {const p=[];for(let lon=c-180;lon<=c+180;lon+=1)p.push([LAT,lon]);stroke(p,brand,.95,1.6+e*.6,.2*(1-e));}
+  // longitude marks along the parallel, once close
+  if(fine>0){ctx.font='500 11px Inter,system-ui,sans-serif';ctx.textAlign='center';ctx.fillStyle=ink;
+    for(let lon=Math.ceil((c-60)/10)*10;lon<=c+60;lon+=10){const [x,y,f]=P(LAT-1.3,lon);if(f<=.05)continue;
+      if(EXPERIMENTS.some(ex=>Math.abs(ex.lon-lon)<TILE.half+1))continue;
+      ctx.globalAlpha=fine*.55*Math.min(1,f*3);const L=((lon%360)+540)%360-180;ctx.fillText(`37°N ${Math.abs(L)}°${L<0?'W':'E'}`,x,y);}
+    ctx.globalAlpha=1;}
+  // points while seen whole
+  if(e<.6)EXPERIMENTS.forEach(ex=>{const [x,y,f]=P(LAT,ex.lon);if(f<=0)return;ctx.globalAlpha=(1-e/.6)*Math.min(1,f*3);
+    ctx.fillStyle=brand;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});
+  // the experiment nearest the middle: its name under the line, and the bar follows
+  let near=0,best=1e9;EXPERIMENTS.forEach((ex,i)=>{const d=Math.abs(((ex.lon-c)%360+540)%360-180);if(d<best){best=d;near=i;}});
+  if(e>.5)setCur(near);
+  const ex=EXPERIMENTS[near],[tx,ty,tf]=P(LAT-.4,ex.lon);
+  tag.style.left=tx+'px';tag.style.top=ty+'px';
+  tag.classList.toggle('on',e>.85&&tf>.35&&best<16);
+  if(tag.dataset.i!=near){tag.dataset.i=near;tag.href=ex.path;tag.innerHTML=`${ex.name} <span class="when">${ex.date}</span> ${ext}`;}
+  // hero and cue fade as you dive; the read-out tracks the middle
+  hero.style.opacity=Math.max(0,1-e*2.6);hero.style.transform=`translateY(${-e*40}px)`;
+  cue.style.opacity=Math.max(0,1-e*3);
+  const L=((c%360)+540)%360-180;lonOut.textContent=`${Math.abs(L).toFixed(6)}° ${L<0?'W':'E'}`;
+}
+
+// smooth toward the scroll targets; the globe drifts a little while you're at the top
+let sm={dive:0,lon:START},spin=0,born=performance.now(),last=born;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  const t=targets(),k=reduce?1:1-Math.exp(-dt*7);
+  sm.dive+=(t.dive-sm.dive)*k;sm.lon+=(t.lon-sm.lon)*k;
+  if(!reduce)spin+=dt*5*(1-sm.dive);
+  const e=ease(sm.dive),wrap=((spin%360)+540)%360-180;
+  // intro: the globe draws itself in
+  const intro=reduce?1:Math.min(1,(now-born)/900);
+  cv.style.opacity=intro;
+  frame(e,sm.lon+wrap*(1-e),now); // the slow turn at rest unwinds as you dive
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// hover and click on the tiles
+function hit(mx,my){
+  for(let i=EXPERIMENTS.length-1;i>=0;i--){const o=tileOutline(EXPERIMENTS[i]);if(o.some(p=>p[2]<=0))continue;
+    let inside=false;for(let a=0,b=o.length-1;a<o.length;b=a++){const [xi,yi]=o[a],[xj,yj]=o[b];if((yi>my)!==(yj>my)&&mx<(xj-xi)*(my-yi)/(yj-yi)+xi)inside=!inside;}
+    if(inside)return i;}
+  return -1;
+}
+cv.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect();hover=sm.dive>.6?hit(e.clientX-r.left,e.clientY-r.top):-1;cv.classList.toggle('can-open',hover>=0);});
+cv.addEventListener('pointerleave',()=>{hover=-1;cv.classList.remove('can-open');});
+cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect(),i=sm.dive>.6?hit(e.clientX-r.left,e.clientY-r.top):-1;if(i>=0)open(i);});
 </script>
 </body>
 </html>
