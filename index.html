@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Experiments at 37° N · 37degree</title>
-<meta name="description" content="Small things made for fun at 37degree, laid out along the 37th parallel. Scroll to travel along it.">
+<meta name="description" content="Small things made for fun at 37degree, laid out on a globe along the 37th parallel.">
 <meta name="theme-color" content="#ffffff">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Experiments at 37° N · 37degree">
-<meta property="og:description" content="Small things made for fun at 37degree, laid out along the 37th parallel.">
+<meta property="og:description" content="Small things made for fun at 37degree, laid out on a globe along the 37th parallel.">
 <meta property="og:url" content="https://madebypuru.github.io/experiments/">
 <meta property="og:image" content="https://madebypuru.github.io/experiments/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -27,7 +27,7 @@
     --ease:cubic-bezier(.2,.8,.2,1);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--paper);color:var(--ink);font:300 15px/1.5 var(--font);letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--paper);color:var(--ink);font:300 15px/1.5 var(--font);letter-spacing:-.005em;-webkit-font-smoothing:antialiased}
   a{color:inherit}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
@@ -40,47 +40,30 @@
   .strip__link{font:500 13px/1 var(--font);text-decoration:none;padding:8px 12px;border-radius:var(--r-pill);transition:background .2s,color .2s}
   .strip__link:hover{background:var(--ink);color:var(--paper)}
 
-  /* the journey: a tall section whose scroll drives the pinned scene */
-  .journey{position:relative}
-  .scene{position:sticky;top:0;height:100svh;overflow:hidden}
-  #globe{position:absolute;inset:0;width:100%;height:100%}
-  #globe.can-open{cursor:pointer}
-  .coord{position:absolute;top:calc(var(--top) + 22px);z-index:3;font:400 12px/1 var(--font);font-variant-numeric:tabular-nums;letter-spacing:.02em;pointer-events:none}
+  #globe{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #globe.dragging{cursor:grabbing}
+  #globe.over{cursor:pointer}
+  .coord{position:fixed;top:calc(var(--top) + 22px);z-index:5;font:400 12px/1 var(--font);font-variant-numeric:tabular-nums;letter-spacing:.02em;pointer-events:none}
   .coord--l{left:22px}.coord--r{right:22px;text-align:right}
   .coord b{display:block;font-weight:500;color:var(--muted);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-  .hero{position:absolute;inset:calc(var(--top) + 54px) 16px auto;z-index:2;text-align:center;pointer-events:none;will-change:opacity,transform}
-  .hero h1{margin:0;font:300 clamp(36px,5.6vw,64px)/1.02 var(--font);letter-spacing:-.035em;text-wrap:balance}
+
+  .hero{position:fixed;inset:calc(var(--top) + 52px) 16px auto;z-index:4;text-align:center;pointer-events:none}
+  .hero h1{margin:0;font:300 clamp(36px,5.6vw,64px)/1.02 var(--font);letter-spacing:-.035em}
   .hero h1 b{font-weight:500}
-  .cue{position:absolute;left:50%;bottom:calc(max(18px,env(safe-area-inset-bottom)) + 66px);z-index:2;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100vw - 32px);
-    text-align:center;font:400 14px/1.5 var(--font);color:var(--muted);pointer-events:none}
-  .tag{position:absolute;z-index:3;transform:translate(-50%,0);margin-top:10px;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r-pill);
-    background:var(--paper);border:1px solid var(--line);font:500 13px/1 var(--font);white-space:nowrap;text-decoration:none;opacity:0;pointer-events:none;transition:opacity .2s,border-color .2s}
-  .tag.on{opacity:1;pointer-events:auto}
-  .tag:hover{border-color:var(--ink)}
-  .tag .when{font-weight:400;color:var(--muted)}
-  .tag svg{width:12px;height:12px}
+  .hero p{margin:12px 0 0;font:400 14px/1.5 var(--font);color:var(--muted)}
 
-  /* the plain list after the journey */
-  .list{max-width:1180px;margin:0 auto;padding:72px 24px 140px}
-  .list__head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--line-2);margin-bottom:24px}
-  .list__head h2{margin:0;font:300 30px/1.1 var(--font);letter-spacing:-.025em}
-  .meta{font:500 11px/1.2 var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
-  .card{display:flex;flex-direction:column;gap:14px;text-decoration:none;outline:none}
-  .card__img{aspect-ratio:1200/630;border-radius:var(--r-card);overflow:hidden;background:var(--paper-2);border:1px solid var(--line-2)}
-  .card__img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s var(--ease)}
-  .card:hover .card__img img,.card:focus-visible .card__img img{transform:scale(1.03)}
-  .card:focus-visible .card__img{outline:2px solid var(--ink);outline-offset:3px}
-  .card__row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-  .card__title{margin:0;font:500 20px/1.15 var(--font);letter-spacing:-.02em}
-  .card__lede{margin:0;font:400 14px/1.5 var(--font);color:var(--muted);max-width:46ch}
-  .card__open{font:500 13px/1 var(--font);display:inline-flex;align-items:center;gap:6px}
-  .card__open svg{width:12px;height:12px;transition:transform .25s var(--ease)}
-  .card:hover .card__open svg{transform:translate(2px,-2px)}
-  .foot{max-width:1180px;margin:0 auto;padding:28px 24px 120px;border-top:1px solid var(--line-2);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-  .foot p{margin:0;font:400 13px/1.55 var(--font);color:var(--muted)}
+  /* ticker, as on a departures board */
+  .ticker{position:fixed;left:50%;top:calc(var(--top) + 16px);z-index:5;transform:translateX(-50%);width:min(440px,calc(100vw - 280px));height:28px;
+    border:1px solid var(--line-2);border-radius:var(--r-pill);background:rgba(255,255,255,.9);overflow:hidden;pointer-events:none;opacity:0;transition:opacity .6s;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+  .ticker.on{opacity:1}
+  .ticker__track{display:flex;width:max-content;height:100%;align-items:center;animation:tick 40s linear infinite}
+  .ticker__track span{flex:none;padding-right:28px;font:500 10.5px/1 var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .ticker__track b{color:var(--ink);font-weight:500}
+  @keyframes tick{to{transform:translateX(-50%)}}
 
-  .dynbar{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));z-index:75;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;
+  /* bottom bar, as on the studio site */
+  .dynbar{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));z-index:60;transform:translateX(-50%);display:flex;align-items:center;gap:4px;padding:4px;
     background:var(--paper);border:1px solid var(--line-2);border-radius:var(--r-pill);box-shadow:0 6px 20px rgba(18,18,18,.08)}
   .dyn-cta{padding:9px 14px;border-radius:var(--r-pill);background:var(--ink);color:var(--paper);font:500 13px/1 var(--font);text-decoration:none;white-space:nowrap;transition:background .2s}
   .dyn-cta:hover{background:var(--brand)}
@@ -92,15 +75,33 @@
   .dyn-now{display:flex;align-items:center;gap:8px;padding:0 6px}
   .dyn-name{font:500 13px/1 var(--font);white-space:nowrap}
   .dyn-count{font:400 12px/1 var(--font);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
-  .dyn-open{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--r-pill);border:1px solid var(--line-2);font:500 13px/1 var(--font);text-decoration:none;white-space:nowrap;transition:border-color .2s}
-  .dyn-open:hover{border-color:var(--ink)}
-  .dyn-open svg{width:12px;height:12px}
+  .dyn-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:var(--r-pill);border:1px solid var(--line-2);font:500 13px/1 var(--font);text-decoration:none;white-space:nowrap;transition:border-color .2s}
+  .dyn-btn:hover{border-color:var(--ink)}
+  .dyn-btn svg{width:12px;height:12px}
+
+  /* the index: every experiment as a plain list */
+  .sheet{position:fixed;inset:0;z-index:70;display:grid;place-items:end center;padding:16px;background:rgba(18,18,18,.18);opacity:0;pointer-events:none;transition:opacity .25s}
+  .sheet.on{opacity:1;pointer-events:auto}
+  .sheet__panel{width:min(1080px,100%);max-height:calc(100svh - 80px);overflow:auto;background:var(--paper);border-radius:24px;border:1px solid var(--line-2);
+    padding:24px 24px 88px;transform:translateY(24px);transition:transform .35s var(--ease)}
+  .sheet.on .sheet__panel{transform:none}
+  .sheet__head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--line-2);margin-bottom:24px}
+  .sheet__head h2{margin:0;font:300 28px/1.1 var(--font);letter-spacing:-.025em}
+  .sheet__close{font:500 13px/1 var(--font);padding:8px 12px;border-radius:var(--r-pill);border:1px solid var(--line-2)}
+  .meta{font:500 11px/1.2 var(--font);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px}
+  .card{display:flex;flex-direction:column;gap:12px;text-decoration:none}
+  .card__img{aspect-ratio:16/10;border-radius:var(--r-card);overflow:hidden;background:var(--paper-2);border:1px solid var(--line-2)}
+  .card__img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s var(--ease)}
+  .card:hover .card__img img{transform:scale(1.03)}
+  .card__row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .card__title{margin:0;font:500 18px/1.15 var(--font);letter-spacing:-.02em}
+  .card__lede{margin:0;font:400 14px/1.5 var(--font);color:var(--muted)}
 
   @media (max-width:640px){
-    .coord{top:calc(var(--top) + 16px)}.coord--l{left:16px}.coord--r{right:16px}
+    .coord{top:calc(var(--top) + 14px)}.coord--l{left:16px}.coord--r{right:16px}
+    .ticker{display:none}
     .hero{top:calc(var(--top) + 76px)}
-    .grid{grid-template-columns:1fr}
-    .list__head h2{font-size:26px}
     .dyn-cta,.dyn-cta+.dyn-div{display:none}
   }
 </style>
@@ -118,28 +119,13 @@
   <a class="strip__link" href="https://madebypuru.github.io/37degree-site/">Studio</a>
 </header>
 
-<section class="journey" id="journey" aria-label="Experiments along the 37th parallel">
-  <div class="scene">
-    <canvas id="globe" aria-hidden="true"></canvas>
-    <div class="coord coord--l"><b>Latitude</b><span>37.000000° N</span></div>
-    <div class="coord coord--r"><b>Longitude</b><span id="lon">0.000000° E</span></div>
-    <div class="hero" id="hero"><h1>Experiments at <b>37° N</b></h1></div>
-    <p class="cue" id="cue">Everything here lives on the 37th parallel. Scroll to travel along it.</p>
-    <a class="tag" id="tag" target="_blank" rel="noopener"></a>
-  </div>
-</section>
+<canvas id="globe" aria-label="A globe of experiments along the 37th parallel. Use the Index button for a list."></canvas>
+<div class="coord coord--l"><b>Latitude</b><span id="lat">37.000000° N</span></div>
+<div class="coord coord--r"><b>Longitude</b><span id="lon">0.000000° E</span></div>
+<div class="ticker" id="ticker" aria-hidden="true"><div class="ticker__track" id="tickerTrack"></div></div>
+<div class="hero" id="hero"><h1>Experiments at <b>37° N</b></h1><p>Small things made for fun at 37degree.</p></div>
 
-<main class="list" id="list">
-  <div class="list__head"><h2>All experiments</h2><span class="meta" id="total"></span></div>
-  <div class="grid" id="grid"></div>
-</main>
-
-<footer class="foot">
-  <p>Made at 37degree, a design and growth studio for tech &amp; AI companies.</p>
-  <p><a href="https://github.com/madebypuru/experiments" target="_blank" rel="noopener">Source on GitHub</a></p>
-</footer>
-
-<nav class="dynbar" aria-label="Step through experiments">
+<nav class="dynbar" aria-label="Experiments">
   <a class="dyn-cta" href="mailto:puru@37degr.ee?cc=haneef@37degr.ee&amp;subject=Work%20with%2037degree">Work with us</a>
   <span class="dyn-div" aria-hidden="true"></span>
   <div class="dyn-step">
@@ -147,80 +133,122 @@
     <div class="dyn-now" aria-live="polite"><span class="dyn-name" id="dynName"></span><span class="dyn-count" id="dynCount"></span></div>
     <button data-step="1" aria-label="Next experiment"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 3.5 11 8l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
-  <a class="dyn-open" id="dynOpen" href="#" target="_blank" rel="noopener">Open</a>
+  <a class="dyn-btn" id="dynOpen" href="#" target="_blank" rel="noopener">Open</a>
+  <button class="dyn-btn" id="indexBtn" aria-haspopup="dialog">Index</button>
 </nav>
 
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="All experiments">
+  <div class="sheet__panel">
+    <div class="sheet__head"><h2>All experiments</h2><button class="sheet__close" id="sheetClose">Close</button></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
 <script>
-// Every experiment sits on the 37th parallel, at its own longitude. Add one line for the next.
+/* ============================================================================
+   Experiments at 37° N
+   A free-flowing globe. It opens whole, then dives into its own grid, where every
+   experiment is a 4 × 2 block of cells sitting on the 37th parallel. The globe
+   keeps drifting east; scrolling, dragging or swiping throws it, and it settles
+   back into the drift. Hovering a project slows the globe, lights up the latitude
+   and longitude lines that frame it, plays its video, and leans toward you.
+   ========================================================================== */
+
+// Add an experiment: one entry here and its six cells in thumbs/<id>/ (v.mp4, v.jpg, 1–4.jpg portrait, 5.jpg wide).
 const EXPERIMENTS=[
-  {name:'Meadow',path:'meadow/',img:'meadow/og.jpg',date:'Nov 2026',lon:14,
+  {id:'meadow',name:'Meadow',path:'meadow/',date:'Nov 2026',line:'Draw a loop, it becomes a sheep',
    lede:'Draw a loop on a watercolour meadow and it becomes a sheep. The paint is simulated: water flows, colours bleed, edges dry dark.'},
-  {name:'Paint',path:'paint/',img:'paint/og.jpg',date:'Nov 2026',lon:38,
+  {id:'paint',name:'Paint',path:'paint/',date:'Nov 2026',line:'Photos painted live in watercolour',
    lede:'Turn any photo into a watercolour, painted live in your browser by a simulation of water and pigment. Nothing is uploaded.'},
 ];
-const LAT=37,D2R=Math.PI/180;
+
+const LAT=37,STEP=4,D2R=Math.PI/180,R2D=180/Math.PI;
+const wrap=a=>((a%360)+540)%360-180;
+const fmtLon=l=>{const L=Math.round(wrap(l));return `${Math.abs(L)}° ${L<0?'W':'E'}`;};
 const ext='<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.5h5.5V8M9.2 2.8 2.5 9.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-const open=i=>window.open(EXPERIMENTS[i].path,'_blank','noopener');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,touch=matchMedia('(hover: none)').matches;
+const openExp=e=>window.open(e.path,'_blank','noopener');
 
-// ---------- the list ----------
+// ---------- media per experiment ----------
+for(const e of EXPERIMENTS){
+  e.stills=[1,2,3,4,5].map(n=>{const im=new Image();im.src=`thumbs/${e.id}/${n}.jpg`;return im;});
+  e.poster=new Image();e.poster.src=`thumbs/${e.id}/v.jpg`;
+  const v=document.createElement('video');v.src=`thumbs/${e.id}/v.mp4`;v.muted=true;v.loop=true;v.playsInline=true;v.preload='auto';e.video=v;
+}
+
+// ---------- places on the globe ----------
+// A project is 4 x 2 cells of 4° (16° x 8°), with a row of labels in the cells below it.
+// The 37° N ring is the anchor; a ring a band above and a band below, offset half a slot like brickwork,
+// make the globe read as a wall. Up to 18 projects fit a ring (a slot every 20°). While there are only a
+// few, they repeat around the rings so the surface never runs empty; past 18, more rings join further out.
+const CELLS=[{c:0,r:0,w:2,src:'v'},{c:2,r:0,w:1,src:0},{c:3,r:0,w:1,src:1},{c:0,r:1,w:1,src:2},{c:1,r:1,w:1,src:3},{c:2,r:1,w:2,src:4}];
+const PLACES=[];
+{
+  const n=EXPERIMENTS.length,need=Math.ceil(n/18),order=[0,1,-1,2,-2,3,-3];
+  const ringCount=Math.max(3,need),k=Math.max(8,Math.min(18,n));
+  for(let ri=0;ri<ringCount;ri++){
+    const r=order[ri],la0=LAT+r*16,own=EXPERIMENTS.slice(ri*18,(ri+1)*18),items=own.length?own:EXPERIMENTS;
+    for(let j=0;j<k;j++){
+      const l0=Math.round((8+j*360/k+(Math.abs(r)%2)*180/k)/STEP)*STEP;
+      PLACES.push({e:items[(j+ri)%items.length],l0,la0,ring:r,i:PLACES.length,glow:0});
+    }
+  }
+}
+function cellBox(p,cell){
+  const lo0=p.l0+cell.c*STEP,lo1=lo0+cell.w*STEP,la1=p.la0+8-cell.r*STEP,la0=la1-STEP;
+  return {lo0,lo1,la0,la1};
+}
+
+// ---------- index, ticker, bar ----------
 const grid=document.getElementById('grid');
-EXPERIMENTS.forEach((e,i)=>{
+EXPERIMENTS.forEach(e=>{
+  const p=PLACES.find(q=>q.e===e);
   const a=document.createElement('a');a.className='card';a.href=e.path;a.target='_blank';a.rel='noopener';
-  a.innerHTML=`<div class="card__img"><img src="${e.img}" alt="" loading="lazy" width="1200" height="630"></div>
-    <div class="card__row"><h3 class="card__title">${e.name}</h3><span class="meta">${e.lon}° E · ${e.date}</span></div>
-    <p class="card__lede">${e.lede}</p><span class="card__open">Open in a new tab ${ext}</span>`;
+  a.innerHTML=`<div class="card__img"><img src="thumbs/${e.id}/v.jpg" alt="" loading="lazy"></div>
+    <div class="card__row"><h3 class="card__title">${e.name}</h3><span class="meta">37° N ${fmtLon(p.l0+8)} · ${e.date}</span></div>
+    <p class="card__lede">${e.lede}</p>`;
   grid.appendChild(a);
-  e.image=new Image();e.image.src=e.img;
 });
-document.getElementById('total').textContent=`${EXPERIMENTS.length} ${EXPERIMENTS.length===1?'experiment':'experiments'}`;
-
-// ---------- scroll: first screen dives in, the rest travels east ----------
-const journey=document.getElementById('journey');
-const START=EXPERIMENTS[0].lon-16,END=EXPERIMENTS[EXPERIMENTS.length-1].lon+16;
-const DIVE=1,TRAVEL=.6+.9*EXPERIMENTS.length; // in screens
-function layout(){journey.style.height=`${(1+DIVE+TRAVEL)*innerHeight}px`;}
-layout();addEventListener('resize',layout);
-const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
-function targets(){
-  const y=Math.max(0,scrollY-journey.offsetTop),vh=innerHeight;
-  const dive=Math.min(1,y/(DIVE*vh)),travel=Math.min(1,Math.max(0,(y-DIVE*vh)/(TRAVEL*vh)));
-  return {dive,lon:START+(END-START)*travel};
+const sheet=document.getElementById('sheet');
+const toggleSheet=on=>{sheet.classList.toggle('on',on);if(on)document.getElementById('sheetClose').focus();};
+document.getElementById('indexBtn').onclick=()=>toggleSheet(true);
+document.getElementById('sheetClose').onclick=()=>toggleSheet(false);
+sheet.addEventListener('click',e=>{if(e.target===sheet)toggleSheet(false);});
+addEventListener('keydown',e=>{if(e.key==='Escape')toggleSheet(false);});
+{
+  const items=EXPERIMENTS.map(e=>{const p=PLACES.find(q=>q.e===e);return `<span><b>${e.name}</b> · ${e.line} · 37° N ${fmtLon(p.l0+8)}</span>`;}).join('');
+  document.getElementById('tickerTrack').innerHTML=items.repeat(4)+items.repeat(4);
 }
-function scrollToExp(i){ // the scroll position where experiment i sits in the middle
-  const vh=innerHeight,t=(EXPERIMENTS[i].lon-START)/(END-START);
-  scrollTo({top:journey.offsetTop+DIVE*vh+t*TRAVEL*vh,behavior:'smooth'});
-}
-
-// ---------- bar ----------
-let cur=0;
-function setCur(i){
-  if(i===cur&&document.getElementById('dynName').textContent)return;cur=i;const e=EXPERIMENTS[i];
+let cur=-1;
+function setCur(e){
+  const i=EXPERIMENTS.indexOf(e);if(i===cur)return;cur=i;
   document.getElementById('dynName').textContent=e.name;
   document.getElementById('dynCount').textContent=`${i+1} / ${EXPERIMENTS.length}`;
   const o=document.getElementById('dynOpen');o.href=e.path;o.innerHTML=`Open ${ext}`;
 }
-cur=-1;setCur(0);
-document.querySelectorAll('.dyn-step button').forEach(b=>b.addEventListener('click',()=>{
-  const n=(cur+ +b.dataset.step+EXPERIMENTS.length)%EXPERIMENTS.length;setCur(n);scrollToExp(n);}));
+setCur(EXPERIMENTS[0]);
 
-// ---------- the globe ----------
-const cv=document.getElementById('globe'),ctx=cv.getContext('2d'),tag=document.getElementById('tag');
-const hero=document.getElementById('hero'),cue=document.getElementById('cue'),lonOut=document.getElementById('lon');
-const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+// ---------- camera ----------
+const cv=document.getElementById('globe'),ctx=cv.getContext('2d');
+const hero=document.getElementById('hero'),ticker=document.getElementById('ticker');
+const latOut=document.getElementById('lat'),lonOut=document.getElementById('lon');
 let W=0,H=0,DPR=1;
-function size(){DPR=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;}
-addEventListener('resize',size);size();
-
-// camera: far away and tilted 24° at rest; close to the surface, looking down onto the parallel, once dived
-let cam={d:4.4,tilt:24,c:0,S:1,cy:.5};
-function setCam(e,c){
-  cam.d=4.4+(1.56-4.4)*e;
-  cam.tilt=24+(40-24)*e;
+let heroBottom=0;
+function size(){DPR=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;heroBottom=hero.offsetTop+hero.offsetHeight;}
+addEventListener('resize',size);size();if(document.fonts)document.fonts.ready.then(size);
+const cam={d:4.4,tilt:24,c:0,S:1,cy:.5};
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function setCam(e,c,tiltLean){
+  cam.d=4.4+((W<640?1.7:1.9)-4.4)*e;
+  cam.tilt=24+(41-24)*e+tiltLean;
   cam.c=c;
-  const k=Math.min(W,H);cam.S=(W<640?.42:.34)*k*Math.sqrt(4.4*4.4-1); // globe radius at rest
-  cam.cy=.53+(.48-.53)*e;
+  // seen whole, the globe fits between the headline and the bar
+  const top=heroBottom+22,bottom=H-110;
+  const r0=Math.max(90,Math.min((W<640?.42:.33)*Math.min(W,H),(bottom-top)/2));
+  cam.S=r0*Math.sqrt(4.4*4.4-1);
+  const cy0=(top+bottom)/2/H;
+  cam.cy=cy0+((W<640?.5:.47)-cy0)*e;
 }
-// lat/lon -> screen [x,y,facing]; facing > 0 means on the side we can see
 function P(lat,lon){
   const la=lat*D2R,lo=(lon-cam.c)*D2R,t=cam.tilt*D2R;
   const x=Math.cos(la)*Math.sin(lo),y=Math.sin(la),z=Math.cos(la)*Math.cos(lo);
@@ -228,132 +256,193 @@ function P(lat,lon){
   const s=cam.S/(cam.d-z2);
   return [W/2+x*s,H*cam.cy-y2*s,(z2-1/cam.d)/(1-1/cam.d)];
 }
-function stroke(pts,col,alpha,width,backAlpha=0){
-  // split into front and back runs; fade lines toward the horizon
-  for(const front of [false,true]){
-    if(!front&&!backAlpha)continue;
-    ctx.beginPath();let on=false;
-    for(const [la,lo] of pts){const [x,y,f]=P(la,lo),vis=front?f>0:f<=0;
-      if(vis){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}
-    ctx.globalAlpha=front?alpha:backAlpha;ctx.strokeStyle=col;ctx.lineWidth=width;ctx.stroke();
-  }
-  ctx.globalAlpha=1;
-}
-// draw an image onto a curved patch of the sphere: split into small quads, each as two affine triangles
-function tri(img,s,d){
-  const [[u0,v0],[u1,v1],[u2,v2]]=s,[[x0,y0],[x1,y1],[x2,y2]]=d;
-  const den=(u1-u0)*(v2-v0)-(u2-u0)*(v1-v0);if(Math.abs(den)<1e-9)return;
-  const a=((x1-x0)*(v2-v0)-(x2-x0)*(v1-v0))/den,c=((x2-x0)*(u1-u0)-(x1-x0)*(u2-u0))/den;
-  const b=((y1-y0)*(v2-v0)-(y2-y0)*(v1-v0))/den,dd=((y2-y0)*(u1-u0)-(y1-y0)*(u2-u0))/den;
-  const e=x0-a*u0-c*v0,f=y0-b*u0-dd*v0;
-  const mx=(x0+x1+x2)/3,my=(y0+y1+y2)/3,g=p=>{const dx=p[0]-mx,dy=p[1]-my,l=Math.hypot(dx,dy)||1;return [p[0]+dx/l*.7,p[1]+dy/l*.7];};
-  const [p0,p1,p2]=[g([x0,y0]),g([x1,y1]),g([x2,y2])];
-  ctx.save();ctx.beginPath();ctx.moveTo(...p0);ctx.lineTo(...p1);ctx.lineTo(...p2);ctx.closePath();ctx.clip();
-  ctx.transform(a,b,c,dd,e,f);ctx.drawImage(img,0,0);ctx.restore();
-}
-const TILE={la0:LAT+.6,la1:LAT+7.1,half:5.2,nx:10,ny:7,cellLon:2.6,cellLat:2.17};
-function tileOutline(ex){
-  const o=[],{la0,la1,half}=TILE,l0=ex.lon-half,l1=ex.lon+half;
-  for(let i=0;i<=8;i++)o.push(P(la1,l0+(l1-l0)*i/8));for(let i=0;i<=6;i++)o.push(P(la1-(la1-la0)*i/6,l1));
-  for(let i=0;i<=8;i++)o.push(P(la0,l1-(l1-l0)*i/8));for(let i=0;i<=6;i++)o.push(P(la0+(la1-la0)*i/6,l0));
-  return o;
-}
-function drawTile(ex,i,alpha){
-  const img=ex.image;if(!img.complete||!img.naturalWidth)return;
-  const {la0,la1,half,nx,ny}=TILE,l0=ex.lon-half,l1=ex.lon+half;
-  // cover-crop the preview to the patch's proportions
-  const [ax,ay]=P(la0,l0),[bx,by]=P(la0,l1),[cx,cy]=P(la1,l0);
-  const pw=Math.hypot(bx-ax,by-ay),ph=Math.hypot(cx-ax,cy-ay)||1,ar=pw/ph,iw=img.naturalWidth,ih=img.naturalHeight;
-  let sw=iw,sh=iw/ar;if(sh>ih){sh=ih;sw=ih*ar;}const sx=(iw-sw)/2,sy=(ih-sh)/2;
-  const pts=[];for(let j=0;j<=ny;j++){const row=[];for(let k=0;k<=nx;k++)row.push(P(la1-(la1-la0)*j/ny,l0+(l1-l0)*k/nx));pts.push(row);}
-  ctx.globalAlpha=alpha;
-  for(let j=0;j<ny;j++)for(let k=0;k<nx;k++){
-    const A=pts[j][k],B=pts[j][k+1],C=pts[j+1][k],D=pts[j+1][k+1];if(A[2]<=0||B[2]<=0||C[2]<=0||D[2]<=0)continue;
-    const u0=sx+sw*k/nx,u1=sx+sw*(k+1)/nx,v0=sy+sh*j/ny,v1=sy+sh*(j+1)/ny;
-    tri(img,[[u0,v0],[u1,v0],[u0,v1]],[A,B,C]);tri(img,[[u1,v0],[u1,v1],[u0,v1]],[B,D,C]);
-  }
-  // split into cells, the way the wall of a globe would be
-  ctx.globalAlpha=alpha*.9;
-  for(let lo=l0+TILE.cellLon;lo<l1-.1;lo+=TILE.cellLon){const p=[];for(let la=la0;la<=la1+.01;la+=.5)p.push([la,lo]);stroke(p,'#fff',alpha*.9,1.6);}
-  for(let la=la0+TILE.cellLat;la<la1-.1;la+=TILE.cellLat){const p=[];for(let lo=l0;lo<=l1+.01;lo+=.5)p.push([la,lo]);stroke(p,'#fff',alpha*.9,1.6);}
-  ctx.globalAlpha=1;
-}
-let hover=-1;
-function frame(e,c,now){
-  setCam(e,c);
-  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
-  const ink='#121212',brand='#FD611E';
-  // the globe's disc, faintly shaded, while it's still seen whole
-  const [gx,gy]=[W/2,H*cam.cy],gr=cam.S/Math.sqrt(cam.d*cam.d-1);
-  if(e<.98){const g=ctx.createRadialGradient(gx-gr*.35,gy-gr*.4,gr*.1,gx,gy,gr);g.addColorStop(0,'rgba(18,18,18,0)');g.addColorStop(1,`rgba(18,18,18,${.035*(1-e)})`);
-    ctx.fillStyle=g;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fill();}
-  // grid: 10° at rest, 5° once close
-  const fine=Math.max(0,(e-.45)/.55),back=.05*(1-e);
-  for(let lat=-80;lat<=80;lat+=5){const major=lat%10===0;if(!major&&fine<=0)continue;
-    const p=[];for(let lon=c-180;lon<=c+180;lon+=2)p.push([lat,lon]);
-    stroke(p,ink,(major?.17+.06*fine:.13*fine)*(lat===0?1.6:1),1,major?back:0);}
-  const lo0=Math.floor((c-180)/5)*5;
-  for(let lon=lo0;lon<c+180;lon+=5){const major=lon%10===0;if(!major&&fine<=0)continue;
-    const p=[];for(let lat=-90;lat<=90;lat+=2)p.push([lat,lon]);
-    stroke(p,ink,major?(lon%30===0?.24:.17+.06*fine):.13*fine,1,major?back:0);}
-  // rim
-  if(e<.98){ctx.strokeStyle=ink;ctx.globalAlpha=.22*(1-e);ctx.lineWidth=1;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
-  // tiles
-  const show=Math.max(0,(e-.25)/.75);
-  EXPERIMENTS.forEach((ex,i)=>{const f=P(LAT+4,ex.lon)[2];drawTile(ex,i,Math.min(1,show*1.2)*Math.min(1,Math.max(0,f*4)));});
-  // hover outline
-  if(hover>=0&&show>.5){const o=tileOutline(EXPERIMENTS[hover]);ctx.beginPath();o.forEach(([x,y],k)=>k?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
-    ctx.strokeStyle=brand;ctx.lineWidth=2;ctx.stroke();}
-  // the 37th parallel
-  {const p=[];for(let lon=c-180;lon<=c+180;lon+=1)p.push([LAT,lon]);stroke(p,brand,.95,1.6+e*.6,.2*(1-e));}
-  // longitude marks along the parallel, once close
-  if(fine>0){ctx.font='500 11px Inter,system-ui,sans-serif';ctx.textAlign='center';ctx.fillStyle=ink;
-    for(let lon=Math.ceil((c-60)/10)*10;lon<=c+60;lon+=10){const [x,y,f]=P(LAT-1.3,lon);if(f<=.05)continue;
-      if(EXPERIMENTS.some(ex=>Math.abs(ex.lon-lon)<TILE.half+1))continue;
-      ctx.globalAlpha=fine*.55*Math.min(1,f*3);const L=((lon%360)+540)%360-180;ctx.fillText(`37°N ${Math.abs(L)}°${L<0?'W':'E'}`,x,y);}
-    ctx.globalAlpha=1;}
-  // points while seen whole
-  if(e<.6)EXPERIMENTS.forEach(ex=>{const [x,y,f]=P(LAT,ex.lon);if(f<=0)return;ctx.globalAlpha=(1-e/.6)*Math.min(1,f*3);
-    ctx.fillStyle=brand;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});
-  // the experiment nearest the middle: its name under the line, and the bar follows
-  let near=0,best=1e9;EXPERIMENTS.forEach((ex,i)=>{const d=Math.abs(((ex.lon-c)%360+540)%360-180);if(d<best){best=d;near=i;}});
-  if(e>.5)setCur(near);
-  const ex=EXPERIMENTS[near],[tx,ty,tf]=P(LAT-.4,ex.lon);
-  tag.style.left=tx+'px';tag.style.top=ty+'px';
-  tag.classList.toggle('on',e>.85&&tf>.35&&best<16);
-  if(tag.dataset.i!=near){tag.dataset.i=near;tag.href=ex.path;tag.innerHTML=`${ex.name} <span class="when">${ex.date}</span> ${ext}`;}
-  // hero and cue fade as you dive; the read-out tracks the middle
-  hero.style.opacity=Math.max(0,1-e*2.6);hero.style.transform=`translateY(${-e*40}px)`;
-  cue.style.opacity=Math.max(0,1-e*3);
-  const L=((c%360)+540)%360-180;lonOut.textContent=`${Math.abs(L).toFixed(6)}° ${L<0?'W':'E'}`;
+// screen -> lat/lon on the globe (null if off it)
+function unproject(X,Y){
+  const a=(X-W/2)/cam.S,b=-(Y-H*cam.cy)/cam.S,d=cam.d,A=a*a+b*b+1,disc=d*d-A*(d*d-1);
+  if(disc<0)return null;
+  const u=(d-Math.sqrt(disc))/A,x=a*u,y2=b*u,z2=d-u,t=cam.tilt*D2R;
+  const y=y2*Math.cos(t)+z2*Math.sin(t),z=-y2*Math.sin(t)+z2*Math.cos(t);
+  return [Math.asin(Math.max(-1,Math.min(1,y)))*R2D,Math.atan2(x,z)*R2D+cam.c];
 }
 
-// smooth toward the scroll targets; the globe drifts a little while you're at the top
-let sm={dive:0,lon:START},spin=0,born=performance.now(),last=born;
+// ---------- drawing ----------
+function path(pts){ctx.beginPath();let on=false;for(const [la,lo] of pts){const [x,y,f]=P(la,lo);if(f>0){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}}
+function strokeLine(pts,col,alpha,width){path(pts);ctx.globalAlpha=alpha;ctx.strokeStyle=col;ctx.lineWidth=width;ctx.stroke();ctx.globalAlpha=1;}
+function backLine(pts,alpha){ctx.beginPath();let on=false;for(const [la,lo] of pts){const [x,y,f]=P(la,lo);if(f<=0){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}
+  ctx.globalAlpha=alpha;ctx.strokeStyle='#121212';ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;}
+// an image or video frame on a curved cell, as a few small quads; each is one affine draw, no clipping
+// (neighbours overlap by a hair, and the white grid gaps drawn on top hide the seams)
+function drawCell(img,box,alpha){
+  const iw=img.videoWidth||img.naturalWidth||img.width,ih=img.videoHeight||img.naturalHeight||img.height;if(!iw||alpha<=.01)return;
+  const nx=box.lo1-box.lo0>STEP?6:3,ny=3,pts=[];
+  for(let j=0;j<=ny;j++){const row=[];for(let k=0;k<=nx;k++)row.push(P(box.la1-(box.la1-box.la0)*j/ny,box.lo0+(box.lo1-box.lo0)*k/nx));pts.push(row);}
+  const A=pts[ny][0],B=pts[ny][nx],C=pts[0][0];
+  const ar=Math.hypot(B[0]-A[0],B[1]-A[1])/(Math.hypot(C[0]-A[0],C[1]-A[1])||1);
+  let sw=iw,sh=iw/ar;if(sh>ih){sh=ih;sw=ih*ar;}const sx=(iw-sw)/2,sy=(ih-sh)/2,qw=sw/nx,qh=sh/ny;
+  ctx.globalAlpha=alpha;
+  for(let j=0;j<ny;j++)for(let k=0;k<nx;k++){
+    const a=pts[j][k],b=pts[j][k+1],c=pts[j+1][k];if(a[2]<=0||b[2]<=0||c[2]<=0)continue;
+    ctx.setTransform(DPR*(b[0]-a[0]),DPR*(b[1]-a[1]),DPR*(c[0]-a[0]),DPR*(c[1]-a[1]),DPR*a[0],DPR*a[1]);
+    ctx.drawImage(img,sx+qw*k,sy+qh*j,qw,qh,0,0,1.02,1.02);
+  }
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.globalAlpha=1;
+}
+// the hovered video's frame is copied once per frame, then drawn from the copy
+const vframe=document.createElement('canvas'),vctx=vframe.getContext('2d');
+function videoFrame(v){if(vframe.width!==v.videoWidth){vframe.width=v.videoWidth;vframe.height=v.videoHeight;}vctx.drawImage(v,0,0);return vframe;}
+// the grid lines near the pointer glow softly; the glow trails the pointer with a little lag
+const glow={lat:LAT,lon:0,amt:0};
+function pointerGlow(){
+  if(glow.amt<=.01)return;
+  const [gx,gy,gf]=P(glow.lat,glow.lon);if(gf<=0)return;
+  const R=11,cl=Math.cos(glow.lat*D2R),[ex,ey]=P(glow.lat+R,glow.lon),rpx=Math.hypot(ex-gx,ey-gy)*1.15;
+  ctx.beginPath();
+  const add=pts=>{let on=false;for(const q of pts){const [x,y,f]=P(...q);if(f>0){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}};
+  const la0=Math.floor((glow.lat-R-LAT)/STEP)*STEP+LAT,lo0=Math.floor((glow.lon-R/cl)/STEP)*STEP;
+  for(let la=la0;la<=glow.lat+R;la+=STEP){const pts=[];for(let lo=glow.lon-R/cl;lo<=glow.lon+R/cl;lo+=1)pts.push([la,lo]);add(pts);}
+  for(let lo=lo0;lo<=glow.lon+R/cl;lo+=STEP){const pts=[];for(let la=glow.lat-R;la<=glow.lat+R;la+=1)pts.push([la,lo]);add(pts);}
+  const g=ctx.createRadialGradient(gx,gy,0,gx,gy,rpx);
+  g.addColorStop(0,`rgba(253,97,30,${.75*glow.amt})`);g.addColorStop(.45,`rgba(253,97,30,${.35*glow.amt})`);g.addColorStop(1,'rgba(253,97,30,0)');
+  ctx.strokeStyle=g;ctx.lineCap='round';
+  ctx.globalAlpha=.22;ctx.lineWidth=4;ctx.stroke();
+  ctx.globalAlpha=1;ctx.lineWidth=1.1;ctx.stroke();
+}
+
+let hover=null,born=performance.now(),diveAt=null;
+function render(e,c,tiltLean,now,dt){
+  setCam(e,c,tiltLean);
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
+  const ink='#121212',brand='#FD611E',fine=Math.max(0,(e-.4)/.6);
+  const gr=cam.S/Math.sqrt(cam.d*cam.d-1),gx=W/2,gy=H*cam.cy;
+  if(e<.98){const g=ctx.createRadialGradient(gx-gr*.35,gy-gr*.4,gr*.1,gx,gy,gr);g.addColorStop(0,'rgba(18,18,18,0)');g.addColorStop(1,`rgba(18,18,18,${.035*(1-e)})`);
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.fill();}
+  // the grid: 4° steps from 37° N; every other line while the globe is seen whole
+  const lonSpan=e>.7?70:180,back=.05*(1-e),major=[],minor=[];
+  for(let lat=LAT-STEP*31;lat<89;lat+=STEP){if(lat<-89)continue;const pts=[];for(let lon=c-lonSpan;lon<=c+lonSpan;lon+=3)pts.push([lat,lon]);((lat-LAT)%8===0?major:minor).push(pts);}
+  for(let lon=Math.floor((c-lonSpan)/STEP)*STEP;lon<c+lonSpan;lon+=STEP){const pts=[];for(let lat=-88;lat<=88;lat+=3)pts.push([lat,lon]);(lon%8===0?major:minor).push(pts);}
+  const lines=(set,alpha,front)=>{ctx.beginPath();for(const pts of set){let on=false;for(const q of pts){const [x,y,f]=P(...q);if(front?f>0:f<=0){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}}
+    ctx.globalAlpha=alpha;ctx.strokeStyle=ink;ctx.lineWidth=1;ctx.stroke();ctx.globalAlpha=1;};
+  lines(major,.15+.08*fine,true);if(fine>0)lines(minor,.15*fine,true);if(back>.005)lines(major,back,false);
+  if(e<.98){ctx.strokeStyle=ink;ctx.globalAlpha=.22*(1-e);ctx.lineWidth=1;ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
+  // projects: cells fade in one after another once the dive begins; the rest dim while one is hovered
+  const since=diveAt==null?-1:(now-diveAt)/1000;
+  const vf=hover&&hover.e.video.readyState>=2?videoFrame(hover.e.video):null;
+  for(const p of PLACES){
+    const f=P(p.la0+4,p.l0+8)[2];p.f=f;if(f<=0)continue;
+    p.glow+=((p===hover?1:0)-p.glow)*Math.min(1,dt*(reduce?60:10));
+    const dim=hover&&p!==hover?.86:1;
+    CELLS.forEach((cell,k)=>{
+      const t=reduce?1:Math.min(1,Math.max(0,(since-.35-k*.07-(p.i%6)*.04)/.45));
+      const src=cell.src==='v'?(p===hover&&vf?vf:p.e.poster):p.e.stills[cell.src];
+      drawCell(src,cellBox(p,cell),t*dim*Math.min(1,Math.max(0,f*5))*Math.min(1,e*1.4));
+    });
+  }
+  // the cells' edges are the globe's own lines, as hairline gaps
+  if(fine>0){ctx.beginPath();
+    const add=pts=>{let on=false;for(const q of pts){const [x,y,f]=P(...q);if(f>0){on?ctx.lineTo(x,y):ctx.moveTo(x,y);on=true;}else on=false;}};
+    for(const p of PLACES){if(p.f<=0)continue;
+      for(let lo=p.l0;lo<=p.l0+16;lo+=STEP){const pts=[];for(let la=p.la0;la<=p.la0+8;la+=1)pts.push([la,lo]);add(pts);}
+      for(let la=p.la0;la<=p.la0+8;la+=STEP){const pts=[];for(let lo=p.l0;lo<=p.l0+16;lo+=1)pts.push([la,lo]);add(pts);}}
+    ctx.globalAlpha=fine;ctx.strokeStyle='#fff';ctx.lineWidth=1.6;ctx.stroke();ctx.globalAlpha=1;}
+  // the 37th parallel
+  {const pts=[];for(let lon=c-180;lon<=c+180;lon+=1)pts.push([LAT,lon]);strokeLine(pts,brand,.9,1.4+e*.4);}
+  // labels in the row of cells under each project: name, where, when (or Open, while hovered)
+  if(fine>0)for(const p of PLACES){
+    const [x0,y0,f]=P(p.la0-1.55,p.l0+.5);if(f<=.4)continue;
+    ctx.globalAlpha=fine*Math.min(1,(f-.4)*4)*(hover&&p!==hover?.8:1);ctx.textAlign='left';
+    ctx.fillStyle=ink;ctx.font='500 13px Inter,system-ui,sans-serif';ctx.fillText(p.e.name,x0,y0);
+    const [x1,y1]=P(p.la0-1.55,p.l0+8.5),[x2,y2]=P(p.la0-1.55,p.l0+12.5),on=p.glow>.5;
+    // each label only if it fits before the next one starts
+    const nameEnd=x0+ctx.measureText(p.e.name).width+10;
+    ctx.font='500 10.5px Inter,system-ui,sans-serif';
+    const where=`37° N ${fmtLon(p.l0+8)}`,whereEnd=x1+ctx.measureText(where).width+10,last=on?'OPEN ↗':p.e.date.toUpperCase();
+    if(nameEnd<x1){ctx.fillStyle='#707070';ctx.fillText(where,x1,y1);}
+    if(whereEnd<x2&&nameEnd<x2){ctx.fillStyle=on?brand:'#707070';ctx.fillText(last,x2,y2);}
+    ctx.globalAlpha=1;
+  }
+  pointerGlow();
+  // while seen whole: a dot per project on the parallel
+  if(e<.6)for(const p of PLACES){const [x,y,f]=P(LAT,p.l0+8);if(f<=0)continue;ctx.globalAlpha=(1-e/.6)*Math.min(1,f*3);
+    ctx.fillStyle=brand;ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+}
+
+// ---------- motion: drift, throws, lean ----------
+const DRIFT=reduce?0:3.2;           // degrees per second, eastward
+let c=PLACES[0].l0+8-22,v=DRIFT,dive=0,diveTarget=0,goTo=null,drag=null;
+const lean={x:0,y:0},mouse={x:-1,y:-1,in:false};
+let last=performance.now();
 function loop(now){
   const dt=Math.min(.05,(now-last)/1000);last=now;
-  const t=targets(),k=reduce?1:1-Math.exp(-dt*7);
-  sm.dive+=(t.dive-sm.dive)*k;sm.lon+=(t.lon-sm.lon)*k;
-  if(!reduce)spin+=dt*5*(1-sm.dive);
-  const e=ease(sm.dive),wrap=((spin%360)+540)%360-180;
-  // intro: the globe draws itself in
-  const intro=reduce?1:Math.min(1,(now-born)/900);
-  cv.style.opacity=intro;
-  frame(e,sm.lon+wrap*(1-e),now); // the slow turn at rest unwinds as you dive
+  // open whole, then dive on its own; any input dives at once
+  if(diveTarget===0&&now-born>(reduce?0:1500))startDive(now);
+  dive+=(diveTarget-dive)*(reduce?1:1-Math.exp(-dt*1.6));
+  const e=ease(Math.min(1,dive));
+  // the drift slows to a stop under a hovered project; a throw decays back into the drift
+  const base=drag?0:hover?DRIFT*.35:DRIFT;
+  if(goTo!=null){const d=wrap(goTo-c);c+=d*Math.min(1,dt*3.2);v=0;if(Math.abs(d)<.05)goTo=null;}
+  else if(!drag){v+=(base-v)*(1-Math.exp(-dt*(hover?1.6:.9)));c+=v*dt;}
+  // lean toward the pointer
+  const tx=mouse.in&&!touch?(mouse.x/W-.5)*2:0,ty=mouse.in&&!touch?(mouse.y/H-.5)*2:0,lk=reduce?0:1-Math.exp(-dt*2.5);
+  lean.x+=(tx-lean.x)*lk;lean.y+=(ty-lean.y)*lk;
+  const cView=c+lean.x*2.4*e,tiltLean=-lean.y*2*e;
+  setCam(e,cView,tiltLean);
+  const at=mouse.in&&!drag&&e>.85?unproject(mouse.x,mouse.y):null;
+  if(!touch){const h=at?findPlace(at[0],at[1]):null;if(h!==hover)setHover(h);}
+  if(at){const k=reduce?1:1-Math.exp(-dt*9);if(glow.amt<.02){glow.lat=at[0];glow.lon=at[1];}
+    glow.lat+=(at[0]-glow.lat)*k;glow.lon+=wrap(at[1]-glow.lon)*k;}
+  glow.amt+=((at?1:0)-glow.amt)*(1-Math.exp(-dt*(at?5:3)));
+  render(e,cView,tiltLean,now,dt);
+  // read-outs: where the pointer is on the globe, otherwise the middle of the view
+  const ref=at||unproject(W/2,H*cam.cy)||[LAT,c];
+  latOut.textContent=`${Math.abs(ref[0]).toFixed(6)}° ${ref[0]<0?'S':'N'}`;
+  lonOut.textContent=`${Math.abs(wrap(ref[1])).toFixed(6)}° ${wrap(ref[1])<0?'W':'E'}`;
+  hero.style.opacity=Math.max(0,1-e*2.4);hero.style.transform=`translateY(${-e*36}px)`;
+  ticker.classList.toggle('on',e>.9);
+  let near=PLACES[0],best=1e9;for(const p of PLACES){const d=Math.abs(wrap(p.l0+8-c));if(d<best){best=d;near=p;}}
+  if(e>.5)setCur((hover||near).e);
   requestAnimationFrame(loop);
+}
+function startDive(now){if(diveTarget===1)return;diveTarget=1;diveAt=now||performance.now();}
+function findPlace(lat,lon){
+  for(const p of PLACES){const d=wrap(lon-p.l0);if(d>=0&&d<=16&&lat>=p.la0-STEP&&lat<=p.la0+8)return p;}
+  return null;
+}
+function setHover(p){
+  if(hover&&hover!==p)hover.e.video.pause();
+  hover=p;cv.classList.toggle('over',!!p);
+  if(p)p.e.video.play().catch(()=>{});
 }
 requestAnimationFrame(loop);
 
-// hover and click on the tiles
-function hit(mx,my){
-  for(let i=EXPERIMENTS.length-1;i>=0;i--){const o=tileOutline(EXPERIMENTS[i]);if(o.some(p=>p[2]<=0))continue;
-    let inside=false;for(let a=0,b=o.length-1;a<o.length;b=a++){const [xi,yi]=o[a],[xj,yj]=o[b];if((yi>my)!==(yj>my)&&mx<(xj-xi)*(my-yi)/(yj-yi)+xi)inside=!inside;}
-    if(inside)return i;}
-  return -1;
+// ---------- input ----------
+addEventListener('wheel',e=>{if(sheet.classList.contains('on'))return;e.preventDefault();startDive();goTo=null;
+  const d=(Math.abs(e.deltaY)>Math.abs(e.deltaX)?e.deltaY:e.deltaX)*(e.deltaMode===1?16:1);
+  v=Math.max(-90,Math.min(90,v+d*.045));},{passive:false});
+cv.addEventListener('pointerdown',e=>{startDive();goTo=null;drag={x:e.clientX,y:e.clientY,c,t:performance.now(),lx:e.clientX,ly:e.clientY,moved:0};cv.setPointerCapture(e.pointerId);cv.classList.add('dragging');});
+cv.addEventListener('pointermove',e=>{
+  mouse.x=e.clientX;mouse.y=e.clientY;mouse.in=true;
+  if(!drag)return;
+  const degPerPx=R2D/(cam.S/(cam.d-1))*.9,now=performance.now();
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved=Math.max(drag.moved,Math.hypot(dx,dy));
+  const vert=touch&&Math.abs(dy)>Math.abs(dx);          // on a phone, a vertical swipe turns it too
+  c=drag.c-(vert?dy:dx)*degPerPx;
+  const step=vert?e.clientY-drag.ly:e.clientX-drag.lx;
+  v=-step*degPerPx/Math.max(.008,(now-drag.t)/1000);drag.lx=e.clientX;drag.ly=e.clientY;drag.t=now;
+});
+const endDrag=e=>{if(!drag)return;const tap=drag.moved<6;drag=null;cv.classList.remove('dragging');
+  if(tap){v=0;const at=dive>.85?unproject(e.clientX,e.clientY):null,p=at?findPlace(at[0],at[1]):null;
+    if(p){if(touch&&hover!==p)setHover(p);else openExp(p.e);}else if(touch)setHover(null);}
+  else v=Math.max(-90,Math.min(90,v));};
+cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('pointerleave',()=>{mouse.in=false;});
+addEventListener('keydown',e=>{if(sheet.classList.contains('on'))return;
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){startDive();turn(e.key==='ArrowRight'?1:-1);}
+  if(e.key==='Enter'&&hover)openExp(hover.e);});
+function turn(dir){ // to the next project along the parallel
+  const ahead=PLACES.map(p=>({p,d:wrap(p.l0+8-c)})).filter(q=>dir>0?q.d>2:q.d<-2).sort((a,b)=>dir>0?a.d-b.d:b.d-a.d);
+  const t=ahead[0]||{p:PLACES[0],d:wrap(PLACES[0].l0+8-c)};goTo=c+t.d;setCur(t.p.e);
 }
-cv.addEventListener('pointermove',e=>{const r=cv.getBoundingClientRect();hover=sm.dive>.6?hit(e.clientX-r.left,e.clientY-r.top):-1;cv.classList.toggle('can-open',hover>=0);});
-cv.addEventListener('pointerleave',()=>{hover=-1;cv.classList.remove('can-open');});
-cv.addEventListener('click',e=>{const r=cv.getBoundingClientRect(),i=sm.dive>.6?hit(e.clientX-r.left,e.clientY-r.top):-1;if(i>=0)open(i);});
+document.querySelectorAll('.dyn-step button').forEach(b=>b.addEventListener('click',()=>{startDive();turn(+b.dataset.step);}));
 </script>
 </body>
 </html>
